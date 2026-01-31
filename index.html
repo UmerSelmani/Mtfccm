@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MTFCCM - Multi-Timeframe Candle Close Monitor</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <button id="sidebarToggle" class="btn btn-coins" title="Coins">💰 <span class="coins-text">Coins</span></button>
+            <div class="logo">
+                <span class="logo-icon">⏱️</span>
+                <h1>MTFCCM</h1>
+            </div>
+            <!-- Combined Coin + Price Section -->
+            <div class="coin-price-section" id="coinPriceSection">
+                <div class="selected-coin" id="selectedCoinHeader">
+                    <img id="selectedCoinIcon" src="" alt="" style="display:none;">
+                    <span id="selectedCoinName">Select a coin</span>
+                    <button id="headerStarBtn" class="btn-star" title="Add to watchlist">☆</button>
+                </div>
+                <div class="header-price" id="headerPrice">
+                    <span class="header-price-value" id="headerPriceValue">$0.00</span>
+                    <span class="header-price-change" id="headerPriceChange">0.00%</span>
+                </div>
+                <div class="header-price-details" id="headerPriceDetails">
+                    <span>H: <strong id="high24h">$0</strong></span>
+                    <span>L: <strong id="low24h">$0</strong></span>
+                    <span class="vol-hide-mobile">V: <strong id="vol24h">0</strong></span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="alert-badge alert-badge-compact" id="alertBadge" style="display: none;">
+                    <span class="pulse"></span>
+                    <span id="alertCount">0</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Layout with Sidebar -->
+        <div class="app-layout">
+            <!-- Coins Sidebar -->
+            <aside class="coins-sidebar" id="coinsSidebar">
+                <div class="sidebar-header">
+                    <h3>💰 Coins</h3>
+                    <div class="sidebar-header-actions">
+                        <button class="btn btn-sm btn-quick-glance" id="quickGlanceBtn" title="Quick Glance Mode">👁️</button>
+                        <button class="btn btn-icon sidebar-close mobile-only" id="sidebarClose">✕</button>
+                    </div>
+                </div>
+                <!-- Sidebar Tabs -->
+                <div class="sidebar-tabs">
+                    <button class="sidebar-tab active" data-tab="all-coins">All Coins</button>
+                    <button class="sidebar-tab" data-tab="watchlist">⭐ Watchlist</button>
+                </div>
+                <input type="text" id="coinSearch" placeholder="Search coins..." class="coin-search">
+                <div class="coin-sort-options">
+                    <label>Sort:</label>
+                    <select id="coinSortSelect">
+                        <option value="default">Default</option>
+                        <option value="alpha">A-Z</option>
+                        <option value="alpha-desc">Z-A</option>
+                        <option value="volume">Volume ↓</option>
+                        <option value="change">24h Change ↓</option>
+                        <option value="change-asc">24h Change ↑</option>
+                    </select>
+                </div>
+                <div class="coins-list" id="coinsList">
+                    <!-- Coins will be loaded dynamically -->
+                </div>
+                <div class="watchlist-list" id="watchlistList" style="display: none;">
+                    <!-- Watchlist coins will be loaded dynamically -->
+                    <div class="watchlist-empty">
+                        <p>No coins in watchlist</p>
+                        <small>Click ⭐ on any coin to add</small>
+                    </div>
+                </div>
+            </aside>
+            
+            <!-- Sidebar Overlay for Mobile -->
+            <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+            <!-- Main Content Area -->
+            <main class="main-content">
+                <!-- Quick Glance Summary (shown only in quick glance mode) -->
+                <div class="quick-glance-summary" id="quickGlanceSummary">
+                    <div class="quick-summary-price" id="quickPrice">$0.00</div>
+                    <div class="quick-summary-bar">
+                        <div class="quick-summary-fill" id="quickConfluenceFill"></div>
+                    </div>
+                    <div class="quick-summary-bias" id="quickBias">--</div>
+                    <div class="quick-tf-dots" id="quickTfDots">
+                        <!-- TF dots will be rendered dynamically -->
+                    </div>
+                </div>
+
+                <!-- Confluence Section (Price moved to header) -->
+                <section class="card confluence-card">
+                    <div class="card-header">
+                        <h2>📊 Confluence</h2>
+                        <button class="btn btn-sm btn-card-settings" id="confluenceSettingsBtn" title="Confluence Settings">⚙️</button>
+                    </div>
+                    <!-- Confluence Settings (collapsible) -->
+                    <div class="card-settings" id="confluenceSettings" style="display: none;">
+                        <div class="card-settings-row">
+                            <label for="weightMethod">Weighting</label>
+                            <select id="weightMethod">
+                                <option value="equal">Equal</option>
+                                <option value="linear" selected>Linear</option>
+                                <option value="exponential">Exponential</option>
+                                <option value="tiered">Tiered</option>
+                            </select>
+                        </div>
+                        <div class="card-settings-row">
+                            <label>Modifiers</label>
+                            <div class="modifier-toggles">
+                                <label class="mini-toggle"><input type="checkbox" id="useStrengthMod" checked><span>Body</span></label>
+                                <label class="mini-toggle"><input type="checkbox" id="useVolumeMod" checked><span>Vol</span></label>
+                                <label class="mini-toggle"><input type="checkbox" id="useIndicatorMod" checked><span>Ind</span></label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="confluence-content">
+                        <div class="confluence-meter">
+                            <div class="meter-bar">
+                                <div class="meter-fill" id="confluenceFill"></div>
+                            </div>
+                            <div class="meter-labels">
+                                <span>🔴</span>
+                                <span>🟡</span>
+                                <span>🟢</span>
+                            </div>
+                        </div>
+                        <div class="confluence-stats">
+                            <div class="stat" id="confluenceScore">
+                                <span class="stat-value">50%</span>
+                                <span class="stat-label">Score</span>
+                            </div>
+                            <div class="stat" id="bullCount">
+                                <span class="stat-value text-bull">0</span>
+                                <span class="stat-label">Bull</span>
+                            </div>
+                            <div class="stat" id="bearCount">
+                                <span class="stat-value text-bear">0</span>
+                                <span class="stat-label">Bear</span>
+                            </div>
+                            <div class="stat" id="biasIndicator">
+                                <span class="stat-value">—</span>
+                                <span class="stat-label">Bias</span>
+                            </div>
+                        </div>
+                        <div class="confluence-method" id="confluenceMethod">
+                            <div class="method-title">Method: <span id="methodName">Linear</span></div>
+                            <div class="method-formula" id="methodFormula">Loading...</div>
+                            <div class="method-weights" id="methodWeights"></div>
+                        </div>
+                        <!-- Historical Confluence Tracking -->
+                        <div class="confluence-history" id="confluenceHistory">
+                            <div class="history-header" id="historyToggle">
+                                <span>📜 Recent High Confluence</span>
+                                <span class="history-toggle-icon">▼</span>
+                            </div>
+                            <div class="history-list" id="historyList">
+                                <div class="history-empty">No high confluence moments recorded yet</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TF Toggles Section (Fixed at top, not scrollable) -->
+                <section class="card tf-controls-card">
+                    <div class="card-header">
+                        <h2>📈 Timeframes</h2>
+                        <button class="btn btn-sm btn-card-settings" id="tfSettingsBtn" title="Timeframe & Alert Settings">⚙️</button>
+                    </div>
+                    <!-- TF Settings (collapsible) -->
+                    <div class="card-settings" id="tfSettings" style="display: none;">
+                        <div class="card-settings-section">
+                            <span class="settings-section-label">🔔 Alerts</span>
+                            <div class="card-settings-row">
+                                <label for="alertSeconds">Alert before close</label>
+                                <div class="input-with-unit">
+                                    <input type="number" id="alertSeconds" min="5" max="120" value="30">
+                                    <span>sec</span>
+                                </div>
+                            </div>
+                            <div class="card-settings-row">
+                                <label for="minConfluence">Min TFs for alert</label>
+                                <input type="number" id="minConfluence" min="1" max="6" value="2">
+                            </div>
+                            <div class="card-settings-row">
+                                <label for="enableSound">Sound alerts</label>
+                                <input type="checkbox" id="enableSound" checked>
+                            </div>
+                        </div>
+                        <div class="card-settings-section">
+                            <span class="settings-section-label">🎨 Display</span>
+                            <div class="card-settings-row">
+                                <label for="themeSelect">Theme</label>
+                                <select id="themeSelect">
+                                    <option value="dark">🌙 Dark</option>
+                                    <option value="light-simple">☀️ Light</option>
+                                    <option value="light-colorful">🌈 Colorful</option>
+                                </select>
+                            </div>
+                            <div class="card-settings-row">
+                                <label for="viewModeSelect">Display Mode</label>
+                                <select id="viewModeSelect">
+                                    <option value="clear">Clear</option>
+                                    <option value="advanced">Advanced</option>
+                                </select>
+                            </div>
+                            <div class="card-settings-row">
+                                <label for="candlePopupType">Price Info Style</label>
+                                <select id="candlePopupType">
+                                    <option value="hover-tab">Hover Tab</option>
+                                    <option value="click-popup">Click Popup</option>
+                                </select>
+                            </div>
+                            <div class="card-settings-row">
+                                <label>Show in cards</label>
+                                <div class="modifier-toggles">
+                                    <label class="mini-toggle"><input type="checkbox" id="showRSI" checked><span>RSI</span></label>
+                                    <label class="mini-toggle"><input type="checkbox" id="showMACD" checked><span>MACD</span></label>
+                                    <label class="mini-toggle"><input type="checkbox" id="showVolume" checked><span>Vol</span></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- TF Toggles with Timers - Always visible -->
+                    <div class="tf-toggles-row" id="tfTogglesRow">
+                        <!-- TF toggle buttons with timers will be loaded dynamically -->
+                    </div>
+                    <div class="chart-options">
+                        <button id="indicatorsBtn" class="btn btn-sm btn-indicators">📈 Indicators</button>
+                        <div class="chart-quick-toggles">
+                            <label class="quick-toggle"><input type="checkbox" id="showChartVolume" checked><span>Vol</span></label>
+                            <label class="quick-toggle"><input type="checkbox" id="showChartMA"><span>MA</span></label>
+                            <label class="quick-toggle"><input type="checkbox" id="showChartEMA" checked><span>EMA</span></label>
+                        </div>
+                        <span class="chart-help">Scroll/Pinch to zoom • Drag to pan</span>
+                    </div>
+                </section>
+
+                <!-- Timeframe Charts (This scrolls with the page) -->
+                <div class="timeframes-list" id="timeframesList">
+                    <!-- Timeframe rows will be loaded dynamically -->
+                </div>
+            </main>
+        </div>
+
+        <!-- Indicators Modal -->
+        <div class="modal" id="indicatorsModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>📈 Chart Indicators</h2>
+                    <button class="btn btn-icon modal-close" id="closeIndicators">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="settings-group">
+                        <h3>Moving Averages</h3>
+                        <div class="setting-item">
+                            <label for="maLinesInput">MA Lines (periods)</label>
+                            <input type="text" id="maLinesInput" placeholder="e.g., 20, 50, 200" value="20">
+                        </div>
+                        <div class="setting-item">
+                            <label for="emaLinesInput">EMA Lines (periods)</label>
+                            <input type="text" id="emaLinesInput" placeholder="e.g., 9, 21, 55" value="21">
+                        </div>
+                        <div class="setting-item">
+                            <label for="showChartVWAP">Show VWAP</label>
+                            <input type="checkbox" id="showChartVWAPModal">
+                        </div>
+                    </div>
+                    <div class="settings-group">
+                        <h3>Oscillators</h3>
+                        <div class="setting-item">
+                            <label for="rsiLinesInput">RSI Periods</label>
+                            <input type="text" id="rsiLinesInput" placeholder="e.g., 14, 7, 21" value="14">
+                        </div>
+                        <div class="setting-item">
+                            <label for="showChartMACDModal">Show MACD on chart</label>
+                            <input type="checkbox" id="showChartMACDModal">
+                        </div>
+                    </div>
+                    <div class="settings-group">
+                        <h3>Overlays</h3>
+                        <div class="setting-item">
+                            <label for="showChartPatternsModal">Show Pattern Labels</label>
+                            <input type="checkbox" id="showChartPatternsModal" checked>
+                        </div>
+                        <div class="setting-item">
+                            <label for="showChartMarkersModal">Show Confluence Markers</label>
+                            <input type="checkbox" id="showChartMarkersModal" checked>
+                        </div>
+                        <div class="setting-item">
+                            <label for="showChartVolumeModal">Show Volume Bars</label>
+                            <input type="checkbox" id="showChartVolumeModal" checked>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" id="saveIndicators">Apply</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>MTFCCM v3.5 | Binance Data | ☪️ Halal - Spot Only | Jan 2025+</p>
+            <div class="footer-support">
+                <span>Support this project:</span>
+                <a href="#" id="tipJarBtn" class="tip-link">☕ Buy me a coffee</a>
+            </div>
+        </footer>
+
+        <!-- Tip Jar Modal -->
+        <div class="modal modal-small" id="tipJarModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>☕ Support MTFCCM</h2>
+                    <button class="btn btn-icon modal-close" id="closeTipJar">✕</button>
+                </div>
+                <div class="modal-body tip-jar-body">
+                    <p>If MTFCCM helps you trade, consider supporting its development!</p>
+                    <div class="tip-options">
+                        <a href="https://buymeacoffee.com/" target="_blank" class="tip-option">
+                            <span class="tip-icon">☕</span>
+                            <span>Buy Me a Coffee</span>
+                        </a>
+                        <a href="https://ko-fi.com/" target="_blank" class="tip-option">
+                            <span class="tip-icon">❤️</span>
+                            <span>Ko-fi</span>
+                        </a>
+                    </div>
+                    <div class="crypto-tips">
+                        <p>Or send crypto:</p>
+                        <div class="crypto-address">
+                            <span>BTC:</span>
+                            <code id="btcAddress">bc1q...your_address</code>
+                            <button class="btn-copy" data-copy="btcAddress">📋</button>
+                        </div>
+                        <div class="crypto-address">
+                            <span>ETH/USDT:</span>
+                            <code id="ethAddress">0x...your_address</code>
+                            <button class="btn-copy" data-copy="ethAddress">📋</button>
+                        </div>
+                    </div>
+                    <p class="tip-thanks">JazakAllahu Khayran! 🤲</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="coins.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

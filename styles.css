@@ -1,0 +1,2765 @@
+/* ===== CSS Variables ===== */
+:root {
+    --bg-primary: #0f0f1a;
+    --bg-secondary: #1a1a2e;
+    --bg-tertiary: #252542;
+    --text-primary: #f5f5f5;
+    --text-secondary: #b0b0c0;
+    --text-muted: #6b6b80;
+    --border-color: #3d3d5c;
+    --accent-color: #6366f1;
+    --bull-color: #10b981;
+    --bear-color: #ef4444;
+    --neutral-color: #f59e0b;
+    --danger-color: #dc2626;
+    --warning-color: #f97316;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    --transition: all 0.2s ease;
+    --chart-bg: #252542;
+    --chart-grid: #3d3d5c;
+    --ma-color: #3b82f6;
+    --ema-color: #f59e0b;
+    --vwap-color: #a855f7;
+}
+
+/* Light Simple - Clean white minimal */
+[data-theme="light-simple"] {
+    --bg-primary: #ffffff;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #fafbfc;
+    --text-primary: #1a1a2e;
+    --text-secondary: #4a4a5a;
+    --text-muted: #9ca3af;
+    --border-color: #f0f0f0;
+    --accent-color: #6366f1;
+    --bull-color: #16a34a;
+    --bear-color: #dc2626;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    --chart-bg: #fafbfc;
+    --chart-grid: #f0f0f0;
+}
+
+/* Light Colorful - White with vibrant colors and coin background */
+[data-theme="light-colorful"] {
+    --bg-primary: #fefefe;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #f0f9ff;
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --text-muted: #64748b;
+    --border-color: #e0f2fe;
+    --accent-color: #8b5cf6;
+    --bull-color: #10b981;
+    --bear-color: #f43f5e;
+    --neutral-color: #fbbf24;
+    --shadow: 0 4px 20px rgba(139, 92, 246, 0.15);
+    --chart-bg: #f8fafc;
+    --chart-grid: #e0f2fe;
+    --ma-color: #0ea5e9;
+    --ema-color: #f97316;
+    --vwap-color: #d946ef;
+}
+
+/* Legacy light theme maps to light-simple */
+[data-theme="light"] {
+    --bg-primary: #f0f2f5;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #e8ecf1;
+    --text-primary: #1a1a2e;
+    --text-secondary: #4a4a5a;
+    --text-muted: #8a8a9a;
+    --border-color: #d1d5db;
+    --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    --chart-bg: #e8ecf1;
+    --chart-grid: #d1d5db;
+}
+
+/* ===== Base Styles ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Colorful theme decorative background */
+[data-theme="light-colorful"] body {
+    background: 
+        radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(249, 115, 22, 0.05) 0%, transparent 70%),
+        linear-gradient(135deg, #fefefe 0%, #f0f9ff 100%);
+}
+
+[data-theme="light-colorful"] .main-content::before {
+    content: "₿ Ξ ◎ ⬡ ▲";
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 8rem;
+    letter-spacing: 2rem;
+    opacity: 0.03;
+    pointer-events: none;
+    z-index: 0;
+    color: var(--accent-color);
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* ===== Header ===== */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    gap: 0.5rem;
+}
+
+.btn-coins {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.4rem 0.6rem;
+    background: var(--accent-color);
+    color: white;
+    font-weight: 600;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+
+.btn-coins:hover {
+    background: var(--accent-color);
+    filter: brightness(1.1);
+}
+
+.coins-text {
+    font-size: 0.75rem;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.logo-icon { font-size: 1.25rem; }
+.logo h1 { 
+    font-size: 1rem; 
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+/* ===== Combined Coin + Price Section in Header ===== */
+.coin-price-section {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.selected-coin {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.4rem;
+    background: var(--accent-color);
+    border-radius: var(--radius-sm);
+    max-width: 130px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.selected-coin img {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.selected-coin span {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.header-price {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+}
+
+.header-price-value {
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-primary);
+}
+
+.header-price-change {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+}
+
+.header-price-change.positive {
+    color: var(--bull-color);
+    background: rgba(16, 185, 129, 0.15);
+}
+
+.header-price-change.negative {
+    color: var(--bear-color);
+    background: rgba(239, 68, 68, 0.15);
+}
+
+.header-price-details {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 0.6rem;
+    color: var(--text-muted);
+}
+
+.header-price-details strong {
+    color: var(--text-secondary);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-shrink: 0;
+}
+
+.alert-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.5rem;
+    background: var(--danger-color);
+    color: white;
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    font-weight: 600;
+    animation: pulse-bg 1s infinite;
+}
+
+@keyframes pulse-bg {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.pulse {
+    width: 6px;
+    height: 6px;
+    background: white;
+    border-radius: 50%;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.3); opacity: 0.5; }
+}
+
+/* ===== Buttons ===== */
+.btn {
+    padding: 0.4rem 0.75rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: var(--transition);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.btn:hover { background: var(--accent-color); color: white; }
+.btn-icon { padding: 0.4rem; font-size: 1rem; }
+.btn-primary { background: var(--accent-color); color: white; }
+.btn-secondary { background: var(--bg-tertiary); }
+
+/* ===== App Layout ===== */
+.app-layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+/* ===== Coins Sidebar ===== */
+.coins-sidebar {
+    width: 180px;
+    min-width: 180px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 48px - 28px);
+    position: sticky;
+    top: 48px;
+}
+
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+}
+
+.sidebar-header h3 {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.sidebar-close { display: none; }
+
+.coin-search {
+    margin: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 0.75rem;
+}
+
+.coin-sort-options {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.5rem;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.7rem;
+}
+
+.coin-sort-options label {
+    color: var(--text-muted);
+    font-size: 0.65rem;
+}
+
+.coin-sort-options select {
+    flex: 1;
+    padding: 0.25rem 0.4rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.65rem;
+    cursor: pointer;
+}
+
+.coin-sort-options {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.coin-sort-options select {
+    flex: 1;
+    padding: 0.25rem 0.4rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 0.65rem;
+    cursor: pointer;
+}
+
+.coins-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.25rem;
+}
+
+.coin-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    margin-bottom: 2px;
+}
+
+.coin-item:hover { background: var(--bg-tertiary); }
+.coin-item.active {
+    background: var(--accent-color);
+    color: white;
+}
+
+.coin-item img {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.coin-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.coin-item-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.coin-item-full-name {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.coin-item-change {
+    font-size: 0.6rem;
+    font-weight: 600;
+    padding: 0.1rem 0.25rem;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+.coin-item-change.positive {
+    color: var(--bull-color);
+    background: rgba(16, 185, 129, 0.15);
+}
+
+.coin-item-change.negative {
+    color: var(--bear-color);
+    background: rgba(239, 68, 68, 0.15);
+}
+
+.coin-item.active .coin-item-full-name { color: rgba(255,255,255,0.7); }
+.coin-item.active .coin-item-change { background: rgba(255,255,255,0.2); color: white; }
+
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 199;
+}
+
+/* ===== Main Content ===== */
+.main-content {
+    flex: 1;
+    padding: 0.75rem;
+    overflow-y: auto;
+    height: calc(100vh - 60px - 28px);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* ===== Confluence Card (Price moved to header) ===== */
+.confluence-card {
+    margin-bottom: 0.75rem;
+    flex-shrink: 0;
+}
+
+/* ===== Main Content - Allow page scroll ===== */
+.main-content {
+    flex: 1;
+    padding: 0.75rem;
+    overflow-y: auto;
+    height: calc(100vh - 60px - 28px);
+    display: flex;
+    flex-direction: column;
+}
+
+/* ===== Cards ===== */
+.card {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.6rem;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.card-header h2 {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+/* ===== Confluence Card ===== */
+.confluence-content { padding: 0.5rem; }
+
+.confluence-meter { margin-bottom: 0.5rem; }
+
+.meter-bar {
+    height: 10px;
+    background: linear-gradient(to right, var(--bear-color), var(--neutral-color), var(--bull-color));
+    border-radius: 5px;
+    position: relative;
+}
+
+.meter-fill {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: white;
+    border-radius: 50%;
+    top: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    transition: left 0.3s ease;
+}
+
+.meter-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.6rem;
+    margin-top: 3px;
+}
+
+.confluence-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.3rem;
+    margin-bottom: 0.4rem;
+}
+
+.stat {
+    text-align: center;
+    padding: 0.25rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+}
+
+.stat-value {
+    font-size: 0.85rem;
+    font-weight: 700;
+    display: block;
+}
+
+.stat-label {
+    font-size: 0.55rem;
+    color: var(--text-muted);
+}
+
+.text-bull { color: var(--bull-color); }
+.text-bear { color: var(--bear-color); }
+.text-neutral { color: var(--neutral-color); }
+
+.confluence-method {
+    padding: 0.4rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    font-size: 0.6rem;
+}
+
+.method-title {
+    color: var(--text-muted);
+    margin-bottom: 0.2rem;
+}
+
+.method-title span { color: var(--accent-color); font-weight: 600; }
+
+.method-formula {
+    color: var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.55rem;
+    line-height: 1.3;
+    white-space: pre-line;
+}
+
+.method-weights {
+    margin-top: 0.3rem;
+    padding-top: 0.3rem;
+    border-top: 1px solid var(--border-color);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--text-secondary);
+}
+
+/* ===== Price Card ===== */
+.price-content {
+    padding: 0.5rem;
+    text-align: center;
+}
+
+.current-price {
+    font-size: 1.2rem;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.price-change {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+}
+
+.price-change.positive { color: var(--bull-color); }
+.price-change.negative { color: var(--bear-color); }
+
+.price-details {
+    display: flex;
+    justify-content: center;
+    gap: 0.6rem;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+}
+
+/* ===== TF Controls Card (Fixed at top) ===== */
+.tf-controls-card {
+    flex-shrink: 0;
+}
+
+/* ===== Timeframe List - No internal scroll, page scrolls ===== */
+.timeframes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 0 0 auto;
+    overflow: visible;
+    padding: 0.4rem;
+}
+
+/* ===== TF Toggles Row with Timers - All visible ===== */
+.tf-toggles-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0.5rem;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+    overflow: visible;
+}
+
+.tf-toggle-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.4rem 0.6rem;
+    min-width: 55px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.tf-toggle-btn:hover { border-color: var(--accent-color); }
+
+.tf-toggle-btn.active {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: white;
+}
+
+.tf-toggle-btn.alert {
+    background: var(--danger-color);
+    border-color: var(--danger-color);
+    animation: pulse-bg 0.5s infinite;
+}
+
+.tf-toggle-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.tf-toggle-timer {
+    font-size: 0.65rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.tf-toggle-btn.active .tf-toggle-timer,
+.tf-toggle-btn.alert .tf-toggle-timer { color: rgba(255,255,255,0.8); }
+
+/* ===== Chart Options ===== */
+.chart-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    align-items: center;
+}
+
+.chart-option {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+}
+
+.chart-option select {
+    padding: 0.15rem 0.3rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 0.65rem;
+    cursor: pointer;
+}
+
+.chart-option input[type="checkbox"] {
+    width: 12px;
+    height: 12px;
+    cursor: pointer;
+    accent-color: var(--accent-color);
+}
+
+.chart-option label {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    cursor: pointer;
+}
+
+.chart-option label sub {
+    font-size: 0.5rem;
+    opacity: 0.7;
+}
+
+.chart-options .chart-help {
+    position: static;
+    margin-left: auto;
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    opacity: 0.7;
+    white-space: nowrap;
+}
+
+.chart-zoom-controls {
+    display: flex;
+    gap: 0.2rem;
+    margin-left: auto;
+}
+
+.btn-zoom {
+    width: 24px;
+    height: 24px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+}
+
+.btn-zoom:hover {
+    background: var(--accent-color);
+    color: white;
+}
+
+/* ===== Timeframe Row ===== */
+.tf-row {
+    display: flex;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    flex: 1;
+    min-height: 120px;
+    max-height: 250px;
+}
+
+.tf-row.bullish { border-left: 3px solid var(--bull-color); }
+.tf-row.bearish { border-left: 3px solid var(--bear-color); }
+
+/* Left: Info */
+.tf-info {
+    width: 85px;
+    min-width: 85px;
+    padding: 0.4rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-right: 1px solid var(--border-color);
+}
+
+.tf-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-bottom: 0.2rem;
+}
+
+.tf-name {
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.tf-direction { font-size: 0.85rem; }
+
+.tf-timer {
+    font-size: 0.75rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent-color);
+}
+
+.tf-timer.alert {
+    color: var(--danger-color);
+    animation: pulse-bg 0.5s infinite;
+}
+
+.tf-stats-mini {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+    margin-top: 0.2rem;
+    font-size: 0.55rem;
+}
+
+.tf-stat-mini {
+    padding: 0.1rem 0.2rem;
+    background: var(--bg-secondary);
+    border-radius: 2px;
+}
+
+.tf-stat-mini.buy-sell {
+    background: var(--bg-primary);
+    font-size: 0.5rem;
+}
+
+.tf-pattern-count {
+    font-size: 0.55rem;
+    color: var(--accent-color);
+    margin-top: 0.15rem;
+}
+
+/* Center: Chart */
+.tf-chart-container {
+    flex: 1;
+    position: relative;
+    cursor: grab;
+    overflow: hidden;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.tf-chart-container:active { cursor: grabbing; }
+
+.tf-chart-canvas {
+    width: 100%;
+    flex: 1;
+    min-height: 80px;
+}
+
+.chart-help {
+    position: absolute;
+    bottom: 2px;
+    left: 4px;
+    font-size: 0.5rem;
+    color: var(--text-muted);
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* Pattern labels on chart */
+.pattern-label {
+    position: absolute;
+    font-size: 0.5rem;
+    font-weight: 600;
+    padding: 1px 3px;
+    border-radius: 2px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.pattern-label.bullish {
+    background: rgba(16, 185, 129, 0.8);
+    color: white;
+}
+
+.pattern-label.bearish {
+    background: rgba(239, 68, 68, 0.8);
+    color: white;
+}
+
+.pattern-label.neutral {
+    background: rgba(245, 158, 11, 0.8);
+    color: white;
+}
+
+/* Pattern tooltip */
+.pattern-tooltip {
+    position: absolute;
+    background: var(--bg-secondary);
+    border: 1px solid var(--accent-color);
+    border-radius: var(--radius-sm);
+    padding: 0.3rem 0.5rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    pointer-events: none;
+    z-index: 100;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* Candle Info Popup */
+.candle-popup {
+    position: fixed;
+    background: var(--bg-secondary);
+    border: 2px solid var(--accent-color);
+    border-radius: var(--radius-md);
+    padding: 0.6rem 0.8rem;
+    font-size: 0.7rem;
+    color: var(--text-primary);
+    z-index: 200;
+    min-width: 160px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    animation: popupFadeIn 0.2s ease;
+}
+
+@keyframes popupFadeIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.candle-popup-header {
+    font-weight: 700;
+    font-size: 0.75rem;
+    margin-bottom: 0.4rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.candle-popup-close {
+    cursor: pointer;
+    opacity: 0.6;
+    font-size: 0.9rem;
+}
+
+.candle-popup-close:hover {
+    opacity: 1;
+}
+
+.candle-popup-row {
+    display: flex;
+    justify-content: space-between;
+    margin: 0.2rem 0;
+}
+
+.candle-popup-label {
+    color: var(--text-muted);
+}
+
+.candle-popup-value {
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.candle-popup-value.bull {
+    color: var(--bull-color);
+}
+
+.candle-popup-value.bear {
+    color: var(--bear-color);
+}
+
+.candle-popup-bar {
+    height: 6px;
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+    margin-top: 0.3rem;
+    overflow: hidden;
+    display: flex;
+}
+
+.candle-popup-bar-buy {
+    background: var(--bull-color);
+    height: 100%;
+}
+
+.candle-popup-bar-sell {
+    background: var(--bear-color);
+    height: 100%;
+}
+
+/* Right: Alerts */
+.tf-alerts {
+    width: 110px;
+    min-width: 110px;
+    padding: 0.3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    border-left: 1px solid var(--border-color);
+    overflow-y: auto;
+}
+
+.alert-item {
+    font-size: 0.55rem;
+    padding: 0.15rem 0.25rem;
+    border-radius: 2px;
+    background: var(--bg-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+
+.alert-item.active { font-weight: 600; }
+
+.alert-item.active.overbought { background: rgba(239, 68, 68, 0.3); color: #fca5a5; }
+.alert-item.active.oversold { background: rgba(16, 185, 129, 0.3); color: #6ee7b7; }
+.alert-item.active.high-vol { background: rgba(99, 102, 241, 0.3); color: #a5b4fc; }
+.alert-item.active.vol-spike { background: rgba(99, 102, 241, 0.5); color: #c7d2fe; }
+.alert-item.active.low-vol { background: rgba(107, 107, 128, 0.3); color: var(--text-muted); }
+.alert-item.active.indecision { background: rgba(245, 158, 11, 0.3); color: #fcd34d; }
+.alert-item.active.reject-high { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+.alert-item.active.reject-low { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+.alert-item.active.macd-bull { background: rgba(16, 185, 129, 0.3); color: #6ee7b7; }
+.alert-item.active.macd-bear { background: rgba(239, 68, 68, 0.3); color: #fca5a5; }
+
+.alert-item.dim { opacity: 0.3; }
+
+.alert-icon { font-size: 0.6rem; }
+
+/* ===== Modal ===== */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 0.75rem;
+}
+
+.modal.active { display: flex; }
+
+.modal-content {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    max-width: 450px;
+    width: 100%;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h2 { font-size: 1rem; }
+.modal-close { background: none; font-size: 1.1rem; }
+
+.modal-body {
+    padding: 0.75rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.settings-group {
+    margin-bottom: 1rem;
+}
+
+.settings-group h3 {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 0;
+}
+
+.setting-item label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.setting-item input[type="number"],
+.setting-item select {
+    width: 90px;
+    padding: 0.35rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 0.8rem;
+}
+
+.setting-item input[type="text"] {
+    flex: 1;
+    min-width: 120px;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 0.75rem;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.setting-item input[type="text"]::placeholder {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+}
+
+.setting-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent-color);
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    padding: 0.75rem;
+    border-top: 1px solid var(--border-color);
+}
+
+/* ===== Footer ===== */
+.footer {
+    padding: 0.4rem 0.75rem;
+    text-align: center;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-tertiary); }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
+
+/* ===== TABLET RESPONSIVE ===== */
+@media (max-width: 1024px) {
+    .coins-sidebar {
+        width: 140px;
+        min-width: 140px;
+    }
+    
+    .tf-alerts {
+        width: 95px;
+        min-width: 95px;
+    }
+    
+    .tf-info {
+        width: 75px;
+        min-width: 75px;
+    }
+}
+
+/* ===== MOBILE RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .logo h1 { display: none; }
+    .coins-text { display: none; }
+    
+    /* Header price section on mobile */
+    .coin-price-section {
+        flex-direction: column;
+        gap: 0.2rem;
+        align-items: center;
+    }
+    
+    .selected-coin { 
+        max-width: 130px; 
+        padding: 0.2rem 0.4rem;
+    }
+    
+    .header-price {
+        gap: 0.3rem;
+    }
+    
+    .header-price-value {
+        font-size: 0.85rem;
+    }
+    
+    .header-price-change {
+        font-size: 0.6rem;
+    }
+    
+    .header-price-details {
+        gap: 0.4rem;
+        font-size: 0.55rem;
+    }
+    
+    .vol-hide-mobile { display: none; }
+    
+    /* Sidebar becomes overlay */
+    .coins-sidebar {
+        position: fixed;
+        left: -250px;
+        top: 0;
+        width: 250px;
+        height: 100vh;
+        z-index: 200;
+        transition: left 0.3s ease;
+    }
+    
+    .coins-sidebar.open { left: 0; }
+    
+    .sidebar-header { padding-top: 0.75rem; }
+    .sidebar-close { display: block; }
+    
+    .sidebar-overlay.active {
+        display: block;
+    }
+    
+    .main-content {
+        height: calc(100vh - 60px - 28px);
+        padding: 0.5rem;
+    }
+    
+    /* TF Toggles - WRAP, show all visible (not scrollable) */
+    .tf-toggles-row {
+        flex-wrap: wrap;
+        overflow-x: visible;
+        padding: 0.4rem;
+        gap: 0.3rem;
+        justify-content: center;
+    }
+    
+    .tf-toggle-btn {
+        min-width: 48px;
+        padding: 0.3rem 0.4rem;
+        flex-shrink: 0;
+    }
+    
+    /* Chart options */
+    .chart-options {
+        gap: 0.3rem;
+        padding: 0.3rem 0.5rem;
+    }
+    
+    .chart-option { font-size: 0.6rem; }
+    
+    /* TF Rows vertical on mobile */
+    .tf-row {
+        flex-direction: column;
+        min-height: 180px;
+        max-height: none;
+    }
+    
+    .tf-info {
+        width: 100%;
+        min-width: 100%;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.3rem 0.5rem;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .tf-name-row { margin-bottom: 0; }
+    
+    .tf-stats-mini {
+        margin-top: 0;
+        margin-left: auto;
+    }
+    
+    .tf-chart-container {
+        width: 100%;
+        min-height: 100px;
+    }
+    
+    .tf-alerts {
+        width: 100%;
+        min-width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        border-left: none;
+        border-top: 1px solid var(--border-color);
+        padding: 0.25rem;
+    }
+    
+    .alert-item {
+        font-size: 0.5rem;
+        padding: 0.1rem 0.2rem;
+    }
+    
+    .chart-help { display: none; }
+    
+    .pattern-label { font-size: 0.45rem; }
+}
+
+/* ===== SMALL MOBILE ===== */
+@media (max-width: 480px) {
+    .header { padding: 0.4rem 0.5rem; }
+    
+    .coin-price-section {
+        gap: 0.15rem;
+    }
+    
+    .selected-coin {
+        max-width: 100px;
+        padding: 0.15rem 0.35rem;
+    }
+    
+    .selected-coin img { width: 14px; height: 14px; }
+    .selected-coin span { font-size: 0.65rem; }
+    
+    .header-price-value { font-size: 0.75rem; }
+    .header-price-change { font-size: 0.55rem; padding: 0.05rem 0.2rem; }
+    .header-price-details { font-size: 0.5rem; gap: 0.3rem; }
+    
+    .btn-icon { padding: 0.3rem; font-size: 0.9rem; }
+    
+    .confluence-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .stat-value { font-size: 0.75rem; }
+    .stat-label { font-size: 0.5rem; }
+    
+    .tf-toggle-btn {
+        min-width: 42px;
+        padding: 0.25rem 0.35rem;
+    }
+    
+    .tf-toggle-label { font-size: 0.65rem; }
+    .tf-toggle-timer { font-size: 0.55rem; }
+    
+    .btn-zoom {
+        width: 22px;
+        height: 22px;
+        font-size: 0.8rem;
+    }
+}
+
+/* ===== NEW FEATURES v3.3 ===== */
+
+/* Compact Alert Badge */
+.alert-badge-compact {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+    gap: 0.25rem;
+}
+
+/* Hide Coins text on mobile */
+@media (max-width: 480px) {
+    .coins-text { display: none; }
+}
+
+/* Settings Tabs */
+.settings-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    padding: 0;
+}
+
+.settings-tab {
+    flex: 1;
+    padding: 0.6rem 0.5rem;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: var(--transition);
+    border-bottom: 2px solid transparent;
+}
+
+.settings-tab:hover {
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+}
+
+.settings-tab.active {
+    color: var(--accent-color);
+    border-bottom-color: var(--accent-color);
+    background: var(--bg-secondary);
+}
+
+.settings-tab-content {
+    display: none;
+}
+
+.settings-tab-content.active {
+    display: block;
+}
+
+/* Collapsible sections for desktop */
+.settings-section-header {
+    cursor: pointer;
+    padding: 0.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.settings-section-header::before {
+    content: '▼';
+    font-size: 0.6rem;
+    transition: transform 0.2s;
+}
+
+.settings-section-header.collapsed::before {
+    transform: rotate(-90deg);
+}
+
+.settings-section-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+/* Toggle Switch for Simple/Advanced Mode */
+.toggle-switch-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.toggle-label-left, .toggle-label-right {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.toggle-switch {
+    position: relative;
+    width: 48px;
+    height: 24px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    transition: 0.3s;
+    border-radius: 24px;
+}
+
+.toggle-slider::before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 2px;
+    bottom: 2px;
+    background-color: var(--text-muted);
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(24px);
+    background-color: white;
+}
+
+/* Indicators Button */
+.btn-indicators {
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-indicators:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+/* Quick Toggles */
+.chart-quick-toggles {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.quick-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    cursor: pointer;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    padding: 0.25rem 0.4rem;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+}
+
+.quick-toggle:hover {
+    background: var(--bg-tertiary);
+}
+
+.quick-toggle input {
+    width: 12px;
+    height: 12px;
+}
+
+.quick-toggle input:checked + span {
+    color: var(--accent-color);
+}
+
+/* Sidebar Tabs for Watchlist */
+.sidebar-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 0.5rem;
+}
+
+.sidebar-tab {
+    flex: 1;
+    padding: 0.5rem;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: var(--transition);
+    border-bottom: 2px solid transparent;
+}
+
+.sidebar-tab:hover {
+    color: var(--text-primary);
+}
+
+.sidebar-tab.active {
+    color: var(--accent-color);
+    border-bottom-color: var(--accent-color);
+}
+
+/* Watchlist */
+.watchlist-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.watchlist-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--text-muted);
+}
+
+.watchlist-empty small {
+    font-size: 0.7rem;
+}
+
+.coin-item .star-btn {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    opacity: 0.3;
+    transition: var(--transition);
+}
+
+.coin-item:hover .star-btn {
+    opacity: 0.7;
+}
+
+.coin-item .star-btn.active {
+    opacity: 1;
+    color: gold;
+}
+
+/* Watchlist Item with mini confluence */
+.watchlist-item {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+}
+
+.watchlist-item:hover {
+    background: var(--bg-tertiary);
+}
+
+.watchlist-item-info {
+    flex: 1;
+}
+
+.watchlist-item-name {
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.watchlist-item-price {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.watchlist-confluence {
+    width: 60px;
+    height: 8px;
+    background: linear-gradient(to right, var(--bear-color) 0%, var(--neutral-color) 50%, var(--bull-color) 100%);
+    border-radius: 4px;
+    position: relative;
+}
+
+.watchlist-confluence-marker {
+    position: absolute;
+    top: -2px;
+    width: 4px;
+    height: 12px;
+    background: white;
+    border-radius: 2px;
+    transform: translateX(-50%);
+}
+
+.watchlist-bias {
+    font-size: 0.9rem;
+}
+
+/* Grouped Alerts */
+.tf-alerts-grouped {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0.3rem 0.5rem;
+}
+
+.alert-group {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.2rem 0.4rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    font-size: 0.65rem;
+}
+
+.alert-group.active {
+    background: var(--accent-color);
+    color: white;
+}
+
+.alert-group.rsi-ob { background: rgba(239, 68, 68, 0.2); color: var(--bear-color); }
+.alert-group.rsi-os { background: rgba(16, 185, 129, 0.2); color: var(--bull-color); }
+.alert-group.vol-high { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+.alert-group.macd-bull { background: rgba(16, 185, 129, 0.2); color: var(--bull-color); }
+.alert-group.macd-bear { background: rgba(239, 68, 68, 0.2); color: var(--bear-color); }
+
+.alerts-more {
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.65rem;
+}
+
+.alerts-more:hover {
+    color: var(--accent-color);
+}
+
+/* Footer Support */
+.footer-support {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+    font-size: 0.7rem;
+}
+
+.tip-link {
+    color: var(--accent-color);
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.tip-link:hover {
+    text-decoration: underline;
+}
+
+/* Tip Jar Modal */
+.modal-small .modal-content {
+    max-width: 360px;
+}
+
+.tip-jar-body {
+    text-align: center;
+}
+
+.tip-jar-body p {
+    margin-bottom: 1rem;
+    color: var(--text-secondary);
+}
+
+.tip-options {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+.tip-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: var(--transition);
+    min-width: 100px;
+}
+
+.tip-option:hover {
+    background: var(--accent-color);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.tip-icon {
+    font-size: 1.5rem;
+}
+
+.crypto-tips {
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.crypto-tips p {
+    margin-bottom: 0.75rem;
+    font-size: 0.8rem;
+}
+
+.crypto-address {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.7rem;
+}
+
+.crypto-address span {
+    min-width: 60px;
+    text-align: left;
+    color: var(--text-muted);
+}
+
+.crypto-address code {
+    flex: 1;
+    background: var(--bg-secondary);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.65rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.btn-copy {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    transition: var(--transition);
+}
+
+.btn-copy:hover {
+    transform: scale(1.1);
+}
+
+.tip-thanks {
+    color: var(--bull-color);
+    font-weight: 600;
+}
+
+/* Percentage-based chart heights */
+.tf-chart-container {
+    height: 25vh;
+    min-height: 100px;
+    max-height: 180px;
+}
+
+@media (max-width: 768px) {
+    .tf-chart-container {
+        height: 22vh;
+        min-height: 90px;
+        max-height: 150px;
+    }
+}
+
+/* Clear Mode - hide advanced elements (this is what was previously Advanced Mode) */
+body.clear-mode .tf-alerts,
+body.clear-mode .tf-stats-mini,
+body.clear-mode .method-weights,
+body.clear-mode .confluence-method {
+    display: none;
+}
+
+body.clear-mode .tf-row {
+    padding: 0.5rem;
+}
+
+body.clear-mode .tf-chart-container {
+    height: 18vh;
+    min-height: 80px;
+}
+
+/* Candle popup positioning for mobile */
+.candle-popup {
+    pointer-events: none;
+    z-index: 1000;
+}
+
+@media (max-width: 768px) {
+    .candle-popup {
+        position: fixed !important;
+        left: 50% !important;
+        top: 20% !important;
+        transform: translateX(-50%) !important;
+        max-width: 90vw;
+    }
+}
+
+/* ===== Star Button for Watchlist ===== */
+.btn-star {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    margin-left: 0.5rem;
+    transition: var(--transition);
+    color: var(--text-muted);
+    line-height: 1;
+}
+
+.btn-star:hover {
+    transform: scale(1.2);
+}
+
+.btn-star.starred {
+    color: #fbbf24;
+    text-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+}
+
+/* ===== Candle Info Tab (Above Charts) ===== */
+/* Chart wrapper - contains both info tab and chart */
+.tf-chart-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.candle-info-tab {
+    display: none; /* Hidden by default, shown on hover */
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 1rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    font-size: 0.75rem;
+    min-height: 36px;
+}
+
+.candle-info-tab[style*="display: block"] {
+    display: flex !important;
+}
+
+.candle-info-tf {
+    font-weight: 700;
+    color: var(--accent-color);
+    min-width: 40px;
+}
+
+.candle-info-data {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.candle-info-item {
+    color: var(--text-secondary);
+}
+
+.candle-info-item b {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.candle-info-item span {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-primary);
+}
+
+.candle-info-time {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+}
+
+@media (max-width: 768px) {
+    .candle-info-tab {
+        padding: 0.4rem 0.75rem;
+        gap: 0.5rem;
+        font-size: 0.65rem;
+    }
+    
+    .candle-info-data {
+        gap: 0.5rem;
+    }
+}
+
+/* ===== Historical Confluence Tracking ===== */
+.confluence-history {
+    margin-top: 1rem;
+    border-top: 1px solid var(--border-color);
+    padding-top: 0.75rem;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding: 0.5rem;
+    margin: -0.5rem;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.history-header:hover {
+    background: var(--bg-tertiary);
+}
+
+.history-toggle-icon {
+    transition: transform 0.2s ease;
+}
+
+.confluence-history.collapsed .history-toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.confluence-history.collapsed .history-list {
+    display: none;
+}
+
+.history-list {
+    margin-top: 0.75rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.history-empty {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-align: center;
+    padding: 1rem;
+}
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.5rem;
+    font-size: 0.7rem;
+}
+
+.history-item:last-child {
+    margin-bottom: 0;
+}
+
+.history-time {
+    color: var(--text-muted);
+    min-width: 50px;
+}
+
+.history-conf {
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.history-conf.bull {
+    color: var(--bull-color);
+}
+
+.history-conf.bear {
+    color: var(--bear-color);
+}
+
+.history-bias {
+    padding: 0.15rem 0.4rem;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.6rem;
+}
+
+.history-bias.bull {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--bull-color);
+}
+
+.history-bias.bear {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--bear-color);
+}
+
+.history-result {
+    font-family: 'JetBrains Mono', monospace;
+    min-width: 50px;
+    text-align: right;
+}
+
+.history-result.positive {
+    color: var(--bull-color);
+}
+
+.history-result.negative {
+    color: var(--bear-color);
+}
+
+/* ===== Quick Glance Mode indicator in coins list ===== */
+.coin-item-quick-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.6rem;
+    margin-top: 0.25rem;
+}
+
+.quick-confluence-mini {
+    width: 40px;
+    height: 4px;
+    background: var(--bg-primary);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.quick-confluence-mini-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.quick-confluence-mini-fill.bull {
+    background: var(--bull-color);
+}
+
+.quick-confluence-mini-fill.bear {
+    background: var(--bear-color);
+}
+
+.quick-confluence-mini-fill.neutral {
+    background: var(--neutral-color);
+}
+
+.quick-bias-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.quick-bias-dot.bull {
+    background: var(--bull-color);
+}
+
+.quick-bias-dot.bear {
+    background: var(--bear-color);
+}
+
+.quick-bias-dot.neutral {
+    background: var(--neutral-color);
+}
+
+/* ===== Card Settings (Inline in cards) ===== */
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-card-settings {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-card-settings:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.btn-card-settings.active {
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.card-settings {
+    padding: 0.75rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--border-color);
+}
+
+.card-settings-section {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.card-settings-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.settings-section-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.card-settings-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 0;
+    font-size: 0.75rem;
+}
+
+.card-settings-row label {
+    color: var(--text-secondary);
+}
+
+.card-settings-row select,
+.card-settings-row input[type="number"] {
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.7rem;
+    min-width: 80px;
+}
+
+.card-settings-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.input-with-unit {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.input-with-unit input {
+    width: 50px;
+}
+
+.input-with-unit span {
+    color: var(--text-muted);
+    font-size: 0.65rem;
+}
+
+.modifier-toggles {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.mini-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.mini-toggle input {
+    width: 14px;
+    height: 14px;
+}
+
+.mini-toggle span {
+    transition: color 0.2s;
+}
+
+.mini-toggle input:checked + span {
+    color: var(--accent-color);
+}
+
+/* ===== Quick Glance Mode ===== */
+.sidebar-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-quick-glance {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-quick-glance:hover {
+    background: var(--bg-tertiary);
+}
+
+.btn-quick-glance.active {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+/* Quick Glance View - Minimal coin cards */
+body.quick-glance-mode .confluence-card,
+body.quick-glance-mode .tf-controls-card .card-settings,
+body.quick-glance-mode .tf-controls-card .chart-options,
+body.quick-glance-mode .candle-info-tab,
+body.quick-glance-mode .tf-stats-mini,
+body.quick-glance-mode .tf-alerts,
+body.quick-glance-mode .confluence-method,
+body.quick-glance-mode .confluence-history {
+    display: none !important;
+}
+
+body.quick-glance-mode .main-content {
+    padding: 0.5rem;
+}
+
+body.quick-glance-mode .tf-row {
+    padding: 0.5rem;
+}
+
+body.quick-glance-mode .tf-chart-container {
+    height: 15vh;
+    min-height: 60px;
+}
+
+body.quick-glance-mode .timeframes-list {
+    gap: 0.5rem;
+}
+
+/* Quick glance summary bar (replaces confluence) */
+.quick-glance-summary {
+    display: none;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--border-color);
+}
+
+body.quick-glance-mode .quick-glance-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.quick-summary-price {
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.quick-summary-bar {
+    flex: 1;
+    max-width: 200px;
+    height: 8px;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    margin: 0 1rem;
+    overflow: hidden;
+}
+
+.quick-summary-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.quick-summary-fill.bull {
+    background: linear-gradient(90deg, var(--neutral-color), var(--bull-color));
+}
+
+.quick-summary-fill.bear {
+    background: linear-gradient(90deg, var(--bear-color), var(--neutral-color));
+}
+
+.quick-summary-bias {
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.quick-summary-bias.bull {
+    color: var(--bull-color);
+}
+
+.quick-summary-bias.bear {
+    color: var(--bear-color);
+}
+
+.quick-summary-bias.neutral {
+    color: var(--neutral-color);
+}
+
+.quick-tf-dots {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.quick-tf-dot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+}
+
+.quick-tf-dot-label {
+    font-size: 0.55rem;
+    color: var(--text-muted);
+}
+
+.quick-tf-dot-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.quick-tf-dot-indicator.bull {
+    background: var(--bull-color);
+    box-shadow: 0 0 6px var(--bull-color);
+}
+
+.quick-tf-dot-indicator.bear {
+    background: var(--bear-color);
+    box-shadow: 0 0 6px var(--bear-color);
+}
+
+.quick-tf-dot-indicator.neutral {
+    background: var(--neutral-color);
+}
+
+@media (max-width: 768px) {
+    .card-settings {
+        padding: 0.5rem;
+    }
+    
+    .card-settings-row {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .modifier-toggles {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .quick-glance-summary {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .quick-summary-bar {
+        order: 3;
+        width: 100%;
+        max-width: none;
+        margin: 0.5rem 0 0 0;
+    }
+}
+
+/* ===== Card Inline Settings ===== */
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-card-settings {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-card-settings:hover {
+    background: var(--bg-tertiary);
+}
+
+.card-settings {
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--border-color);
+}
+
+.card-settings-section {
+    margin-bottom: 0.75rem;
+}
+
+.card-settings-section:last-child {
+    margin-bottom: 0;
+}
+
+.settings-section-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.card-settings-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.35rem 0;
+    font-size: 0.75rem;
+}
+
+.card-settings-row label {
+    color: var(--text-secondary);
+}
+
+.card-settings-row input[type="number"],
+.card-settings-row select {
+    width: 80px;
+    padding: 0.25rem 0.5rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 0.75rem;
+}
+
+.card-settings-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent-color);
+}
+
+.input-with-unit {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.input-with-unit input {
+    width: 60px !important;
+}
+
+.input-with-unit span {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+}
+
+.modifier-toggles {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.mini-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.7rem;
+    cursor: pointer;
+}
+
+.mini-toggle input {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--accent-color);
+}
+
+.mini-toggle span {
+    color: var(--text-secondary);
+}
+
+/* ===== Quick Glance Mode ===== */
+.btn-quick-glance {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-quick-glance:hover,
+.btn-quick-glance.active {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+body.quick-glance-mode .confluence-method,
+body.quick-glance-mode .confluence-history,
+body.quick-glance-mode .tf-alerts,
+body.quick-glance-mode .tf-stats-mini,
+body.quick-glance-mode .chart-options,
+body.quick-glance-mode .candle-info-tab,
+body.quick-glance-mode .card-settings {
+    display: none !important;
+}
+
+body.quick-glance-mode .tf-chart-container {
+    height: 15vh;
+    min-height: 60px;
+}
+
+body.quick-glance-mode .tf-row {
+    padding: 0.35rem;
+}
+
+body.quick-glance-mode .confluence-card {
+    padding: 0.5rem;
+}
+
+body.quick-glance-mode .confluence-stats {
+    flex-wrap: nowrap;
+    justify-content: space-around;
+}
+
+body.quick-glance-mode .tf-header {
+    padding: 0.25rem 0.5rem;
+}
+
+/* Sidebar header actions */
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sidebar-header-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+@media (max-width: 768px) {
+    .card-settings-row {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .card-settings-row input[type="number"],
+    .card-settings-row select {
+        width: 100%;
+    }
+}
+
+/* ===== Quick Glance Summary ===== */
+.quick-glance-summary {
+    display: none;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    margin-bottom: 1rem;
+    text-align: center;
+    border: 1px solid var(--border-color);
+}
+
+body.quick-glance-mode .quick-glance-summary {
+    display: block;
+}
+
+.quick-summary-price {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.quick-summary-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--bg-primary);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.quick-summary-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+    border-radius: 4px;
+}
+
+.quick-summary-fill.bull {
+    background: linear-gradient(90deg, var(--bear-color) 0%, var(--neutral-color) 50%, var(--bull-color) 100%);
+}
+
+.quick-summary-bias {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.quick-summary-bias.bull {
+    color: var(--bull-color);
+}
+
+.quick-summary-bias.bear {
+    color: var(--bear-color);
+}
+
+.quick-summary-bias.neutral {
+    color: var(--neutral-color);
+}
+
+.quick-tf-dots {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.quick-tf-dot {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+}
+
+.quick-tf-dot-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.quick-tf-dot-indicator.bull {
+    background: var(--bull-color);
+}
+
+.quick-tf-dot-indicator.bear {
+    background: var(--bear-color);
+}
+
+.quick-tf-dot-indicator.neutral {
+    background: var(--neutral-color);
+}
+
+.quick-tf-dot-timer {
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+}
