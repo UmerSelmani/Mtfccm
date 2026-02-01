@@ -1,7 +1,9 @@
 /**
  * MTFCCM - Multi-Timeframe Candle Close Monitor
- * Main Application Logic v3.6 - View modes, Popup types, Chart-specific info tabs
+ * Main Application Logic v3.8.1 - Multi-coin view, TF price info, OHLCV colors
  */
+
+const APP_VERSION = "3.8.1";
 
 // ============================================
 // STATE MANAGEMENT
@@ -21,6 +23,7 @@ const state = {
     globalZoom: 1,
     confluenceHistory: [], // Historical high confluence moments
     lastRecordedPrice: null, // For tracking price movement after confluence
+    hintTimeout: null, // For keyboard hint display
     intervals: {
         price: null,
         candles: null,
@@ -221,6 +224,55 @@ function applyTheme(theme) {
     }
 }
 
+function cycleTheme() {
+    const themes = ['dark', 'light-simple', 'light-colorful'];
+    const currentIndex = themes.indexOf(state.settings.theme);
+    const nextIndex = (currentIndex + 1) % themes.length;
+    state.settings.theme = themes[nextIndex];
+    applyTheme(state.settings.theme);
+    saveSettings();
+    renderTimeframeRows();
+    
+    const themeNames = { 'dark': 'Dark', 'light-simple': 'Light Simple', 'light-colorful': 'Light Colorful' };
+    showKeyboardHint(`Theme: ${themeNames[themes[nextIndex]]}`);
+}
+
+function showKeyboardHint(message) {
+    // Create or get hint element
+    let hint = document.getElementById('keyboard-hint');
+    if (!hint) {
+        hint = document.createElement('div');
+        hint.id = 'keyboard-hint';
+        hint.style.cssText = `
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-secondary);
+            border: 1px solid var(--accent-color);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        `;
+        document.body.appendChild(hint);
+    }
+    
+    hint.textContent = message;
+    hint.style.opacity = '1';
+    
+    clearTimeout(state.hintTimeout);
+    state.hintTimeout = setTimeout(() => {
+        hint.style.opacity = '0';
+    }, 1500);
+}
+
 function loadChartOptions() {
     const rsiEl = document.getElementById('showChartRSI');
     const macdEl = document.getElementById('showChartMACD');
@@ -357,7 +409,9 @@ async function fetchAllCoinsData() {
                 state.coinData[symbols[i]] = {
                     price: parseFloat(data.lastPrice),
                     change: parseFloat(data.priceChangePercent),
-                    volume: parseFloat(data.quoteVolume)
+                    volume: parseFloat(data.quoteVolume),
+                    high: parseFloat(data.highPrice),
+                    low: parseFloat(data.lowPrice)
                 };
             }
         });
@@ -2021,11 +2075,11 @@ function renderTimeframeRows() {
                         <div class="candle-info-tab" id="candleInfoTab-${tf.id}" style="display:none;">
                             <div class="candle-info-tf">${tf.label}</div>
                             <div class="candle-info-data">
-                                <span class="candle-info-item"><b>O:</b> <span id="candleO-${tf.id}">--</span></span>
-                                <span class="candle-info-item"><b>H:</b> <span id="candleH-${tf.id}">--</span></span>
-                                <span class="candle-info-item"><b>L:</b> <span id="candleL-${tf.id}">--</span></span>
-                                <span class="candle-info-item"><b>C:</b> <span id="candleC-${tf.id}">--</span></span>
-                                <span class="candle-info-item"><b>V:</b> <span id="candleV-${tf.id}">--</span></span>
+                                <span class="candle-info-item"><b class="label-open">O:</b> <span id="candleO-${tf.id}" class="price-open">--</span></span>
+                                <span class="candle-info-item"><b class="label-high">H:</b> <span id="candleH-${tf.id}" class="price-high">--</span></span>
+                                <span class="candle-info-item"><b class="label-low">L:</b> <span id="candleL-${tf.id}" class="price-low">--</span></span>
+                                <span class="candle-info-item"><b class="label-close">C:</b> <span id="candleC-${tf.id}" class="price-close">--</span></span>
+                                <span class="candle-info-item"><b class="label-volume">V:</b> <span id="candleV-${tf.id}" class="price-volume">--</span></span>
                                 <span class="candle-info-item candle-info-time"><span id="candleTime-${tf.id}">--</span></span>
                             </div>
                         </div>
@@ -2076,6 +2130,23 @@ function renderTimeframeRows() {
               (moreCount > 0 ? `<span class="alerts-more" title="${activeAlerts.slice(3).map(a => a.label).join(', ')}">+${moreCount}</span>` : '')
             : '<span class="alert-group dim">No alerts</span>';
         
+        // Get current price data for this coin
+        const coinData = state.coinData[state.currentCoin?.symbol] || {};
+        const currentPrice = coinData.price || data.currentPrice || 0;
+        const priceChange = coinData.change || data.changePct || 0;
+        const high24h = coinData.high || data.high || 0;
+        const low24h = coinData.low || data.low || 0;
+        const decimals = state.currentCoin?.decimals || 2;
+        
+        const priceInfoHtml = `
+            <div class="tf-price-info">
+                <span class="tf-price-value">$${currentPrice.toFixed(decimals)}</span>
+                <span class="tf-price-change ${priceChange >= 0 ? 'positive' : 'negative'}">${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}%</span>
+                <span class="tf-price-hl">H:<span class="price-high">$${high24h.toFixed(decimals)}</span></span>
+                <span class="tf-price-hl">L:<span class="price-low">$${low24h.toFixed(decimals)}</span></span>
+            </div>
+        `;
+        
         const statsHtml = `
             <span class="tf-stat-mini" style="color:${data.changePct >= 0 ? 'var(--bull-color)' : 'var(--bear-color)'}">${data.changePct >= 0 ? '+' : ''}${data.changePct.toFixed(2)}%</span>
             <span class="tf-stat-mini">B${data.bodyPct.toFixed(0)}%</span>
@@ -2091,17 +2162,18 @@ function renderTimeframeRows() {
                         <span class="tf-direction">${dirEmoji}</span>
                     </div>
                     <div class="tf-timer ${timerAlert ? 'alert' : ''}" id="tf-timer-${tf.id}">${formatTime(secondsToClose)}</div>
+                    ${priceInfoHtml}
                     <div class="tf-stats-mini">${statsHtml}</div>
                 </div>
                 <div class="tf-chart-wrapper">
                     <div class="candle-info-tab" id="candleInfoTab-${tf.id}" style="display:none;">
                         <div class="candle-info-tf">${tf.label}</div>
                         <div class="candle-info-data">
-                            <span class="candle-info-item"><b>O:</b> <span id="candleO-${tf.id}">--</span></span>
-                            <span class="candle-info-item"><b>H:</b> <span id="candleH-${tf.id}">--</span></span>
-                            <span class="candle-info-item"><b>L:</b> <span id="candleL-${tf.id}">--</span></span>
-                            <span class="candle-info-item"><b>C:</b> <span id="candleC-${tf.id}">--</span></span>
-                            <span class="candle-info-item"><b>V:</b> <span id="candleV-${tf.id}">--</span></span>
+                            <span class="candle-info-item"><b class="label-open">O:</b> <span id="candleO-${tf.id}" class="price-open">--</span></span>
+                            <span class="candle-info-item"><b class="label-high">H:</b> <span id="candleH-${tf.id}" class="price-high">--</span></span>
+                            <span class="candle-info-item"><b class="label-low">L:</b> <span id="candleL-${tf.id}" class="price-low">--</span></span>
+                            <span class="candle-info-item"><b class="label-close">C:</b> <span id="candleC-${tf.id}" class="price-close">--</span></span>
+                            <span class="candle-info-item"><b class="label-volume">V:</b> <span id="candleV-${tf.id}" class="price-volume">--</span></span>
                             <span class="candle-info-item candle-info-time"><span id="candleTime-${tf.id}">--</span></span>
                         </div>
                     </div>
@@ -2129,27 +2201,25 @@ function renderTimeframeRows() {
 }
 
 function updatePriceDisplay(data) {
-    // Header price elements (new combined layout)
-    const headerPriceValue = document.getElementById('headerPriceValue');
-    const headerPriceChange = document.getElementById('headerPriceChange');
-    const high24h = document.getElementById('high24h');
-    const low24h = document.getElementById('low24h');
-    const vol24h = document.getElementById('vol24h');
-    
-    const price = parseFloat(data.lastPrice);
-    const change = parseFloat(data.priceChangePercent);
-    
-    headerPriceValue.textContent = `$${price.toLocaleString(undefined, { 
-        minimumFractionDigits: state.currentCoin?.decimals || 2,
-        maximumFractionDigits: state.currentCoin?.decimals || 2 
-    })}`;
-    
-    headerPriceChange.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
-    headerPriceChange.className = `header-price-change ${change >= 0 ? 'positive' : 'negative'}`;
-    
-    high24h.textContent = `$${parseFloat(data.highPrice).toLocaleString()}`;
-    low24h.textContent = `$${parseFloat(data.lowPrice).toLocaleString()}`;
-    vol24h.textContent = formatVolume(parseFloat(data.volume));
+    // Update coin data state (used by TF price info display)
+    if (state.currentCoin) {
+        const price = parseFloat(data.lastPrice);
+        const change = parseFloat(data.priceChangePercent);
+        const high = parseFloat(data.highPrice);
+        const low = parseFloat(data.lowPrice);
+        const volume = parseFloat(data.quoteVolume);
+        
+        state.coinData[state.currentCoin.symbol] = {
+            price,
+            change,
+            high,
+            low,
+            volume
+        };
+        
+        // Re-render timeframe rows to update price displays
+        renderTimeframeRows();
+    }
 }
 
 function updateConfluenceDisplay(pct, bullCount, bearCount, tfWeights) {
@@ -2608,8 +2678,31 @@ function setupEventListeners() {
         renderTimeframeRows();
     });
     
+    // Multi-coin view toggle
+    document.getElementById('multiCoinBtn')?.addEventListener('click', () => {
+        toggleMultiCoinView();
+    });
+    
+    document.getElementById('addCoinPanel')?.addEventListener('click', () => {
+        addCoinPanel();
+    });
+    
+    document.getElementById('closeMultiView')?.addEventListener('click', () => {
+        closeMultiCoinView();
+    });
+    
+    // Theme toggle button in header
+    document.getElementById('themeToggle')?.addEventListener('click', () => {
+        cycleTheme();
+    });
+    
     // Window resize
-    window.addEventListener('resize', () => renderTimeframeRows());
+    window.addEventListener('resize', () => {
+        renderTimeframeRows();
+        if (state.multiCoinMode) {
+            updateMultiCoinPanels();
+        }
+    });
 }
 
 // Watchlist functions
@@ -2801,3 +2894,359 @@ function saveIndicatorsFromForm() {
     
     saveSettings();
 }
+
+// ============================================
+// MULTI-COIN VIEW
+// ============================================
+
+state.multiCoinMode = false;
+state.coinPanels = []; // Array of { id, symbol, timeframes, data }
+
+function toggleMultiCoinView() {
+    state.multiCoinMode = !state.multiCoinMode;
+    
+    const multiContainer = document.getElementById('multiCoinContainer');
+    const singleView = document.getElementById('singleCoinView');
+    const btn = document.getElementById('multiCoinBtn');
+    
+    if (state.multiCoinMode) {
+        multiContainer.style.display = 'flex';
+        singleView.style.display = 'none';
+        btn.classList.add('active');
+        
+        // Initialize with current coin if no panels exist
+        if (state.coinPanels.length === 0 && state.currentCoin) {
+            addCoinPanel(state.currentCoin.symbol);
+        }
+        
+        renderMultiCoinPanels();
+    } else {
+        closeMultiCoinView();
+    }
+}
+
+function closeMultiCoinView() {
+    state.multiCoinMode = false;
+    
+    const multiContainer = document.getElementById('multiCoinContainer');
+    const singleView = document.getElementById('singleCoinView');
+    const btn = document.getElementById('multiCoinBtn');
+    
+    multiContainer.style.display = 'none';
+    singleView.style.display = 'block';
+    btn.classList.remove('active');
+}
+
+function addCoinPanel(symbol = null) {
+    if (state.coinPanels.length >= 4) {
+        showKeyboardHint('Maximum 4 coins');
+        return;
+    }
+    
+    const panelId = 'panel-' + Date.now();
+    const coinSymbol = symbol || (state.coins[0]?.symbol);
+    
+    // Get default enabled timeframes
+    const enabledTFs = state.timeframes.filter(tf => tf.enabled).map(tf => tf.id);
+    
+    state.coinPanels.push({
+        id: panelId,
+        symbol: coinSymbol,
+        timeframes: enabledTFs.length > 0 ? enabledTFs : ['5m', '15m', '1h'],
+        data: {},
+        candles: {}
+    });
+    
+    renderMultiCoinPanels();
+    fetchPanelData(panelId);
+}
+
+function removeCoinPanel(panelId) {
+    state.coinPanels = state.coinPanels.filter(p => p.id !== panelId);
+    
+    if (state.coinPanels.length === 0) {
+        closeMultiCoinView();
+    } else {
+        renderMultiCoinPanels();
+    }
+}
+
+function renderMultiCoinPanels() {
+    const container = document.getElementById('multiCoinPanels');
+    const panelCount = state.coinPanels.length;
+    
+    // Set grid class
+    container.className = `multi-coin-panels panels-${panelCount}`;
+    
+    container.innerHTML = state.coinPanels.map(panel => {
+        const coin = state.coins.find(c => c.symbol === panel.symbol);
+        const coinData = state.coinData[panel.symbol] || {};
+        const change = coinData.change || 0;
+        const changeClass = change >= 0 ? 'positive' : 'negative';
+        
+        // Build coin selector options
+        const coinOptions = state.coins.map(c => 
+            `<option value="${c.symbol}" ${c.symbol === panel.symbol ? 'selected' : ''}>${c.shortName}</option>`
+        ).join('');
+        
+        // Build timeframe toggles
+        const tfToggles = state.timeframes.map(tf => {
+            const isActive = panel.timeframes.includes(tf.id);
+            const tfData = panel.data[tf.id];
+            const dirClass = tfData ? (tfData.isBullish ? 'bullish' : 'bearish') : '';
+            return `<button class="coin-panel-tf-btn ${isActive ? 'active' : ''} ${dirClass}" 
+                            data-panel="${panel.id}" data-tf="${tf.id}">${tf.label}</button>`;
+        }).join('');
+        
+        // Calculate panel confluence
+        let panelConfluence = 50;
+        let bullCount = 0, bearCount = 0;
+        panel.timeframes.forEach(tfId => {
+            const tfData = panel.data[tfId];
+            if (tfData) {
+                if (tfData.isBullish) bullCount++;
+                else bearCount++;
+            }
+        });
+        if (bullCount + bearCount > 0) {
+            panelConfluence = (bullCount / (bullCount + bearCount)) * 100;
+        }
+        
+        // Build mini charts
+        const chartsHtml = panel.timeframes.map(tfId => {
+            const tf = state.timeframes.find(t => t.id === tfId);
+            const secondsToClose = getSecondsToClose(tf);
+            return `
+                <div class="coin-panel-chart-row">
+                    <div class="coin-panel-chart-header">
+                        <span class="coin-panel-chart-tf">${tf.label}</span>
+                        <span class="coin-panel-chart-timer">${formatTime(secondsToClose)}</span>
+                    </div>
+                    <canvas class="coin-panel-chart-canvas" id="panel-chart-${panel.id}-${tfId}"></canvas>
+                </div>
+            `;
+        }).join('');
+        
+        return `
+            <div class="coin-panel" id="${panel.id}">
+                <div class="coin-panel-header">
+                    <div class="coin-panel-select">
+                        <img src="${coin?.icon || ''}" alt="" onerror="this.style.display='none'">
+                        <select data-panel="${panel.id}" class="panel-coin-select">
+                            ${coinOptions}
+                        </select>
+                        <span class="coin-panel-price">$${(coinData.price || 0).toFixed(coin?.decimals || 2)}</span>
+                        <span class="coin-panel-change ${changeClass}">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</span>
+                    </div>
+                    <div class="coin-panel-actions">
+                        <button onclick="removeCoinPanel('${panel.id}')" title="Remove">✕</button>
+                    </div>
+                </div>
+                <div class="coin-panel-body">
+                    <div class="coin-panel-confluence">
+                        <div class="coin-panel-confluence-bar">
+                            <div class="coin-panel-confluence-marker" style="left: ${panelConfluence}%"></div>
+                        </div>
+                        <span class="coin-panel-confluence-value" style="color: ${panelConfluence >= 60 ? 'var(--bull-color)' : panelConfluence <= 40 ? 'var(--bear-color)' : 'var(--neutral-color)'}">
+                            ${panelConfluence.toFixed(0)}%
+                        </span>
+                    </div>
+                    <div class="coin-panel-tf-toggles">
+                        ${tfToggles}
+                    </div>
+                    <div class="coin-panel-charts">
+                        ${chartsHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // Add event listeners for coin selects
+    container.querySelectorAll('.panel-coin-select').forEach(select => {
+        select.addEventListener('change', (e) => {
+            const panelId = e.target.dataset.panel;
+            const newSymbol = e.target.value;
+            changePanelCoin(panelId, newSymbol);
+        });
+    });
+    
+    // Add event listeners for TF toggles
+    container.querySelectorAll('.coin-panel-tf-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const panelId = e.target.dataset.panel;
+            const tfId = e.target.dataset.tf;
+            togglePanelTimeframe(panelId, tfId);
+        });
+    });
+    
+    // Draw charts after a small delay
+    setTimeout(() => {
+        state.coinPanels.forEach(panel => {
+            panel.timeframes.forEach(tfId => {
+                drawPanelChart(panel.id, tfId);
+            });
+        });
+    }, 50);
+}
+
+function changePanelCoin(panelId, newSymbol) {
+    const panel = state.coinPanels.find(p => p.id === panelId);
+    if (panel) {
+        panel.symbol = newSymbol;
+        panel.data = {};
+        panel.candles = {};
+        fetchPanelData(panelId);
+        renderMultiCoinPanels();
+    }
+}
+
+function togglePanelTimeframe(panelId, tfId) {
+    const panel = state.coinPanels.find(p => p.id === panelId);
+    if (!panel) return;
+    
+    if (panel.timeframes.includes(tfId)) {
+        // Remove if more than 1 timeframe
+        if (panel.timeframes.length > 1) {
+            panel.timeframes = panel.timeframes.filter(t => t !== tfId);
+        }
+    } else {
+        panel.timeframes.push(tfId);
+        // Fetch data for new timeframe
+        fetchPanelTimeframeData(panelId, tfId);
+    }
+    
+    renderMultiCoinPanels();
+}
+
+async function fetchPanelData(panelId) {
+    const panel = state.coinPanels.find(p => p.id === panelId);
+    if (!panel) return;
+    
+    for (const tfId of panel.timeframes) {
+        await fetchPanelTimeframeData(panelId, tfId);
+    }
+    
+    renderMultiCoinPanels();
+}
+
+async function fetchPanelTimeframeData(panelId, tfId) {
+    const panel = state.coinPanels.find(p => p.id === panelId);
+    if (!panel) return;
+    
+    try {
+        const response = await fetch(
+            `${BINANCE_API}/klines?symbol=${panel.symbol}&interval=${tfId}&startTime=${START_DATE}&limit=1000`
+        );
+        const data = await response.json();
+        
+        const candles = data.map(candle => ({
+            openTime: candle[0],
+            open: parseFloat(candle[1]),
+            high: parseFloat(candle[2]),
+            low: parseFloat(candle[3]),
+            close: parseFloat(candle[4]),
+            volume: parseFloat(candle[5]),
+            closeTime: candle[6]
+        }));
+        
+        panel.candles[tfId] = candles;
+        panel.data[tfId] = analyzeCandles(candles, tfId);
+        
+    } catch (e) {
+        console.error(`Error fetching panel data for ${panel.symbol} ${tfId}:`, e);
+    }
+}
+
+function drawPanelChart(panelId, tfId) {
+    const panel = state.coinPanels.find(p => p.id === panelId);
+    if (!panel || !panel.candles[tfId]) return;
+    
+    const canvasId = `panel-chart-${panelId}-${tfId}`;
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.parentElement.getBoundingClientRect();
+    
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = 60 * dpr;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = '60px';
+    ctx.scale(dpr, dpr);
+    
+    const width = rect.width;
+    const height = 60;
+    
+    const candles = panel.candles[tfId];
+    const displayCandles = candles.slice(-30); // Show last 30 candles
+    
+    if (displayCandles.length === 0) return;
+    
+    const prices = displayCandles.flatMap(c => [c.high, c.low]);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const priceRange = maxPrice - minPrice || 1;
+    
+    const padding = { top: 2, right: 2, bottom: 2, left: 2 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+    
+    const scaleY = (price) => padding.top + chartHeight - ((price - minPrice) / priceRange) * chartHeight;
+    
+    const candleSpacing = chartWidth / displayCandles.length;
+    const candleWidth = Math.max(1, candleSpacing * 0.7);
+    
+    // Theme colors
+    const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+    const isDark = theme === 'dark';
+    const bgColor = isDark ? '#252542' : '#f8fafc';
+    const bullColor = '#10b981';
+    const bearColor = '#ef4444';
+    
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, width, height);
+    
+    // Draw candles
+    displayCandles.forEach((candle, i) => {
+        const x = padding.left + i * candleSpacing + candleSpacing / 2;
+        const isBull = candle.close >= candle.open;
+        const openY = scaleY(candle.open);
+        const closeY = scaleY(candle.close);
+        const highY = scaleY(candle.high);
+        const lowY = scaleY(candle.low);
+        
+        ctx.strokeStyle = isBull ? bullColor : bearColor;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, highY);
+        ctx.lineTo(x, lowY);
+        ctx.stroke();
+        
+        ctx.fillStyle = isBull ? bullColor : bearColor;
+        const bodyTop = Math.min(openY, closeY);
+        const bodyHeight = Math.max(1, Math.abs(closeY - openY));
+        ctx.fillRect(x - candleWidth / 2, bodyTop, candleWidth, bodyHeight);
+    });
+}
+
+function updateMultiCoinPanels() {
+    if (!state.multiCoinMode) return;
+    
+    // Redraw all panel charts
+    state.coinPanels.forEach(panel => {
+        panel.timeframes.forEach(tfId => {
+            drawPanelChart(panel.id, tfId);
+        });
+    });
+}
+
+// Update multi-coin panels periodically
+setInterval(() => {
+    if (state.multiCoinMode) {
+        state.coinPanels.forEach(panel => {
+            fetchPanelData(panel.id);
+        });
+    }
+}, 10000);
