@@ -39,6 +39,8 @@
                     <span class="pulse"></span>
                     <span id="alertCount">0</span>
                 </div>
+                <button id="multiCoinBtn" class="btn btn-icon btn-multi" title="Multi-Coin View">📊</button>
+                <button id="themeToggle" class="btn btn-icon btn-theme" title="Toggle Theme (T)">🌙</button>
             </div>
         </header>
 
@@ -85,8 +87,22 @@
             <!-- Sidebar Overlay for Mobile -->
             <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-            <!-- Main Content Area -->
-            <main class="main-content">
+            <!-- Multi-Coin View Container (hidden by default) -->
+            <div class="multi-coin-container" id="multiCoinContainer" style="display: none;">
+                <div class="multi-coin-header">
+                    <span>Multi-Coin View</span>
+                    <div class="multi-coin-controls">
+                        <button class="btn btn-sm" id="addCoinPanel" title="Add Coin Panel">+ Add Coin</button>
+                        <button class="btn btn-sm" id="closeMultiView" title="Close Multi-View">✕</button>
+                    </div>
+                </div>
+                <div class="multi-coin-panels" id="multiCoinPanels">
+                    <!-- Coin panels will be added dynamically -->
+                </div>
+            </div>
+
+            <!-- Main Content Area (Single Coin View) -->
+            <main class="main-content" id="singleCoinView">
                 <!-- Quick Glance Summary (shown only in quick glance mode) -->
                 <div class="quick-glance-summary" id="quickGlanceSummary">
                     <div class="quick-summary-price" id="quickPrice">$0.00</div>
@@ -312,7 +328,7 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>MTFCCM v3.5 | Binance Data | ☪️ Halal - Spot Only | Jan 2025+</p>
+            <p>MTFCCM v3.7 | Binance Data | ☪️ Halal - Spot Only | Jan 2025+</p>
             <div class="footer-support">
                 <span>Support this project:</span>
                 <a href="#" id="tipJarBtn" class="tip-link">☕ Buy me a coffee</a>
