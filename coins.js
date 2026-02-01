@@ -328,6 +328,20 @@ const COINS_CONFIG = [
         shortName: "COTI",
         icon: "https://assets.coingecko.com/coins/images/2962/small/Coti.png",
         decimals: 5
+    },
+    {
+        symbol: "AXLUSDT",
+        name: "Axelar",
+        shortName: "AXL",
+        icon: "https://assets.coingecko.com/coins/images/27277/small/V-65_xQ1_400x400.jpeg",
+        decimals: 4
+    },
+    {
+        symbol: "KAIAUSDT",
+        name: "Kaia",
+        shortName: "KAIA",
+        icon: "https://assets.coingecko.com/coins/images/39843/small/kaia.png",
+        decimals: 4
     }
 ];
 
@@ -360,8 +374,8 @@ const DEFAULT_SETTINGS = {
     showWarnings: true,
     theme: "dark",
     advancedMode: true,
-    viewMode: "advanced", // 'clear' or 'advanced' - new setting for v3.6
-    candlePopupType: "hover-tab", // 'hover-tab' or 'click-popup' - new setting for v3.6
+    viewMode: "advanced", // 'clear' or 'advanced' - v3.8
+    candlePopupType: "hover-tab", // 'hover-tab' or 'click-popup' - v3.8
     chartHeight: 120,
     chartCandles: 15,
     showChartRSI: false,
