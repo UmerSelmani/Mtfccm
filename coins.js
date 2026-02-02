@@ -381,6 +381,7 @@ const DEFAULT_SETTINGS = {
     showChartRSI: false,
     showChartMACD: false,
     showChartVolume: true,
+    volumeType: "buysell", // 'buysell' or 'regular' - v3.8.2
     showChartPatterns: true,
     showChartMarkers: true,
     showChartMA: false,

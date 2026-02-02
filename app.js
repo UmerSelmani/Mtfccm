@@ -1,9 +1,9 @@
 /**
  * MTFCCM - Multi-Timeframe Candle Close Monitor
- * Main Application Logic v3.8.1 - Multi-coin view, TF price info, OHLCV colors
+ * Main Application Logic v3.8.2 - Multi-coin view, TF price info, OHLCV colors
  */
 
-const APP_VERSION = "3.8.1";
+const APP_VERSION = "3.8.2";
 
 // ============================================
 // STATE MANAGEMENT
@@ -1381,34 +1381,42 @@ function drawInteractiveChart(canvasId, data, tfId) {
     ctx.fillStyle = 'white';
     ctx.fillText(lowText, lowX, lowY);
     
-    // Volume bars with buy/sell split
+    // Volume bars - supports regular or buy/sell split
     if (showVolume) {
         const volTop = padding.top + mainChartHeight + 2;
         const volumes = displayCandles.map(c => c.volume);
         const maxVol = Math.max(...volumes);
+        const volumeType = state.settings.volumeType || 'buysell';
         
         displayCandles.forEach((candle, i) => {
             const x = padding.left + i * candleSpacing + candleSpacing / 2;
             const totalVolHeight = (candle.volume / maxVol) * (volumeHeight - 4);
             const isBull = candle.close >= candle.open;
             
-            // Estimate buy/sell ratio based on candle position
-            // Close position within the range determines buy pressure
-            const range = candle.high - candle.low;
-            const closePosition = range > 0 ? (candle.close - candle.low) / range : 0.5;
-            const buyPct = closePosition;
-            const sellPct = 1 - closePosition;
-            
-            const buyHeight = totalVolHeight * buyPct;
-            const sellHeight = totalVolHeight * sellPct;
-            
-            // Draw sell volume (red, bottom)
-            ctx.fillStyle = bearColor + 'AA';
-            ctx.fillRect(x - candleWidth / 2, volTop + volumeHeight - 2 - sellHeight, candleWidth, sellHeight);
-            
-            // Draw buy volume (green, stacked on top)
-            ctx.fillStyle = bullColor + 'AA';
-            ctx.fillRect(x - candleWidth / 2, volTop + volumeHeight - 2 - sellHeight - buyHeight, candleWidth, buyHeight);
+            if (volumeType === 'regular') {
+                // Regular volume - single color based on candle direction
+                ctx.fillStyle = (isBull ? bullColor : bearColor) + 'AA';
+                ctx.fillRect(x - candleWidth / 2, volTop + volumeHeight - 2 - totalVolHeight, candleWidth, totalVolHeight);
+            } else {
+                // Buy/Sell split volume
+                // Estimate buy/sell ratio based on candle position
+                // Close position within the range determines buy pressure
+                const range = candle.high - candle.low;
+                const closePosition = range > 0 ? (candle.close - candle.low) / range : 0.5;
+                const buyPct = closePosition;
+                const sellPct = 1 - closePosition;
+                
+                const buyHeight = totalVolHeight * buyPct;
+                const sellHeight = totalVolHeight * sellPct;
+                
+                // Draw sell volume (red, bottom)
+                ctx.fillStyle = bearColor + 'AA';
+                ctx.fillRect(x - candleWidth / 2, volTop + volumeHeight - 2 - sellHeight, candleWidth, sellHeight);
+                
+                // Draw buy volume (green, stacked on top)
+                ctx.fillStyle = bullColor + 'AA';
+                ctx.fillRect(x - candleWidth / 2, volTop + volumeHeight - 2 - sellHeight - buyHeight, candleWidth, buyHeight);
+            }
         });
         
         // Separator line
@@ -2130,20 +2138,24 @@ function renderTimeframeRows() {
               (moreCount > 0 ? `<span class="alerts-more" title="${activeAlerts.slice(3).map(a => a.label).join(', ')}">+${moreCount}</span>` : '')
             : '<span class="alert-group dim">No alerts</span>';
         
-        // Get current price data for this coin
+        // Get current price data for this coin (market price)
         const coinData = state.coinData[state.currentCoin?.symbol] || {};
-        const currentPrice = coinData.price || data.currentPrice || 0;
-        const priceChange = coinData.change || data.changePct || 0;
-        const high24h = coinData.high || data.high || 0;
-        const low24h = coinData.low || data.low || 0;
+        const currentPrice = coinData.price || data.current?.close || 0;
         const decimals = state.currentCoin?.decimals || 2;
+        
+        // Get THIS TIMEFRAME's candle data (not 24h data)
+        const tfOpen = data.current?.open || 0;
+        const tfHigh = data.current?.high || 0;
+        const tfLow = data.current?.low || 0;
+        const tfClose = data.current?.close || 0;
+        const tfChangePct = data.changePct || 0;
         
         const priceInfoHtml = `
             <div class="tf-price-info">
                 <span class="tf-price-value">$${currentPrice.toFixed(decimals)}</span>
-                <span class="tf-price-change ${priceChange >= 0 ? 'positive' : 'negative'}">${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}%</span>
-                <span class="tf-price-hl">H:<span class="price-high">$${high24h.toFixed(decimals)}</span></span>
-                <span class="tf-price-hl">L:<span class="price-low">$${low24h.toFixed(decimals)}</span></span>
+                <span class="tf-price-change ${tfChangePct >= 0 ? 'positive' : 'negative'}">${tfChangePct >= 0 ? '+' : ''}${tfChangePct.toFixed(2)}%</span>
+                <span class="tf-price-hl">H:<span class="price-high">$${tfHigh.toFixed(decimals)}</span></span>
+                <span class="tf-price-hl">L:<span class="price-low">$${tfLow.toFixed(decimals)}</span></span>
             </div>
         `;
         
@@ -2845,12 +2857,14 @@ function loadIndicatorsToForm() {
     const showPatterns = document.getElementById('showChartPatternsModal');
     const showMarkers = document.getElementById('showChartMarkersModal');
     const showVolume = document.getElementById('showChartVolumeModal');
+    const volumeType = document.getElementById('volumeTypeModal');
     
     if (showVWAP) showVWAP.checked = state.settings.showChartVWAP;
     if (showMACD) showMACD.checked = state.settings.showChartMACD;
     if (showPatterns) showPatterns.checked = state.settings.showChartPatterns !== false;
     if (showMarkers) showMarkers.checked = state.settings.showChartMarkers !== false;
     if (showVolume) showVolume.checked = state.settings.showChartVolume !== false;
+    if (volumeType) volumeType.value = state.settings.volumeType || 'buysell';
 }
 
 function saveIndicatorsFromForm() {
@@ -2885,12 +2899,14 @@ function saveIndicatorsFromForm() {
     const showPatterns = document.getElementById('showChartPatternsModal');
     const showMarkers = document.getElementById('showChartMarkersModal');
     const showVolume = document.getElementById('showChartVolumeModal');
+    const volumeType = document.getElementById('volumeTypeModal');
     
     if (showVWAP) state.settings.showChartVWAP = showVWAP.checked;
     if (showMACD) state.settings.showChartMACD = showMACD.checked;
     if (showPatterns) state.settings.showChartPatterns = showPatterns.checked;
     if (showMarkers) state.settings.showChartMarkers = showMarkers.checked;
     if (showVolume) state.settings.showChartVolume = showVolume.checked;
+    if (volumeType) state.settings.volumeType = volumeType.value;
     
     saveSettings();
 }

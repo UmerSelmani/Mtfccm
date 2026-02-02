@@ -1,5 +1,28 @@
 # MTFCCM Changelog
 
+## v3.8.2 (Feb 2025)
+
+### Bug Fix
+- **FIXED:** High/Low now shows per-timeframe candle data (not 24h data)
+  - Previously: All TFs showed same H/L (24h high/low)
+  - Now: Each TF shows its current candle's high/low
+
+### New Features
+- **Volume Style Option:** Choose between two volume display types in Indicators modal:
+  - **Buy/Sell Split** (default) - Green buy stacked on red sell
+  - **Regular** - Single color based on candle direction
+
+### Confirmed Existing Features ✅
+These features were already present:
+- Buy/Sell volume split visualization
+- VWAP indicator (purple line - enable in Indicators)
+- High/Low price labels on chart candles (green H: / red L:)
+- Hover to see OHLCV for any candle
+- Pinch-to-zoom (partial - needs refinement later)
+- 20% taller charts
+
+---
+
 ## v3.8.1 (Feb 2025)
 
 ### Changes
