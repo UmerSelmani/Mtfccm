@@ -1,9 +1,9 @@
 /**
  * MTFCCM - Multi-Timeframe Candle Close Monitor
- * Main Application Logic v3.8.2 - Multi-coin view, TF price info, OHLCV colors
+ * Main Application Logic v3.9 - Multi-coin view, TF price info, OHLCV colors
  */
 
-const APP_VERSION = "3.8.2";
+const APP_VERSION = "3.9";
 
 // ============================================
 // STATE MANAGEMENT
@@ -1143,9 +1143,38 @@ function drawInteractiveChart(canvasId, data, tfId) {
     
     // Calculate X positions for high/low labels (will draw after candles)
     
-    // Get patterns for visible range
+    // Get patterns for visible range and filter by user settings
     const tfPatterns = state.patterns[tfId] || [];
-    const visiblePatterns = tfPatterns.filter(p => p.index >= startIdx && p.index < endIdx);
+    const patternSettings = state.settings.patterns || {};
+    
+    // Map pattern names to settings keys
+    const patternNameToKey = {
+        'Doji': 'doji',
+        'Hammer': 'hammer',
+        'Inv Hammer': 'invHammer',
+        'Hanging Man': 'hangingMan',
+        'Shoot Star': 'shootStar',
+        'Marubozu': 'marubozu',
+        'Spin Top': 'spinTop',
+        'Bull Engulf': 'bullEngulf',
+        'Bear Engulf': 'bearEngulf',
+        'Bull Harami': 'bullHarami',
+        'Bear Harami': 'bearHarami',
+        'Piercing': 'piercing',
+        'Dark Cloud': 'darkCloud',
+        'Tweez Top': 'tweezTop',
+        'Tweez Bot': 'tweezBot',
+        'Morning ⭐': 'morningStar',
+        'Evening ⭐': 'eveningStar',
+        '3 Soldiers': 'threeSoldiers',
+        '3 Crows': 'threeCrows'
+    };
+    
+    const visiblePatterns = tfPatterns.filter(p => {
+        if (p.index < startIdx || p.index >= endIdx) return false;
+        const key = patternNameToKey[p.name];
+        return key ? (patternSettings[key] !== false) : true;
+    });
     
     // Get MA/EMA line configs from settings
     const maLines = state.settings.maLines || [20];
@@ -2478,8 +2507,8 @@ function setupEventListeners() {
         coinSearch.addEventListener('input', (e) => filterCoins(e.target.value));
     }
     
-    // Chart options - simplified quick toggles
-    ['showChartVolume', 'showChartMA', 'showChartEMA'].forEach(id => {
+    // Chart options - indicator toggles in TF settings
+    ['showChartVolume', 'showChartMA', 'showChartEMA', 'showChartVWAP'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('change', (e) => {
             state.settings[id] = e.target.checked;
@@ -2487,6 +2516,100 @@ function setupEventListeners() {
             renderTimeframeRows();
         });
     });
+    
+    // Volume type selector in TF settings
+    document.getElementById('volumeTypeSelect')?.addEventListener('change', (e) => {
+        state.settings.volumeType = e.target.value;
+        saveSettings();
+        renderTimeframeRows();
+    });
+    
+    // MA/EMA period inputs in TF settings
+    document.getElementById('maLinesInputTF')?.addEventListener('change', (e) => {
+        const maLines = e.target.value.split(',')
+            .map(s => parseInt(s.trim()))
+            .filter(n => !isNaN(n) && n > 0 && n <= 500);
+        state.settings.maLines = maLines.length > 0 ? maLines : [20];
+        saveSettings();
+        renderTimeframeRows();
+    });
+    
+    document.getElementById('emaLinesInputTF')?.addEventListener('change', (e) => {
+        const emaLines = e.target.value.split(',')
+            .map(s => parseInt(s.trim()))
+            .filter(n => !isNaN(n) && n > 0 && n <= 500);
+        state.settings.emaLines = emaLines.length > 0 ? emaLines : [21];
+        saveSettings();
+        renderTimeframeRows();
+    });
+    
+    // Pattern toggle checkboxes
+    const patternMap = {
+        'patternDoji': 'doji',
+        'patternHammer': 'hammer',
+        'patternInvHammer': 'invHammer',
+        'patternHangingMan': 'hangingMan',
+        'patternShootStar': 'shootStar',
+        'patternMarubozu': 'marubozu',
+        'patternSpinTop': 'spinTop',
+        'patternBullEngulf': 'bullEngulf',
+        'patternBearEngulf': 'bearEngulf',
+        'patternBullHarami': 'bullHarami',
+        'patternBearHarami': 'bearHarami',
+        'patternPiercing': 'piercing',
+        'patternDarkCloud': 'darkCloud',
+        'patternTweezTop': 'tweezTop',
+        'patternTweezBot': 'tweezBot',
+        'patternMorningStar': 'morningStar',
+        'patternEveningStar': 'eveningStar',
+        'pattern3Soldiers': 'threeSoldiers',
+        'pattern3Crows': 'threeCrows'
+    };
+    
+    // Ensure patterns object exists
+    if (!state.settings.patterns) state.settings.patterns = {};
+    
+    Object.entries(patternMap).forEach(([elId, key]) => {
+        const el = document.getElementById(elId);
+        if (el) {
+            // Load saved setting
+            el.checked = state.settings.patterns[key] !== false;
+            // Add change listener
+            el.addEventListener('change', (e) => {
+                state.settings.patterns[key] = e.target.checked;
+                saveSettings();
+                renderTimeframeRows();
+            });
+        }
+    });
+    
+    // Select all / Deselect all patterns
+    document.getElementById('selectAllPatterns')?.addEventListener('click', () => {
+        Object.values(patternMap).forEach(key => {
+            state.settings.patterns[key] = true;
+        });
+        Object.keys(patternMap).forEach(elId => {
+            const el = document.getElementById(elId);
+            if (el) el.checked = true;
+        });
+        saveSettings();
+        renderTimeframeRows();
+    });
+    
+    document.getElementById('deselectAllPatterns')?.addEventListener('click', () => {
+        Object.values(patternMap).forEach(key => {
+            state.settings.patterns[key] = false;
+        });
+        Object.keys(patternMap).forEach(elId => {
+            const el = document.getElementById(elId);
+            if (el) el.checked = false;
+        });
+        saveSettings();
+        renderTimeframeRows();
+    });
+    
+    // Coin comparison slots
+    initCoinComparisonPanel();
     
     // TF Settings toggle (inline settings in TF card)
     document.getElementById('tfSettingsBtn')?.addEventListener('click', () => {
@@ -3266,3 +3389,203 @@ setInterval(() => {
         });
     }
 }, 10000);
+
+// ============================================
+// COIN COMPARISON PANEL (Side Panel)
+// ============================================
+
+state.comparisonCoins = [];
+
+function initCoinComparisonPanel() {
+    // Populate coin slot dropdowns with all available coins
+    for (let i = 1; i <= 3; i++) {
+        const select = document.getElementById(`coinSlot${i}`);
+        if (select) {
+            // Clear and add options
+            select.innerHTML = '<option value="">+ Add Coin</option>';
+            state.coins.forEach(coin => {
+                const option = document.createElement('option');
+                option.value = coin.symbol;
+                option.textContent = coin.name;
+                select.appendChild(option);
+            });
+            
+            // Add change listener
+            select.addEventListener('change', (e) => {
+                handleCoinSlotChange(i, e.target.value);
+            });
+        }
+        
+        // Remove button
+        const removeBtn = document.querySelector(`.btn-remove-coin[data-slot="${i}"]`);
+        if (removeBtn) {
+            removeBtn.addEventListener('click', () => {
+                removeCoinFromSlot(i);
+            });
+        }
+    }
+    
+    // Load saved comparison coins
+    if (state.settings.comparisonCoins && state.settings.comparisonCoins.length > 0) {
+        state.settings.comparisonCoins.forEach((symbol, idx) => {
+            if (idx < 3) {
+                const select = document.getElementById(`coinSlot${idx + 1}`);
+                if (select) {
+                    select.value = symbol;
+                    handleCoinSlotChange(idx + 1, symbol, false);
+                }
+            }
+        });
+    }
+}
+
+function handleCoinSlotChange(slot, symbol, save = true) {
+    const removeBtn = document.querySelector(`.btn-remove-coin[data-slot="${slot}"]`);
+    
+    if (symbol) {
+        // Add coin to comparison
+        state.comparisonCoins[slot - 1] = symbol;
+        if (removeBtn) removeBtn.style.display = 'inline-block';
+        
+        // Render comparison coin card
+        renderComparisonCoin(slot, symbol);
+    } else {
+        // Remove coin
+        state.comparisonCoins[slot - 1] = null;
+        if (removeBtn) removeBtn.style.display = 'none';
+        
+        // Remove card
+        const cardContainer = document.getElementById('comparisonCoins');
+        const existingCard = cardContainer?.querySelector(`.comparison-coin-card[data-slot="${slot}"]`);
+        if (existingCard) existingCard.remove();
+    }
+    
+    if (save) {
+        // Save to settings
+        state.settings.comparisonCoins = state.comparisonCoins.filter(c => c);
+        saveSettings();
+    }
+}
+
+function removeCoinFromSlot(slot) {
+    const select = document.getElementById(`coinSlot${slot}`);
+    if (select) select.value = '';
+    handleCoinSlotChange(slot, '');
+}
+
+async function renderComparisonCoin(slot, symbol) {
+    const cardContainer = document.getElementById('comparisonCoins');
+    if (!cardContainer) return;
+    
+    const coin = state.coins.find(c => c.symbol === symbol);
+    if (!coin) return;
+    
+    // Remove existing card for this slot
+    const existingCard = cardContainer.querySelector(`.comparison-coin-card[data-slot="${slot}"]`);
+    if (existingCard) existingCard.remove();
+    
+    // Create new card
+    const card = document.createElement('div');
+    card.className = 'comparison-coin-card';
+    card.dataset.slot = slot;
+    card.innerHTML = `
+        <div class="comparison-coin-header">
+            <span class="comparison-coin-name">${coin.name}</span>
+            <span class="comparison-coin-price" id="compPrice${slot}">Loading...</span>
+        </div>
+        <canvas class="comparison-mini-chart" id="compChart${slot}" width="240" height="80"></canvas>
+    `;
+    cardContainer.appendChild(card);
+    
+    // Fetch and render data
+    try {
+        const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=24`);
+        const data = await response.json();
+        
+        // Get current price
+        const priceRes = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
+        const priceData = await priceRes.json();
+        
+        const priceEl = document.getElementById(`compPrice${slot}`);
+        if (priceEl) {
+            const price = parseFloat(priceData.lastPrice);
+            const change = parseFloat(priceData.priceChangePercent);
+            priceEl.innerHTML = `$${price.toFixed(coin.decimals)} <span style="color:${change >= 0 ? 'var(--bull-color)' : 'var(--bear-color)'}">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</span>`;
+        }
+        
+        // Draw mini chart
+        const canvas = document.getElementById(`compChart${slot}`);
+        if (canvas && data.length > 0) {
+            drawComparisonChart(canvas, data);
+        }
+    } catch (err) {
+        console.error('Error fetching comparison coin data:', err);
+    }
+}
+
+function drawComparisonChart(canvas, klines) {
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    const candles = klines.map(k => ({
+        open: parseFloat(k[1]),
+        high: parseFloat(k[2]),
+        low: parseFloat(k[3]),
+        close: parseFloat(k[4])
+    }));
+    
+    const prices = candles.flatMap(c => [c.high, c.low]);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const priceRange = maxPrice - minPrice || 1;
+    
+    const padding = 2;
+    const chartWidth = width - padding * 2;
+    const chartHeight = height - padding * 2;
+    
+    const scaleY = (price) => padding + chartHeight - ((price - minPrice) / priceRange) * chartHeight;
+    
+    const candleSpacing = chartWidth / candles.length;
+    const candleWidth = Math.max(1, candleSpacing * 0.7);
+    
+    // Theme
+    const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+    const isDark = theme === 'dark';
+    const bgColor = isDark ? '#1a1a2e' : '#f1f5f9';
+    const bullColor = '#10b981';
+    const bearColor = '#ef4444';
+    
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, width, height);
+    
+    candles.forEach((candle, i) => {
+        const x = padding + i * candleSpacing + candleSpacing / 2;
+        const isBull = candle.close >= candle.open;
+        const openY = scaleY(candle.open);
+        const closeY = scaleY(candle.close);
+        const highY = scaleY(candle.high);
+        const lowY = scaleY(candle.low);
+        
+        ctx.strokeStyle = isBull ? bullColor : bearColor;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, highY);
+        ctx.lineTo(x, lowY);
+        ctx.stroke();
+        
+        ctx.fillStyle = isBull ? bullColor : bearColor;
+        const bodyTop = Math.min(openY, closeY);
+        const bodyHeight = Math.max(1, Math.abs(closeY - openY));
+        ctx.fillRect(x - candleWidth / 2, bodyTop, candleWidth, bodyHeight);
+    });
+}
+
+// Refresh comparison coins periodically
+setInterval(() => {
+    state.comparisonCoins.forEach((symbol, idx) => {
+        if (symbol) {
+            renderComparisonCoin(idx + 1, symbol);
+        }
+    });
+}, 30000);

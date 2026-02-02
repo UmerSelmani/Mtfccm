@@ -3235,3 +3235,191 @@ body.quick-glance-mode .quick-glance-summary {
 body.no-ads .ad-container {
     display: none;
 }
+
+/* ===== v3.9 - REDESIGNED LAYOUT ===== */
+
+/* Content with Coins - Side by Side Layout */
+.content-with-coins {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+}
+
+.primary-coin-area {
+    flex: 1;
+    min-width: 0;
+}
+
+.additional-coins-panel {
+    width: 280px;
+    flex-shrink: 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.75rem;
+    height: fit-content;
+    position: sticky;
+    top: 0;
+}
+
+.add-coin-header {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.add-coin-slots {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.coin-slot {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.coin-slot-select {
+    flex: 1;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+}
+
+.btn-remove-coin {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    background: var(--bear-color);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.comparison-coins {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.comparison-coin-card {
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.comparison-coin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.comparison-coin-name {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.comparison-coin-price {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.comparison-mini-chart {
+    height: 80px;
+    background: var(--bg-primary);
+    border-radius: var(--radius-sm);
+}
+
+/* Patterns Grid in Settings */
+.patterns-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.35rem;
+    margin-top: 0.5rem;
+}
+
+.pattern-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.4rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.pattern-toggle input {
+    width: 12px;
+    height: 12px;
+    margin: 0;
+}
+
+.pattern-toggle span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pattern-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed var(--border-color);
+}
+
+.btn-xs {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.7rem;
+}
+
+/* Input Small */
+.input-sm {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.75rem;
+    width: 100px;
+}
+
+/* Mobile Responsive for New Layout */
+@media (max-width: 900px) {
+    .content-with-coins {
+        flex-direction: column;
+    }
+    
+    .additional-coins-panel {
+        width: 100%;
+        position: relative;
+    }
+    
+    .patterns-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .patterns-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .pattern-toggle {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.3rem;
+    }
+}
+
+@media (max-width: 400px) {
+    .patterns-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

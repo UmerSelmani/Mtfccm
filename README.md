@@ -148,6 +148,6 @@ This tool is for informational purposes only. Not financial advice. Always do yo
 
 ## 📝 Version
 
-**MTFCCM Web v3.8.2**
+**MTFCCM Web v3.9**
 
 Made with ❤️ for halal crypto trading

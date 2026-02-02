@@ -1,249 +1,252 @@
 # MTFCCM Development Roadmap & History
 
-## 📊 Version Timeline Overview
+## 📊 Project Overview
 
-| Version | app.js | Coins | Functions | Key Milestone |
-|---------|--------|-------|-----------|---------------|
-| v1.0 (MTFCCM-Web) | 27KB | 7 | 30 | Initial web version |
-| v2.0 | 62KB | 7 | ~35 | Major rewrite |
-| v2.1-3 | 38KB | 7 | ~35 | Refactoring |
-| v2.2 | 44KB | 23 | ~38 | +16 coins added |
-| v2.3 | 45KB | 23 | ~40 | UI improvements |
-| v2.4 | 46KB | 23 | ~41 | Bug fixes |
-| v2.5 | 54KB | 23 | 43 | +Pattern detection |
-| v2.6 | 54KB | 23 | ~43 | Refinements |
-| v2.7 | 60KB | 31 | ~44 | +8 coins |
-| v2.8 | 62KB | 31 | ~45 | Feature additions |
-| v2.9 | 71KB | 35 | 46 | +4 coins, prep for v3 |
-| v3.0 | 82KB | 46 | ~50 | Major UI overhaul |
-| v3.0-fixed | 82KB | 46 | ~50 | Bug fixes |
-| v3.0-enhanced | 45KB | 31 | ~40 | Experimental branch |
-| v3.1 | 84KB | 46 | ~51 | Improvements |
-| v3.2 | 84KB | 46 | ~52 | Refinements |
-| v3.3 | 92KB | 46 | 54 | +Watchlist feature |
-| v3.5 | 108KB | 46 | ~58 | +Keyboard shortcuts, +Modes |
-| v3.6 | 112KB | 46 | ~60 | +Candle info tabs, +Popup options |
-| v3.6-FIXED | 112KB | 46 | 62 | Bug fixes |
-| v3.7 | 112KB | 46 | ~65 | +Multi-coin view, +OHLCV colors |
-| v3.8 | 128KB | 48 | 75 | +AXL/KAIA coins, +Ad placements |
-| v3.8.1 | 128KB | 48 | 75 | Header cleanup, ad containers |
+**MTFCCM** (Multi-Timeframe Candle Close Monitor) is a halal-compliant cryptocurrency trading analysis tool that monitors multiple timeframes simultaneously to generate confluence scores for spot trading decisions.
+
+**Core Philosophy:** Community benefit over profit maximization, strict halal compliance.
 
 ---
 
-## 🚀 Feature Evolution by Version
+## 📈 Complete Version History
 
-### Phase 1: Foundation (v1.0 - v2.0)
-**Focus: Core Functionality**
+### Version 1.x - Foundation Era
 
-- ✅ Basic multi-timeframe display
-- ✅ Binance API integration
-- ✅ RSI calculation
-- ✅ MACD calculation
-- ✅ Confluence scoring system
-- ✅ Alert sounds
-- ✅ Dark theme
-- ✅ 7 initial coins (BTC, ETH, etc.)
-- ✅ Halal compliance focus (spot only)
+| Version | app.js | Coins | Key Features |
+|---------|--------|-------|--------------|
+| **v1.0** | 27KB (789 lines) | 7 | Basic TF monitoring, Confluence scoring, RSI/MACD, Dark theme |
 
-### Phase 2: Expansion (v2.1 - v2.5)
-**Focus: More Coins & Patterns**
-
-- ✅ Expanded to 23 coins (v2.2)
-- ✅ Candlestick pattern detection (v2.5)
-- ✅ UI refinements
-- ✅ Mobile responsiveness improvements
-- ✅ Settings persistence (localStorage)
-
-### Phase 3: Growth (v2.6 - v2.9)
-**Focus: Coin Library & Stability**
-
-- ✅ Expanded to 31 coins (v2.7)
-- ✅ Expanded to 35 coins (v2.9)
-- ✅ Volume analysis improvements
-- ✅ Chart rendering optimizations
-- ✅ Preparation for v3 architecture
-
-### Phase 4: Major Overhaul (v3.0 - v3.2)
-**Focus: UI/UX Redesign**
-
-- ✅ Complete UI redesign
-- ✅ 46 coins support
-- ✅ New card-based layout
-- ✅ Improved confluence display
-- ✅ Better settings organization
-- ✅ Interactive charts (pan/zoom)
-
-### Phase 5: User Experience (v3.3 - v3.6)
-**Focus: Personalization & Interaction**
-
-- ✅ Watchlist feature (v3.3)
-- ✅ Star favorite coins
-- ✅ Keyboard shortcuts (v3.5)
-- ✅ Simple/Advanced view modes (v3.5)
-- ✅ Candle info tabs on hover (v3.6)
-- ✅ Hover Tab vs Click Popup option (v3.6)
-- ✅ Quick Glance mode
-- ✅ Confluence history tracking
-- ✅ 15+ candlestick patterns detected
-
-### Phase 6: Current (v3.7 - v3.8.1)
-**Focus: Multi-view & Monetization**
-
-- ✅ Multi-coin view (up to 4 coins) (v3.7)
-- ✅ Price info per timeframe row (v3.7)
-- ✅ OHLCV colored display (v3.7)
-- ✅ Theme button relocated to header (v3.7)
-- ✅ AXL & KAIA coins added (v3.8)
-- ✅ Ad placement areas (v3.8.1)
-- ✅ Donation/tip jar section (v3.8)
-- ✅ Halal ad policy documented (v3.8)
-- ✅ 48 total coins
+**v1.0 Features:**
+- 6 timeframes: 1m, 5m, 15m, 30m, 1h, 4h
+- Basic confluence calculation
+- RSI and MACD indicators
+- Timer countdown to candle close
+- Sound alerts
 
 ---
 
-## 📈 Growth Metrics
+### Version 2.x - Chart & Pattern Era
 
-### Code Growth
-```
-v1.0 → v3.8.1: 27KB → 128KB (+374% growth)
-```
+| Version | app.js | Coins | Key Features |
+|---------|--------|-------|--------------|
+| **v2.0** | 62KB (1,760 lines) | 7 | Mini charts, **History chart**, Historical markers |
+| **v2.1-3** | 38KB (1,081 lines) | 7 | Confluence markers, Main chart view |
+| **v2.2** | 44KB (1,215 lines) | 7 | RSI/MACD arrays for charts |
+| **v2.3** | 45KB (1,166 lines) | 23 | **Interactive charts** (pan/zoom), Coin filtering |
+| **v2.4** | 46KB (1,194 lines) | 23 | **Collapsible sidebar**, Mobile navigation |
+| **v2.5** | 54KB (1,417 lines) | 23 | **15+ Candlestick patterns** detection |
+| **v2.6** | 54KB (1,418 lines) | 23 | Pattern refinements |
+| **v2.7** | 60KB (1,558 lines) | 23 | UI improvements |
+| **v2.8** | 62KB (1,628 lines) | 23 | More patterns, RSI enhancements |
+| **v2.9** | 71KB (1,860 lines) | 35 | **Expanded to 35 coins**, Stability fixes |
 
-### Coin Support
-```
-v1.0: 7 coins
-v2.2: 23 coins (+16)
-v2.7: 31 coins (+8)
-v2.9: 35 coins (+4)
-v3.0: 46 coins (+11)
-v3.8: 48 coins (+2)
-```
-
-### Function Count
-```
-v1.0: 30 functions
-v2.5: 43 functions (+43%)
-v3.3: 54 functions (+26%)
-v3.8.1: 75 functions (+39%)
-```
-
----
-
-## 🔧 Technical Decisions Log
-
-### Architecture Decisions
-
-| Version | Decision | Rationale |
-|---------|----------|-----------|
-| v1.0 | Single-page app, no framework | Simplicity, no build tools needed |
-| v2.0 | Separate coins.js config file | Easy coin management |
-| v2.5 | Pattern detection added | User value - identify setups |
-| v3.0 | CSS variables for theming | Easy theme switching |
-| v3.3 | localStorage for all settings | Persistence without backend |
-| v3.5 | View modes (Simple/Advanced) | Different user skill levels |
-| v3.8 | Ad containers with halal filter | Monetization while maintaining values |
-
-### What Worked Well
-- ✅ Modular file structure (HTML, CSS, JS, coins.js)
-- ✅ No backend required - pure client-side
-- ✅ Progressive enhancement approach
-- ✅ User preference persistence
-- ✅ Halal-first design decisions
-
-### Challenges Overcome
-- 📊 Chart rendering performance → Canvas optimization
-- 🔄 Real-time updates → Efficient polling with planned WebSocket
-- 📱 Mobile responsiveness → Flexible grid layouts
-- 🎨 Multiple themes → CSS variables
+**Key v2.x Features:**
+- History chart showing confluence over time (v2.0)
+- Confluence markers on charts (v2.1-3)
+- Pan/zoom chart interaction (v2.3)
+- 15+ candlestick pattern detection (v2.5):
+  - Single: Doji, Hammer, Inverted Hammer, Hanging Man, Shooting Star, Marubozu, Spinning Top
+  - Double: Bullish/Bearish Engulfing, Bullish/Bearish Harami, Piercing Line, Dark Cloud Cover, Tweezer Top/Bottom
+  - Triple: Morning Star, Evening Star, Three White Soldiers, Three Black Crows
 
 ---
 
-## 🎯 Future Roadmap
+### Version 3.x - Modern Era
 
-### v3.9 (Planned)
-- [ ] WebSocket real-time prices (Binance streams)
-- [ ] HTTP fallback if WebSocket fails
+| Version | app.js | Coins | Key Features |
+|---------|--------|-------|--------------|
+| **v3.0** | 82KB (2,117 lines) | 46 | **Major UI overhaul**, 3 themes, Weight methods |
+| **v3.0-Enhanced** | 45KB (1,298 lines) | 46 | HiDPI charts, Buy/Sell volume, VWAP, Pinch-zoom |
+| **v3.1** | 84KB (2,146 lines) | 46 | Bug fixes |
+| **v3.2** | 84KB (2,146 lines) | 46 | Performance improvements |
+| **v3.3** | 92KB (2,361 lines) | 46 | **Watchlist** feature |
+| **v3.5** | 108KB (2,737 lines) | 46 | **Quick Glance**, **Confluence History** tracking |
+| **v3.6** | 112KB (2,826 lines) | 46 | View modes (Clear/Advanced), Candle info tabs |
+| **v3.7** | 112KB (2,803 lines) | 46 | **OHLCV colors**, Per-TF price display |
+| **v3.8** | 128KB (3,254 lines) | 48 | Multi-coin modal, Ad placements |
+| **v3.8.1** | 128KB | 48 | Header cleanup, Ad placements |
+| **v3.8.2** | 130KB | 48 | Per-TF High/Low fix, Volume style option |
+| **v3.9** | ~140KB | 48 | **Pattern toggles**, **Side coin comparison**, Reorganized settings |
+
+**Key v3.x Features:**
+
+**v3.0 - Major Overhaul:**
+- Modern UI design
+- 3 themes: Dark, Light Simple, Light Colorful
+- Weight methods: Equal, Linear, Exponential, Tiered
+
+**v3.0-Enhanced - Visual Upgrade:**
+- HiDPI/Retina chart rendering
+- Buy/Sell volume split (green buy, red sell stacked)
+- VWAP indicator
+- H/L price labels on charts
+- Pinch-to-zoom (mobile)
+- 20% taller charts
+
+**v3.3 - Watchlist:**
+- Star/favorite coins
+- Watchlist tab in sidebar
+- Persistent storage
+
+**v3.5 - Analysis Tools:**
+- Quick Glance mode (minimalist view)
+- Confluence History tracking
+- Historical high-confluence moments
+
+**v3.6 - Display Options:**
+- Clear vs Advanced view modes
+- Hover Tab vs Click Popup for candle info
+- Per-chart info tabs
+
+**v3.9 - Settings Reorganization (Current):**
+- Pattern toggle checkboxes (select which patterns to show)
+- Side-by-side coin comparison (up to 3 coins)
+- All indicators moved to TF Settings
+- Volume style option (Buy/Sell Split or Regular)
+
+---
+
+## 🔧 Technical Architecture
+
+### File Structure (v3.9)
+```
+mtfccm-web/
+├── index.html          - Main HTML structure (~400 lines)
+├── styles.css          - All styling (~3,400 lines)
+├── app.js              - Application logic (~3,600 lines)
+├── coins.js            - Coin configs & settings (~480 lines)
+├── README.md           - Documentation
+├── CHANGELOG.md        - Version history
+├── ROADMAP.md          - This file
+└── HALAL_AD_POLICY.md  - Ad filtering rules
+```
+
+### Core Components
+1. **State Management** - Central state object with all app data
+2. **Data Fetching** - Binance API (REST + future WebSocket)
+3. **Chart Rendering** - Canvas-based candlestick charts
+4. **Indicator Calculation** - RSI, MACD, MA, EMA, VWAP
+5. **Pattern Detection** - 19 candlestick patterns
+6. **Confluence Engine** - Multi-TF scoring with weight methods
+7. **Alert System** - Sound + visual alerts
+
+### Data Sources
+- **Binance API** - `/api/v3/klines` for candle data
+- **Binance API** - `/api/v3/ticker/24hr` for price data
+
+---
+
+## 📜 Feature Reference
+
+### Currently Available (v3.9)
+
+| Category | Features |
+|----------|----------|
+| **Timeframes** | 1m, 5m, 15m, 30m, 1h, 4h |
+| **Coins** | 48 cryptocurrencies |
+| **Indicators** | RSI, MACD, MA, EMA, VWAP |
+| **Patterns** | 19 candlestick patterns (toggleable) |
+| **Display** | 3 themes, Clear/Advanced modes |
+| **Interaction** | Pan, zoom, hover, click |
+| **Organization** | Watchlist, Coin comparison |
+| **Analysis** | Confluence scoring, History tracking |
+| **Alerts** | Sound alerts, Visual badges |
+
+### Pattern Detection (19 Total)
+
+**Single Candle:**
+- Doji, Hammer, Inverted Hammer, Hanging Man
+- Shooting Star, Marubozu, Spinning Top
+
+**Double Candle:**
+- Bullish Engulfing, Bearish Engulfing
+- Bullish Harami, Bearish Harami
+- Piercing Line, Dark Cloud Cover
+- Tweezer Top, Tweezer Bottom
+
+**Triple Candle:**
+- Morning Star, Evening Star
+- Three White Soldiers, Three Black Crows
+
+---
+
+## 🗺️ Future Roadmap
+
+### Short-term (Next Updates)
+- [ ] Pinch-to-zoom refinements for mobile
+- [ ] Historical markers review & refinement
+- [ ] Confluence calculation verification
+- [ ] History chart integration (from v2.0)
+
+### Medium-term
+- [ ] WebSocket real-time updates
 - [ ] Price alerts (notify at target price)
-- [ ] More alert sound options
+- [ ] Chart drawings (trendlines, horizontals)
+- [ ] More indicator options (Bollinger, Stochastic)
 
-### v4.0 (Planned)
-- [ ] PWA support (installable on mobile)
-- [ ] Service worker for offline access
-- [ ] Push notifications for alerts
-- [ ] App icons for Android/iOS
-
-### v4.x (Future Ideas)
-- [ ] Multi-exchange support (Coinbase, Kraken - halal spot only)
-- [ ] Custom indicator builder
-- [ ] Trading journal integration
-- [ ] Community features (share confluence signals)
-- [ ] Export reports (PDF/CSV)
-- [ ] More advanced pattern recognition
-- [ ] AI-assisted analysis (halal-compliant)
-
-### Monetization Plan
-- [x] Google AdSense (halal-filtered) - v3.8.1
-- [x] Donation/tip jar - v3.8
-- [ ] Affiliate links (halal exchanges only)
-- [ ] Premium tier (more coins, custom alerts, no ads)
+### Long-term
+- [ ] PWA (Progressive Web App) for mobile
+- [ ] More exchange support
+- [ ] Custom alert conditions
+- [ ] Session stats tracking
+- [ ] Coin notes/journal
 
 ---
 
-## 📁 File Structure Evolution
+## 💰 Monetization
 
-### v1.0 - v2.9
-```
-mtfccm-web/
-├── index.html
-├── styles.css (embedded or separate)
-├── app.js
-└── coins.js
-```
+### Implemented
+- [x] Google AdSense (halal-filtered) - Top & bottom banners
+- [x] Donation/tip jar (BTC, ETH, USDT)
 
-### v3.0+
-```
-mtfccm-web/
-├── index.html
-├── styles.css
-├── app.js
-├── coins.js
-├── README.md
-└── CHANGELOG.md
-```
+### Halal Ad Policy
+See `HALAL_AD_POLICY.md` for complete filtering rules.
 
-### v3.8+
-```
-mtfccm-web/
-├── index.html
-├── styles.css
-├── app.js
-├── coins.js
-├── README.md
-├── CHANGELOG.md
-└── HALAL_AD_POLICY.md
-```
+**Blocked:** Gambling, alcohol, tobacco, interest-based loans, conventional banks, adult content, music streaming
+
+**Allowed:** Halal spot exchanges, Takaful (Islamic insurance), halal food, modest fashion
 
 ---
 
-## 💡 Lessons Learned
+## 🤲 Halal Compliance
 
-1. **Version consistency matters** - Always update version numbers in ALL files
-2. **User preferences are key** - localStorage saves/loads make huge UX difference
-3. **Mobile-first isn't optional** - Many users trade on phones
-4. **Halal compliance is differentiator** - Unique value proposition for Muslim traders
-5. **Incremental releases better than big bangs** - v2.x series proves this
-6. **Settings should be discoverable but not intrusive** - Simple/Advanced modes
-
----
-
-## 🤲 Core Values (Unchanged Since v1.0)
-
-1. **Halal-Compliant** - Spot trading only, no leverage, no futures
-2. **Free & Accessible** - Core features always free
-3. **Privacy-Respecting** - No user tracking, all data local
-4. **Community-Focused** - Built for Muslim traders
-5. **Transparent** - Open about limitations and capabilities
+MTFCCM is designed for **halal spot trading only**:
+- ❌ No leverage trading features
+- ❌ No futures/margin integration
+- ❌ No short selling tools
+- ❌ No interest-based instruments
+- ✅ Spot trading analysis only
+- ✅ Educational focus
+- ✅ Halal-filtered advertising
 
 ---
 
-*Document generated: February 2025*
-*Current version: v3.8.1*
+## 📊 Growth Statistics
+
+| Metric | v1.0 | v3.9 | Growth |
+|--------|------|------|--------|
+| app.js size | 27KB | ~140KB | +419% |
+| Lines of code | 789 | ~3,600 | +356% |
+| Coins supported | 7 | 48 | +586% |
+| Patterns | 0 | 19 | New |
+| Themes | 1 | 3 | +200% |
+| Features | ~5 | 30+ | +500% |
+
+---
+
+## 📋 Version Archives
+
+| Version | Files Available | Notable Features |
+|---------|-----------------|------------------|
+| v2.0 | MTFCCM-Web-v2.zip | History Chart |
+| v2.1-3 | MTFCCM-Web-v2_1-3.zip | Confluence Markers |
+| v2.5 | MTFCCM-Web-v2_5.zip | Pattern Detection |
+| v3.0 | MTFCCM-Web-v3_0.zip | UI Overhaul |
+| v3.0-Enhanced | MTFCCM-Web-v3_0-Enhanced.zip | HiDPI, VWAP, Buy/Sell Vol |
+| v3.6 | mtfccm-web-v3_6.zip | View Modes |
+| v3.9 | MTFCCM-Web-v3.9.zip | Current |
+
+---
+
+*Document updated: February 2025*
+*Current Version: v3.9*

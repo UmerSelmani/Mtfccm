@@ -393,7 +393,31 @@ const DEFAULT_SETTINGS = {
     emaLines: [21],
     // Multiple RSI lines (periods)
     rsiLines: [14],
-    vwapEnabled: true
+    vwapEnabled: true,
+    // Pattern toggles - v3.9
+    patterns: {
+        doji: true,
+        hammer: true,
+        invHammer: true,
+        hangingMan: true,
+        shootStar: true,
+        marubozu: true,
+        spinTop: true,
+        bullEngulf: true,
+        bearEngulf: true,
+        bullHarami: true,
+        bearHarami: true,
+        piercing: true,
+        darkCloud: true,
+        tweezTop: true,
+        tweezBot: true,
+        morningStar: true,
+        eveningStar: true,
+        threeSoldiers: true,
+        threeCrows: true
+    },
+    // Comparison coins
+    comparisonCoins: []
 };
 
 /**

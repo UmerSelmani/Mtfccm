@@ -1,5 +1,29 @@
 # MTFCCM Changelog
 
+## v3.9 (Feb 2025)
+
+### Major Changes
+- **Pattern Toggles:** Individual checkboxes for each of 19 patterns in TF Settings
+  - Select All / Deselect All buttons
+  - Settings persist
+- **Coin Comparison Panel:** Side-by-side coin comparison (replaces modal)
+  - Up to 3 additional coins
+  - Mini charts with 24h candles
+  - Real-time price updates
+- **Settings Reorganization:**
+  - Moved all chart indicators to TF Settings
+  - Volume, MA, EMA, VWAP toggles in one place
+  - MA/EMA period inputs in TF Settings
+  - Volume style selector (Buy/Sell Split or Regular)
+- **Removed:** Old multi-coin modal, Indicators modal button
+
+### UI Changes
+- Removed 📊 Multi-Coin button from header
+- Primary coin area on left, comparison panel on right
+- Mobile: Stacks vertically
+
+---
+
 ## v3.8.2 (Feb 2025)
 
 ### Bug Fix

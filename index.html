@@ -30,7 +30,6 @@
                     <span class="pulse"></span>
                     <span id="alertCount">0</span>
                 </div>
-                <button id="multiCoinBtn" class="btn btn-icon btn-multi" title="Multi-Coin View">📊</button>
                 <button id="themeToggle" class="btn btn-icon btn-theme" title="Toggle Theme (T)">🌙</button>
             </div>
         </header>
@@ -88,20 +87,6 @@
             
             <!-- Sidebar Overlay for Mobile -->
             <div class="sidebar-overlay" id="sidebarOverlay"></div>
-
-            <!-- Multi-Coin View Container (hidden by default) -->
-            <div class="multi-coin-container" id="multiCoinContainer" style="display: none;">
-                <div class="multi-coin-header">
-                    <span>Multi-Coin View</span>
-                    <div class="multi-coin-controls">
-                        <button class="btn btn-sm" id="addCoinPanel" title="Add Coin Panel">+ Add Coin</button>
-                        <button class="btn btn-sm" id="closeMultiView" title="Close Multi-View">✕</button>
-                    </div>
-                </div>
-                <div class="multi-coin-panels" id="multiCoinPanels">
-                    <!-- Coin panels will be added dynamically -->
-                </div>
-            </div>
 
             <!-- Main Content Area (Single Coin View) -->
             <main class="main-content" id="singleCoinView">
@@ -241,90 +226,113 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="card-settings-section">
+                            <span class="settings-section-label">📊 Chart Indicators</span>
+                            <div class="card-settings-row">
+                                <label>Show on chart</label>
+                                <div class="modifier-toggles">
+                                    <label class="mini-toggle"><input type="checkbox" id="showChartVolume" checked><span>Vol</span></label>
+                                    <label class="mini-toggle"><input type="checkbox" id="showChartMA"><span>MA</span></label>
+                                    <label class="mini-toggle"><input type="checkbox" id="showChartEMA" checked><span>EMA</span></label>
+                                    <label class="mini-toggle"><input type="checkbox" id="showChartVWAP"><span>VWAP</span></label>
+                                </div>
+                            </div>
+                            <div class="card-settings-row">
+                                <label for="volumeTypeSelect">Volume Style</label>
+                                <select id="volumeTypeSelect">
+                                    <option value="buysell">Buy/Sell Split</option>
+                                    <option value="regular">Regular</option>
+                                </select>
+                            </div>
+                            <div class="card-settings-row">
+                                <label for="maLinesInputTF">MA Periods</label>
+                                <input type="text" id="maLinesInputTF" placeholder="20, 50, 200" value="20" class="input-sm">
+                            </div>
+                            <div class="card-settings-row">
+                                <label for="emaLinesInputTF">EMA Periods</label>
+                                <input type="text" id="emaLinesInputTF" placeholder="9, 21, 55" value="21" class="input-sm">
+                            </div>
+                        </div>
+                        <div class="card-settings-section">
+                            <span class="settings-section-label">🕯️ Candle Patterns</span>
+                            <div class="patterns-grid">
+                                <label class="pattern-toggle"><input type="checkbox" id="patternDoji" checked><span>Doji</span></label>
+                                <label class="pattern-toggle"><input type="checkbox" id="patternHammer" checked><span>Hammer</span></label>
+                                <label class="pattern-toggle"><input type="checkbox" id="patternInvHammer" checked><span>Inv Hammer</span></label>
+                                <label class="pattern-toggle"><input type="checkbox" id="patternHangingMan" checked><span>Hanging Man</span></label>
+                                <label class="pattern-toggle"><input type="checkbox" id="patternShootStar" checked><span>Shoot Star</span></label>
+                                <label class="pattern-toggle"><input type="checkbox" id="patternMarubozu" checked><span>Marubozu</span></label>
+                                <label class="pattern-toggle"><input type="checkbox" id="patternSpinTop" checked><span>Spin Top</span></label>
+                                <label class="pattern-toggle"><input type="checkbox" id="patternBullEngulf" checked><span>Bull Engulf</span></label>
+                                <label class="pattern-toggle"><input type="checkbox" id="patternBearEngulf" checked><span>Bear Engulf</span></label>
+                                <label class="pattern-toggle"><input type="checkbox" id="patternBullHarami" checked><span>Bull Harami</span></label>
+                                <label class="pattern-toggle"><input type="checkbox" id="patternBearHarami" checked><span>Bear Harami</span></label>
+                                <label class="pattern-toggle"><input type="checkbox" id="patternPiercing" checked><span>Piercing</span></label>
+                                <label class="pattern-toggle"><input type="checkbox" id="patternDarkCloud" checked><span>Dark Cloud</span></label>
+                                <label class="pattern-toggle"><input type="checkbox" id="patternTweezTop" checked><span>Tweez Top</span></label>
+                                <label class="pattern-toggle"><input type="checkbox" id="patternTweezBot" checked><span>Tweez Bot</span></label>
+                                <label class="pattern-toggle"><input type="checkbox" id="patternMorningStar" checked><span>Morning ⭐</span></label>
+                                <label class="pattern-toggle"><input type="checkbox" id="patternEveningStar" checked><span>Evening ⭐</span></label>
+                                <label class="pattern-toggle"><input type="checkbox" id="pattern3Soldiers" checked><span>3 Soldiers</span></label>
+                                <label class="pattern-toggle"><input type="checkbox" id="pattern3Crows" checked><span>3 Crows</span></label>
+                            </div>
+                            <div class="pattern-actions">
+                                <button class="btn btn-xs" id="selectAllPatterns">Select All</button>
+                                <button class="btn btn-xs" id="deselectAllPatterns">Deselect All</button>
+                            </div>
+                        </div>
                     </div>
                     <!-- TF Toggles with Timers - Always visible -->
                     <div class="tf-toggles-row" id="tfTogglesRow">
                         <!-- TF toggle buttons with timers will be loaded dynamically -->
                     </div>
                     <div class="chart-options">
-                        <button id="indicatorsBtn" class="btn btn-sm btn-indicators">📈 Indicators</button>
-                        <div class="chart-quick-toggles">
-                            <label class="quick-toggle"><input type="checkbox" id="showChartVolume" checked><span>Vol</span></label>
-                            <label class="quick-toggle"><input type="checkbox" id="showChartMA"><span>MA</span></label>
-                            <label class="quick-toggle"><input type="checkbox" id="showChartEMA" checked><span>EMA</span></label>
-                        </div>
                         <span class="chart-help">Scroll/Pinch to zoom • Drag to pan</span>
                     </div>
                 </section>
 
-                <!-- Timeframe Charts (This scrolls with the page) -->
-                <div class="timeframes-list" id="timeframesList">
-                    <!-- Timeframe rows will be loaded dynamically -->
+                <!-- Main Content Area with Coin Panels -->
+                <div class="content-with-coins">
+                    <!-- Primary Coin (Left) -->
+                    <div class="primary-coin-area">
+                        <!-- Timeframe Charts (This scrolls with the page) -->
+                        <div class="timeframes-list" id="timeframesList">
+                            <!-- Timeframe rows will be loaded dynamically -->
+                        </div>
+                    </div>
+                    
+                    <!-- Additional Coins Panel (Right) -->
+                    <div class="additional-coins-panel" id="additionalCoinsPanel">
+                        <div class="add-coin-header">
+                            <span>➕ Compare Coins</span>
+                        </div>
+                        <div class="add-coin-slots" id="addCoinSlots">
+                            <!-- Up to 3 additional coin slots -->
+                            <div class="coin-slot" data-slot="1">
+                                <select class="coin-slot-select" id="coinSlot1">
+                                    <option value="">+ Add Coin</option>
+                                </select>
+                                <button class="btn-remove-coin" data-slot="1" style="display:none;">✕</button>
+                            </div>
+                            <div class="coin-slot" data-slot="2">
+                                <select class="coin-slot-select" id="coinSlot2">
+                                    <option value="">+ Add Coin</option>
+                                </select>
+                                <button class="btn-remove-coin" data-slot="2" style="display:none;">✕</button>
+                            </div>
+                            <div class="coin-slot" data-slot="3">
+                                <select class="coin-slot-select" id="coinSlot3">
+                                    <option value="">+ Add Coin</option>
+                                </select>
+                                <button class="btn-remove-coin" data-slot="3" style="display:none;">✕</button>
+                            </div>
+                        </div>
+                        <div class="comparison-coins" id="comparisonCoins">
+                            <!-- Selected comparison coins will show mini charts here -->
+                        </div>
+                    </div>
                 </div>
             </main>
-        </div>
-
-        <!-- Indicators Modal -->
-        <div class="modal" id="indicatorsModal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>📈 Chart Indicators</h2>
-                    <button class="btn btn-icon modal-close" id="closeIndicators">✕</button>
-                </div>
-                <div class="modal-body">
-                    <div class="settings-group">
-                        <h3>Moving Averages</h3>
-                        <div class="setting-item">
-                            <label for="maLinesInput">MA Lines (periods)</label>
-                            <input type="text" id="maLinesInput" placeholder="e.g., 20, 50, 200" value="20">
-                        </div>
-                        <div class="setting-item">
-                            <label for="emaLinesInput">EMA Lines (periods)</label>
-                            <input type="text" id="emaLinesInput" placeholder="e.g., 9, 21, 55" value="21">
-                        </div>
-                        <div class="setting-item">
-                            <label for="showChartVWAP">Show VWAP</label>
-                            <input type="checkbox" id="showChartVWAPModal">
-                        </div>
-                    </div>
-                    <div class="settings-group">
-                        <h3>Oscillators</h3>
-                        <div class="setting-item">
-                            <label for="rsiLinesInput">RSI Periods</label>
-                            <input type="text" id="rsiLinesInput" placeholder="e.g., 14, 7, 21" value="14">
-                        </div>
-                        <div class="setting-item">
-                            <label for="showChartMACDModal">Show MACD on chart</label>
-                            <input type="checkbox" id="showChartMACDModal">
-                        </div>
-                    </div>
-                    <div class="settings-group">
-                        <h3>Overlays</h3>
-                        <div class="setting-item">
-                            <label for="showChartPatternsModal">Show Pattern Labels</label>
-                            <input type="checkbox" id="showChartPatternsModal" checked>
-                        </div>
-                        <div class="setting-item">
-                            <label for="showChartMarkersModal">Show Confluence Markers</label>
-                            <input type="checkbox" id="showChartMarkersModal" checked>
-                        </div>
-                        <div class="setting-item">
-                            <label for="showChartVolumeModal">Show Volume Bars</label>
-                            <input type="checkbox" id="showChartVolumeModal" checked>
-                        </div>
-                        <div class="setting-item">
-                            <label for="volumeTypeModal">Volume Style</label>
-                            <select id="volumeTypeModal">
-                                <option value="buysell">Buy/Sell Split</option>
-                                <option value="regular">Regular (Bull/Bear)</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-primary" id="saveIndicators">Apply</button>
-                </div>
-            </div>
         </div>
 
         <!-- Bottom Ad Banner (Halal-Filtered) -->
@@ -340,7 +348,7 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>MTFCCM v3.8.2 | Binance Data | ☪️ Halal - Spot Only | Feb 2025</p>
+            <p>MTFCCM v3.9 | Binance Data | ☪️ Halal - Spot Only | Feb 2025</p>
             <div class="footer-support">
                 <span>Support this project:</span>
                 <a href="#" id="tipJarBtn" class="tip-link">☕ Buy me a coffee</a>
