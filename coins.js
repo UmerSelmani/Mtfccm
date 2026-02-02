@@ -328,6 +328,20 @@ const COINS_CONFIG = [
         shortName: "COTI",
         icon: "https://assets.coingecko.com/coins/images/2962/small/Coti.png",
         decimals: 5
+    },
+    {
+        symbol: "AXLUSDT",
+        name: "Axelar",
+        shortName: "AXL",
+        icon: "https://assets.coingecko.com/coins/images/27277/small/V-65_xQ1_400x400.jpeg",
+        decimals: 4
+    },
+    {
+        symbol: "KAIAUSDT",
+        name: "Kaia",
+        shortName: "KAIA",
+        icon: "https://assets.coingecko.com/coins/images/39843/small/kaia.png",
+        decimals: 4
     }
 ];
 
@@ -360,25 +374,55 @@ const DEFAULT_SETTINGS = {
     showWarnings: true,
     theme: "dark",
     advancedMode: true,
-    viewMode: "advanced", // 'clear' or 'advanced' - new setting for v3.6
-    candlePopupType: "hover-tab", // 'hover-tab' or 'click-popup' - new setting for v3.6
+    viewMode: "advanced", // 'clear' or 'advanced' - v3.8
+    candlePopupType: "hover-tab", // 'hover-tab' or 'click-popup' - v3.8
     chartHeight: 120,
     chartCandles: 15,
     showChartRSI: false,
     showChartMACD: false,
     showChartVolume: true,
+    volumeType: "buysell", // 'buysell' or 'regular' - v3.8.2
     showChartPatterns: true,
     showChartMarkers: true,
     showChartMA: false,
     showChartEMA: true,
     showChartVWAP: false,
+    // Display Options - v3.9.2
+    showPriceInfo: true,
+    showTimers: true,
+    showIndicatorBadges: true,
+    showConfluenceBar: true,
     // Multiple MA lines (periods)
     maLines: [20],
     // Multiple EMA lines (periods)
     emaLines: [21],
     // Multiple RSI lines (periods)
     rsiLines: [14],
-    vwapEnabled: true
+    vwapEnabled: true,
+    // Pattern toggles - v3.9
+    patterns: {
+        doji: true,
+        hammer: true,
+        invHammer: true,
+        hangingMan: true,
+        shootStar: true,
+        marubozu: true,
+        spinTop: true,
+        bullEngulf: true,
+        bearEngulf: true,
+        bullHarami: true,
+        bearHarami: true,
+        piercing: true,
+        darkCloud: true,
+        tweezTop: true,
+        tweezBot: true,
+        morningStar: true,
+        eveningStar: true,
+        threeSoldiers: true,
+        threeCrows: true
+    },
+    // Comparison coins
+    comparisonCoins: []
 };
 
 /**
