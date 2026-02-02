@@ -1,9 +1,9 @@
 /**
  * MTFCCM - Multi-Timeframe Candle Close Monitor
- * Main Application Logic v3.9 - Multi-coin view, TF price info, OHLCV colors
+ * Main Application Logic v3.9.1 - Multi-coin view, TF price info, OHLCV colors
  */
 
-const APP_VERSION = "3.9";
+const APP_VERSION = "3.9.1";
 
 // ============================================
 // STATE MANAGEMENT
@@ -2084,8 +2084,12 @@ function toggleTimeframe(tfId) {
 }
 
 function renderTimeframeRows() {
-    const container = document.getElementById('timeframesList');
+    // Try new container first, fall back to old
+    let container = document.getElementById('mainCoinCharts') || document.getElementById('timeframesList');
     const enabledTFs = state.timeframes.filter(tf => tf.enabled);
+    
+    // Update main coin panel header
+    updateMainCoinPanelHeader();
     
     if (enabledTFs.length === 0) {
         container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:2rem;">Select timeframes above</p>';
@@ -2258,9 +2262,58 @@ function updatePriceDisplay(data) {
             volume
         };
         
+        // Update main coin panel header
+        updateMainCoinPanelHeader();
+        
         // Re-render timeframe rows to update price displays
         renderTimeframeRows();
     }
+}
+
+function updateMainCoinPanelHeader() {
+    if (!state.currentCoin) return;
+    
+    const coin = state.currentCoin;
+    const coinData = state.coinData[coin.symbol];
+    const baseSymbol = coin.symbol.replace('USDT', '').toLowerCase();
+    
+    // Update logo
+    const logoEl = document.getElementById('mainCoinLogo');
+    if (logoEl) {
+        logoEl.src = getCoinLogoUrl(baseSymbol);
+        logoEl.onerror = () => { logoEl.src = getDefaultCoinLogo(); };
+    }
+    
+    // Update name
+    const nameEl = document.getElementById('mainCoinName');
+    if (nameEl) nameEl.textContent = coin.name;
+    
+    // Update price
+    const priceEl = document.getElementById('mainCoinPrice');
+    if (priceEl && coinData) {
+        priceEl.textContent = `$${coinData.price.toFixed(coin.decimals)}`;
+    }
+    
+    // Update change
+    const changeEl = document.getElementById('mainCoinChange');
+    if (changeEl && coinData) {
+        const change = coinData.change;
+        changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+        changeEl.className = `coin-panel-price-change ${change >= 0 ? 'bull' : 'bear'}`;
+    }
+    
+    // Update star (watchlist)
+    const starEl = document.getElementById('mainCoinStar');
+    if (starEl) {
+        const watchlist = getWatchlist();
+        const isWatched = watchlist.includes(coin.symbol);
+        starEl.textContent = isWatched ? '★' : '☆';
+        starEl.classList.toggle('active', isWatched);
+    }
+    
+    // Update panel data attribute
+    const panelEl = document.getElementById('mainCoinPanel');
+    if (panelEl) panelEl.dataset.symbol = coin.symbol;
 }
 
 function updateConfluenceDisplay(pct, bullCount, bearCount, tfWeights) {
@@ -3450,19 +3503,32 @@ function populateCoinDropdown() {
         const isAlreadyAdded = state.addedCoins.includes(coin.symbol);
         const isDisabled = isCurrentCoin || isAlreadyAdded;
         
-        // Get logo URL (use CoinGecko or similar)
-        const logoUrl = `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/32/color/${coin.symbol.replace('USDT', '').toLowerCase()}.png`;
+        // Get logo URL - try multiple sources with fallback
+        const baseSymbol = coin.symbol.replace('USDT', '').toLowerCase();
+        const logoUrl = getCoinLogoUrl(baseSymbol);
         
         return `
             <div class="coin-dropdown-item ${isDisabled ? 'disabled' : ''}" 
                  data-symbol="${coin.symbol}" 
                  ${isDisabled ? '' : 'onclick="addCoinToComparison(\'' + coin.symbol + '\')"'}>
-                <img class="coin-dropdown-logo" src="${logoUrl}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22><circle cx=%2210%22 cy=%2210%22 r=%2210%22 fill=%22%23666%22/></svg>'">
+                <img class="coin-dropdown-logo" src="${logoUrl}" onerror="this.onerror=null;this.src=getDefaultCoinLogo();">
                 <span class="coin-dropdown-name">${coin.name}</span>
-                <span class="coin-dropdown-symbol">${coin.symbol.replace('USDT', '')}</span>
+                <span class="coin-dropdown-symbol">${baseSymbol.toUpperCase()}</span>
             </div>
         `;
     }).join('');
+}
+
+// Get coin logo URL with multiple fallback sources
+function getCoinLogoUrl(symbol) {
+    // Use CryptoCompare as primary source (better coverage)
+    return `https://www.cryptocompare.com/media/37746238/${symbol}.png`;
+}
+
+// Get default coin logo (gray circle with coin initial)
+function getDefaultCoinLogo() {
+    return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><circle cx="12" cy="12" r="12" fill="#4a5568"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="12" font-family="Arial">$</text></svg>');
+}
 }
 
 function filterCoinDropdown(query) {

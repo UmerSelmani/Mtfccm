@@ -282,42 +282,51 @@
                             </div>
                         </div>
                     </div>
-                    <!-- TF Toggles with Timers - Always visible -->
-                    <div class="tf-toggles-row" id="tfTogglesRow">
-                        <!-- TF toggle buttons with timers will be loaded dynamically -->
+                    <!-- TF Toggles with Timers + Add Coin Button -->
+                    <div class="tf-controls-row">
+                        <div class="tf-toggles-row" id="tfTogglesRow">
+                            <!-- TF toggle buttons with timers will be loaded dynamically -->
+                        </div>
+                        <div class="add-coin-box" id="addCoinBox">
+                            <button class="add-coin-btn" id="addCoinBtn" title="Add coin to compare (max 3)">
+                                <span class="add-coin-plus">+</span>
+                                <span class="add-coin-text">Add</span>
+                            </button>
+                            <!-- Dropdown -->
+                            <div class="add-coin-dropdown" id="addCoinDropdown" style="display: none;">
+                                <input type="text" class="coin-dropdown-search" id="coinDropdownSearch" placeholder="Search coins...">
+                                <div class="coin-dropdown-list" id="coinDropdownList">
+                                    <!-- Coins will be populated here -->
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="chart-options">
                         <span class="chart-help">Scroll/Pinch to zoom • Drag to pan</span>
                     </div>
                 </section>
 
-                <!-- Main Content Area with Coin Panels -->
-                <!-- Timeframe Charts Area with Add Coin -->
-                <div class="timeframes-area">
-                    <!-- Main Timeframes List -->
-                    <div class="timeframes-list" id="timeframesList">
-                        <!-- Timeframe rows will be loaded dynamically -->
-                    </div>
-                    
-                    <!-- Added Coins Container (shows horizontally next to main) -->
-                    <div class="added-coins-container" id="addedCoinsContainer">
-                        <!-- Added coin mini-columns will appear here -->
-                    </div>
-                    
-                    <!-- Add Coin Button -->
-                    <div class="add-coin-box" id="addCoinBox">
-                        <button class="add-coin-btn" id="addCoinBtn" title="Add coin to compare">
-                            <span class="add-coin-plus">+</span>
-                            <span class="add-coin-text">Add Coin</span>
-                        </button>
-                        <!-- Dropdown -->
-                        <div class="add-coin-dropdown" id="addCoinDropdown" style="display: none;">
-                            <input type="text" class="coin-dropdown-search" id="coinDropdownSearch" placeholder="Search coins...">
-                            <div class="coin-dropdown-list" id="coinDropdownList">
-                                <!-- Coins will be populated here -->
+                <!-- Multi-Coin Panels Container (Side by Side) -->
+                <div class="coin-panels-container" id="coinPanelsContainer">
+                    <!-- Main Coin Panel -->
+                    <div class="coin-panel main-coin-panel" id="mainCoinPanel" data-symbol="">
+                        <div class="coin-panel-header">
+                            <div class="coin-panel-info">
+                                <img class="coin-panel-logo" id="mainCoinLogo" src="" alt="">
+                                <span class="coin-panel-name" id="mainCoinName">--</span>
+                                <button class="coin-panel-star" id="mainCoinStar" title="Add to watchlist">☆</button>
+                            </div>
+                            <div class="coin-panel-price">
+                                <span class="coin-panel-price-value" id="mainCoinPrice">$0.00</span>
+                                <span class="coin-panel-price-change" id="mainCoinChange">0%</span>
                             </div>
                         </div>
+                        <div class="coin-panel-charts" id="mainCoinCharts">
+                            <!-- Timeframe rows will be loaded dynamically -->
+                        </div>
                     </div>
+                    
+                    <!-- Added Coin Panels will be inserted here dynamically -->
                 </div>
             </main>
         </div>
@@ -335,7 +344,7 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>MTFCCM v3.9 | Binance Data | ☪️ Halal - Spot Only | Feb 2025</p>
+            <p>MTFCCM v3.9.1 | Binance Data | ☪️ Halal - Spot Only | Feb 2025</p>
             <div class="footer-support">
                 <span>Support this project:</span>
                 <a href="#" id="tipJarBtn" class="tip-link">☕ Buy me a coffee</a>

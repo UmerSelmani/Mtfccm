@@ -1,5 +1,22 @@
 # MTFCCM Changelog
 
+## v3.9.1 (Feb 2025)
+
+### UI/UX Changes
+- **Add Coin button** moved to TF controls row (after timeframe buttons)
+- **Multi-coin panels:** Side-by-side layout with main coin having its own panel header
+- **Coin panel header:** Shows logo, name, price, change%, watchlist star
+- **Background decoration:** Crypto symbols (₿ Ξ ◎ ⬡ ▲) in all themes
+
+### Bug Fixes
+- **Coin logos:** Improved logo source (CryptoCompare CDN) with better fallback
+- **VWAP:** Verified working - toggle in TF Settings → Chart Indicators
+
+### About Eye Icon (👁️)
+The eye button next to Coins is **Quick Glance Mode** - a minimalist view showing only price and confluence bar. Can be removed if not needed.
+
+---
+
 ## v3.9 (Feb 2025)
 
 ### Major Changes
