@@ -466,8 +466,8 @@ function selectCoin(symbol) {
         const iconEl = document.getElementById('selectedCoinIcon');
         const nameEl = document.getElementById('selectedCoinName');
         const starBtn = document.getElementById('headerStarBtn');
-        const mainCoinBlockNameEl = document.getElementById('mainCoinBlockName');
-        const mainCoinBlock = document.getElementById('mainCoinBlock');
+        const mainBlockCoinNameEl = document.getElementById('mainBlockCoinName');
+        const mainTfBlock = document.getElementById('mainTfBlock');
         
         if (iconEl) {
             iconEl.src = state.currentCoin.icon;
@@ -477,14 +477,12 @@ function selectCoin(symbol) {
         if (nameEl) {
             nameEl.textContent = state.currentCoin.shortName;
         }
-        // Update main coin block header
-        if (mainCoinBlockNameEl) {
-            const baseSymbol = symbol.replace('USDT', '').toLowerCase();
-            const logoUrl = getCoinLogoUrl(baseSymbol);
-            mainCoinBlockNameEl.innerHTML = `<img class="coin-logo" src="${logoUrl}" onerror="this.style.display='none';"> ${state.currentCoin.name}`;
+        // Update main TF block header with coin name
+        if (mainBlockCoinNameEl) {
+            mainBlockCoinNameEl.textContent = state.currentCoin.name;
         }
-        if (mainCoinBlock) {
-            mainCoinBlock.dataset.symbol = symbol;
+        if (mainTfBlock) {
+            mainTfBlock.dataset.symbol = symbol;
         }
         // Update star button state
         if (starBtn) {
@@ -2069,7 +2067,7 @@ function playAlertSound() {
 // ============================================
 
 function renderTFTogglesWithTimers() {
-    const container = document.getElementById('mainTfToggles');
+    const container = document.getElementById('mainBlockToggles');
     if (!container) return;
     
     container.innerHTML = state.timeframes.map(tf => {
@@ -2462,6 +2460,14 @@ function renderConfluenceHistory() {
 // ============================================
 
 function setupEventListeners() {
+    // Main TF Block settings button
+    document.getElementById('mainBlockSettingsBtn')?.addEventListener('click', () => {
+        const settings = document.getElementById('mainBlockSettings');
+        if (settings) {
+            settings.style.display = settings.style.display === 'none' ? 'block' : 'none';
+        }
+    });
+    
     // Sidebar toggle
     document.getElementById('sidebarToggle')?.addEventListener('click', openSidebar);
     document.getElementById('sidebarClose')?.addEventListener('click', closeSidebar);
@@ -3467,11 +3473,11 @@ function updateAddButtonVisibility() {
 }
 
 function renderAddedCoins() {
-    const container = document.getElementById('coinBlocksContainer');
+    const container = document.getElementById('addedTfBlocks');
     if (!container) return;
     
-    // Remove existing added coin blocks (keep main block)
-    container.querySelectorAll('.coin-block:not(#mainCoinBlock)').forEach(el => el.remove());
+    // Remove existing added blocks
+    container.innerHTML = '';
     
     state.addedCoins.forEach(symbol => {
         const coin = state.coins.find(c => c.symbol === symbol);
@@ -3480,9 +3486,21 @@ function renderAddedCoins() {
         const baseSymbol = symbol.replace('USDT', '');
         const logoUrl = getCoinLogoUrl(baseSymbol.toLowerCase());
         
-        // Build TF toggle buttons HTML (same as main)
-        const tfTogglesHtml = state.timeframes.map(tf => {
-            const secondsToClose = getSecondsToClose(tf);
+        // Initialize added coin's TF state if not exists
+        if (!state.addedCoinTfState) state.addedCoinTfState = {};
+        if (!state.addedCoinTfState[symbol]) {
+            // Copy from main coin's enabled TFs
+            state.addedCoinTfState[symbol] = state.timeframes.map(tf => ({
+                id: tf.id,
+                label: tf.label,
+                enabled: tf.enabled
+            }));
+        }
+        
+        // Build TF toggle buttons HTML using this coin's TF state
+        const tfTogglesHtml = state.addedCoinTfState[symbol].map(tf => {
+            const mainTf = state.timeframes.find(t => t.id === tf.id);
+            const secondsToClose = getSecondsToClose(mainTf);
             return `
                 <div class="tf-toggle-btn ${tf.enabled ? 'active' : ''}" data-tf="${tf.id}" data-symbol="${symbol}">
                     <span class="tf-toggle-label">${tf.label}</span>
@@ -3491,40 +3509,59 @@ function renderAddedCoins() {
             `;
         }).join('');
         
-        // Create full coin block (same structure as main)
+        // Create full TF block
         const block = document.createElement('div');
-        block.className = 'coin-block added-coin-block';
+        block.className = 'tf-block added-tf-block';
         block.dataset.symbol = symbol;
         
         block.innerHTML = `
-            <!-- Timeframes Header -->
-            <div class="tf-header-section">
-                <div class="card tf-controls-card">
-                    <div class="card-header">
-                        <h2>📊 Timeframes</h2>
-                        <button class="btn btn-sm btn-card-settings" title="Settings">⚙️</button>
-                    </div>
-                    <div class="tf-toggles-row">
-                        ${tfTogglesHtml}
+            <div class="tf-block-header">
+                <span class="tf-block-title">
+                    <img class="coin-logo" src="${logoUrl}" onerror="this.style.display='none';">
+                    <span>${coin.name}</span>
+                    <span class="coin-price" id="blockPrice-${symbol}">Loading...</span>
+                </span>
+                <div>
+                    <button class="btn btn-sm btn-card-settings" data-symbol="${symbol}" title="Settings">⚙️</button>
+                    <button class="tf-block-remove" onclick="removeAddedCoin('${symbol}')" title="Remove">✕</button>
+                </div>
+            </div>
+            <div class="tf-block-settings" id="blockSettings-${symbol}" style="display: none;">
+                <div class="card-settings-section">
+                    <span class="settings-section-label">📊 Indicators</span>
+                    <div class="modifier-toggles">
+                        <label class="mini-toggle"><input type="checkbox" id="showRSI-${symbol}"><span>RSI</span></label>
+                        <label class="mini-toggle"><input type="checkbox" id="showMACD-${symbol}"><span>MACD</span></label>
+                        <label class="mini-toggle"><input type="checkbox" id="showVolume-${symbol}" checked><span>Volume</span></label>
                     </div>
                 </div>
             </div>
-            <!-- Coin Charts -->
-            <div class="coin-charts-section">
-                <div class="coin-charts-header">
-                    <span class="coin-name">
-                        <img class="coin-logo" src="${logoUrl}" onerror="this.style.display='none';">
-                        ${coin.name}
-                    </span>
-                    <span class="coin-price" id="coinPrice-${symbol}">Loading...</span>
-                    <button class="coin-remove" onclick="removeAddedCoin('${symbol}')" title="Remove">✕</button>
-                </div>
-                <div class="timeframes-list" id="chartsList-${symbol}">
-                    <div style="text-align:center;padding:1rem;color:var(--text-muted);font-size:0.75rem;">Loading...</div>
-                </div>
+            <div class="tf-block-toggles" id="blockToggles-${symbol}">
+                ${tfTogglesHtml}
+            </div>
+            <div class="tf-block-charts" id="blockCharts-${symbol}">
+                <div style="text-align:center;padding:1rem;color:var(--text-muted);font-size:0.75rem;">Loading...</div>
             </div>
         `;
         container.appendChild(block);
+        
+        // Add TF toggle click handlers for this coin
+        block.querySelectorAll('.tf-toggle-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tfId = btn.dataset.tf;
+                const coinSymbol = btn.dataset.symbol;
+                toggleAddedCoinTf(coinSymbol, tfId);
+            });
+        });
+        
+        // Add settings button handler
+        const settingsBtn = block.querySelector('.btn-card-settings');
+        settingsBtn?.addEventListener('click', () => {
+            const settings = document.getElementById(`blockSettings-${symbol}`);
+            if (settings) {
+                settings.style.display = settings.style.display === 'none' ? 'block' : 'none';
+            }
+        });
         
         // Initialize data storage for this coin
         if (!state.addedCoinData) state.addedCoinData = {};
@@ -3540,6 +3577,28 @@ function renderAddedCoins() {
     });
 }
 
+// Toggle TF for added coin (independent from main)
+function toggleAddedCoinTf(symbol, tfId) {
+    if (!state.addedCoinTfState || !state.addedCoinTfState[symbol]) return;
+    
+    const tf = state.addedCoinTfState[symbol].find(t => t.id === tfId);
+    if (tf) {
+        tf.enabled = !tf.enabled;
+        
+        // Update UI
+        const btn = document.querySelector(`.tf-toggle-btn[data-tf="${tfId}"][data-symbol="${symbol}"]`);
+        if (btn) {
+            btn.classList.toggle('active', tf.enabled);
+        }
+        
+        // Re-render this coin's charts
+        const coin = state.coins.find(c => c.symbol === symbol);
+        if (coin) {
+            fetchAddedCoinFullData(symbol, coin);
+        }
+    }
+}
+
 async function fetchAddedCoinFullData(symbol, coin) {
     try {
         // Fetch current price
@@ -3549,8 +3608,8 @@ async function fetchAddedCoinFullData(symbol, coin) {
         const price = parseFloat(priceData.lastPrice);
         const change = parseFloat(priceData.priceChangePercent);
         
-        // Update price display in coin header
-        const priceEl = document.getElementById(`coinPrice-${symbol}`);
+        // Update price display in block header
+        const priceEl = document.getElementById(`blockPrice-${symbol}`);
         if (priceEl) {
             priceEl.innerHTML = `
                 <span class="price-value">$${price.toFixed(coin.decimals)}</span>
@@ -3564,11 +3623,28 @@ async function fetchAddedCoinFullData(symbol, coin) {
             state.addedCoinData[symbol].change = change;
         }
         
-        // Fetch candles for each enabled timeframe
-        const enabledTFs = state.timeframes.filter(tf => tf.enabled);
+        // Clear charts container first
+        const chartsContainer = document.getElementById(`blockCharts-${symbol}`);
+        if (chartsContainer) {
+            chartsContainer.innerHTML = '';
+        }
+        
+        // Use this coin's TF state (independent from main)
+        const coinTfState = state.addedCoinTfState?.[symbol] || [];
+        const enabledTFs = coinTfState.filter(tf => tf.enabled);
+        
+        if (enabledTFs.length === 0) {
+            if (chartsContainer) {
+                chartsContainer.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-muted);font-size:0.75rem;">Select timeframes above</div>';
+            }
+            return;
+        }
         
         for (const tf of enabledTFs) {
-            await fetchAddedCoinTimeframe(symbol, coin, tf);
+            const mainTf = state.timeframes.find(t => t.id === tf.id);
+            if (mainTf) {
+                await fetchAddedCoinTimeframe(symbol, coin, mainTf);
+            }
         }
         
     } catch (err) {
@@ -3604,7 +3680,7 @@ async function fetchAddedCoinTimeframe(symbol, coin, tf) {
 }
 
 function renderAddedCoinTimeframeRow(symbol, coin, tf, candles) {
-    const chartsContainer = document.getElementById(`chartsList-${symbol}`);
+    const chartsContainer = document.getElementById(`blockCharts-${symbol}`);
     if (!chartsContainer) return;
     
     // Remove loading text if present

@@ -2967,138 +2967,112 @@ body.no-ads .ad-container {
     gap: 0.5rem;
 }
 
-/* ===== MULTI-COIN DISPLAY AREA ===== */
-.coins-display-area {
+/* ===== TF BLOCKS AREA (Multi-Coin) ===== */
+.tf-blocks-area {
     display: flex;
     gap: 0.75rem;
     align-items: flex-start;
 }
 
-/* Flexible Coin Blocks Container */
-.coin-blocks-container {
-    display: flex;
-    gap: 0.75rem;
-    flex: 1;
-    min-width: 0;
-}
-
-/* Individual Coin Block - FLEXIBLE WIDTH */
-.coin-block {
-    flex: 1 1 0;
-    min-width: 280px;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-}
-
-/* Timeframes Header Section */
-.tf-header-section {
-    flex-shrink: 0;
-}
-
-.tf-header-section .tf-controls-card {
-    border-radius: var(--radius-md) var(--radius-md) 0 0;
-    margin-bottom: 0;
-}
-
-.tf-header-section .card-header {
-    padding: 0.5rem 0.75rem;
-}
-
-.tf-header-section .card-header h2 {
-    font-size: 0.85rem;
-}
-
-.tf-header-section .tf-toggles-row {
-    padding: 0.5rem;
-    border-top: 1px solid var(--border-color);
-}
-
-/* Coin Charts Section */
-.coin-charts-section {
-    flex: 1;
+/* TF Block - Each coin's complete timeframe section */
+.tf-block {
+    flex: 1 1 320px;
+    min-width: 300px;
+    max-width: 450px;
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    border-top: none;
-    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    border-radius: var(--radius-md);
     overflow: hidden;
 }
 
-.coin-charts-header {
+.main-tf-block {
+    border-color: var(--accent-color);
+    border-width: 2px;
+}
+
+.tf-block-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.4rem 0.75rem;
+    padding: 0.5rem 0.75rem;
     background: var(--bg-tertiary);
     border-bottom: 1px solid var(--border-color);
 }
 
-.coin-charts-header .coin-name {
-    font-size: 0.8rem;
+.tf-block-title {
+    font-size: 0.85rem;
     font-weight: 600;
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 
-.coin-charts-header .coin-logo {
-    width: 18px;
-    height: 18px;
+.tf-block-title .coin-logo {
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
 }
 
-.coin-charts-header .coin-price {
+.tf-block-title .coin-price {
     font-size: 0.7rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    font-weight: 500;
+    margin-left: 0.5rem;
 }
 
-.coin-charts-header .price-value {
-    font-weight: 600;
-    font-family: 'JetBrains Mono', monospace;
-}
-
-.coin-charts-header .price-change {
+.tf-block-title .price-change {
     font-size: 0.65rem;
+    margin-left: 0.25rem;
 }
 
-.coin-charts-header .price-change.bull { color: var(--bull-color); }
-.coin-charts-header .price-change.bear { color: var(--bear-color); }
+.tf-block-title .price-change.bull { color: var(--bull-color); }
+.tf-block-title .price-change.bear { color: var(--bear-color); }
 
-.coin-charts-header .coin-remove {
+.tf-block-remove {
     background: none;
     border: none;
     cursor: pointer;
     color: var(--text-muted);
     padding: 0.25rem;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
+    margin-left: 0.5rem;
 }
 
-.coin-charts-header .coin-remove:hover {
+.tf-block-remove:hover {
     color: var(--bear-color);
 }
 
-/* Main Coin Block - Accent border */
-#mainCoinBlock .tf-header-section .tf-controls-card {
-    border-color: var(--accent-color);
-    border-width: 2px;
-    border-bottom-width: 1px;
+.tf-block-settings {
+    padding: 0.5rem;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
 }
 
-#mainCoinBlock .coin-charts-section {
-    border-color: var(--accent-color);
-    border-width: 2px;
-    border-top-width: 0;
+.tf-block-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
 }
 
-/* Add Column (+ button on top, ad below) - FIXED WIDTH */
+.tf-block-charts {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+/* Added TF Blocks Container */
+.added-tf-blocks {
+    display: contents;
+}
+
+/* Add Column (+ button on top, ad below) */
 .add-column {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.75rem;
     flex-shrink: 0;
-    width: 75px;
+    width: 80px;
     align-self: stretch;
 }
 
@@ -3111,17 +3085,17 @@ body.no-ads .ad-container {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.15rem;
-    padding: 0.5rem;
+    gap: 0.25rem;
+    padding: 0.75rem;
     width: 100%;
-    min-height: 50px;
+    min-height: 60px;
     background: var(--bg-secondary);
     border: 2px dashed var(--border-color);
     border-radius: var(--radius-md);
     cursor: pointer;
     transition: all 0.2s;
     color: var(--text-muted);
-    font-size: 0.65rem;
+    font-size: 0.7rem;
 }
 
 .add-coin-btn:hover {
@@ -3131,19 +3105,19 @@ body.no-ads .ad-container {
 }
 
 .add-coin-plus {
-    font-size: 1.25rem;
+    font-size: 1.5rem;
     font-weight: 300;
     line-height: 1;
 }
 
 .add-coin-text {
-    font-size: 0.6rem;
+    font-size: 0.65rem;
 }
 
 /* Side Column Ad (below + button) */
 .ad-side-column {
     flex: 1;
-    min-height: 120px;
+    min-height: 150px;
     background: var(--bg-secondary);
     border: 1px dashed var(--border-color);
     border-radius: var(--radius-md);
@@ -3160,13 +3134,11 @@ body.no-ads .ad-container {
     align-items: center;
     justify-content: center;
     color: var(--text-muted);
-    font-size: 0.55rem;
+    font-size: 0.6rem;
     padding: 0.5rem;
-}
-
-.ad-side-column .ad-label {
     opacity: 0.4;
 }
+
 
 /* Add Coin Dropdown */
 .add-coin-dropdown {
@@ -3229,166 +3201,6 @@ body.no-ads .ad-container {
 
 .coin-dropdown-name {
     font-size: 0.8rem;
-    font-weight: 500;
-}
-
-.coin-dropdown-symbol {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    margin-left: auto;
-}
-
-/* ===== MULTI-COIN PANELS LAYOUT ===== */
-.coin-panels-container {
-    display: flex;
-    gap: 1rem;
-    overflow-x: auto;
-    padding-bottom: 0.5rem;
-}
-
-.coin-panel {
-    flex: 1;
-    min-width: 320px;
-    max-width: 100%;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-}
-
-.coin-panel.main-coin-panel {
-    border-color: var(--accent-color);
-    border-width: 2px;
-}
-
-.coin-panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0.75rem;
-    background: var(--bg-tertiary);
-    border-bottom: 1px solid var(--border-color);
-}
-
-.coin-panel-info {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.coin-panel-logo {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-}
-
-.coin-panel-name {
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-
-.coin-panel-star {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 1rem;
-    color: var(--text-muted);
-    padding: 0;
-}
-
-.coin-panel-star.active {
-    color: #fbbf24;
-}
-
-.coin-panel-remove {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    padding: 0.2rem;
-    margin-left: 0.5rem;
-}
-
-.coin-panel-remove:hover {
-    color: var(--bear-color);
-}
-
-.coin-panel-price {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.1rem;
-}
-
-.coin-panel-price-value {
-    font-weight: 600;
-    font-size: 0.85rem;
-}
-
-.coin-panel-price-change {
-    font-size: 0.7rem;
-}
-
-.coin-panel-price-change.bull {
-    color: var(--bull-color);
-}
-
-.coin-panel-price-change.bear {
-    color: var(--bear-color);
-}
-
-.coin-panel-charts {
-    padding: 0.5rem;
-}
-
-/* Individual timeframe row in coin panel */
-.coin-panel .tf-row {
-    margin-bottom: 0.5rem;
-}
-
-/* Patterns Grid in Settings */
-.patterns-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.35rem;
-    margin-top: 0.5rem;
-}
-
-.pattern-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.25rem 0.4rem;
-    background: var(--bg-tertiary);
-    border-radius: var(--radius-sm);
-    font-size: 0.7rem;
-    cursor: pointer;
-    white-space: nowrap;
-}
-
-.pattern-toggle input {
-    width: 12px;
-    height: 12px;
-    margin: 0;
-}
-
-.pattern-toggle span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.pattern-actions {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
-    border-top: 1px dashed var(--border-color);
-}
-
-.btn-xs {
-    padding: 0.2rem 0.5rem;
-    font-size: 0.7rem;
 }
 
 /* Input Small */
@@ -3400,35 +3212,35 @@ body.no-ads .ad-container {
 
 /* Mobile Responsive for Multi-Coin Layout */
 @media (max-width: 1200px) {
-    .coin-blocks-container {
+    .tf-blocks-area {
         flex-wrap: nowrap;
         overflow-x: auto;
         padding-bottom: 0.5rem;
     }
     
-    .coin-block {
+    .tf-block {
         flex: 0 0 auto;
         width: 320px;
-        min-width: 280px;
     }
 }
 
 @media (max-width: 900px) {
-    .coins-display-area {
+    .tf-blocks-area {
         flex-direction: column;
         gap: 0.5rem;
     }
     
-    .coin-blocks-container {
-        flex-direction: column;
-        width: 100%;
-        overflow-x: visible;
-    }
-    
-    .coin-block {
+    .tf-block {
         width: 100%;
         min-width: 100%;
-        flex: none;
+        max-width: 100%;
+    }
+    
+    .added-tf-blocks {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 100%;
     }
     
     .add-column {
@@ -3449,19 +3261,15 @@ body.no-ads .ad-container {
         gap: 0.5rem;
     }
     
-    .ad-side-column {
-        flex: 1;
-        min-height: 50px;
-    }
-    
     .add-coin-dropdown {
         right: auto;
         left: 0;
         width: 250px;
     }
     
-    .patterns-grid {
-        grid-template-columns: repeat(4, 1fr);
+    .ad-side-column {
+        flex: 1;
+        min-height: 50px;
     }
 }
 
