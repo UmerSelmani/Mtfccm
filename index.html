@@ -17,21 +17,12 @@
                 <span class="logo-icon">⏱️</span>
                 <h1>MTFCCM</h1>
             </div>
-            <!-- Combined Coin + Price Section -->
+            <!-- Coin Selection Section -->
             <div class="coin-price-section" id="coinPriceSection">
                 <div class="selected-coin" id="selectedCoinHeader">
                     <img id="selectedCoinIcon" src="" alt="" style="display:none;">
                     <span id="selectedCoinName">Select a coin</span>
                     <button id="headerStarBtn" class="btn-star" title="Add to watchlist">☆</button>
-                </div>
-                <div class="header-price" id="headerPrice">
-                    <span class="header-price-value" id="headerPriceValue">$0.00</span>
-                    <span class="header-price-change" id="headerPriceChange">0.00%</span>
-                </div>
-                <div class="header-price-details" id="headerPriceDetails">
-                    <span>H: <strong id="high24h">$0</strong></span>
-                    <span>L: <strong id="low24h">$0</strong></span>
-                    <span class="vol-hide-mobile">V: <strong id="vol24h">0</strong></span>
                 </div>
             </div>
             <div class="header-actions">
@@ -39,8 +30,20 @@
                     <span class="pulse"></span>
                     <span id="alertCount">0</span>
                 </div>
+                <button id="themeToggle" class="btn btn-icon btn-theme" title="Toggle Theme (T)">🌙</button>
             </div>
         </header>
+
+        <!-- Top Ad Banner (Halal-Filtered) -->
+        <div class="ad-container ad-banner-top" id="adBannerTop">
+            <div class="ad-placeholder">
+                <!-- Google AdSense code goes here -->
+                <span class="ad-label">Advertisement</span>
+                <div class="ad-slot" id="adSlotTop">
+                    <!-- AdSense auto ad or manual ad unit -->
+                </div>
+            </div>
+        </div>
 
         <!-- Main Layout with Sidebar -->
         <div class="app-layout">
@@ -49,7 +52,6 @@
                 <div class="sidebar-header">
                     <h3>💰 Coins</h3>
                     <div class="sidebar-header-actions">
-                        <button class="btn btn-sm btn-quick-glance" id="quickGlanceBtn" title="Quick Glance Mode">👁️</button>
                         <button class="btn btn-icon sidebar-close mobile-only" id="sidebarClose">✕</button>
                     </div>
                 </div>
@@ -85,20 +87,8 @@
             <!-- Sidebar Overlay for Mobile -->
             <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-            <!-- Main Content Area -->
-            <main class="main-content">
-                <!-- Quick Glance Summary (shown only in quick glance mode) -->
-                <div class="quick-glance-summary" id="quickGlanceSummary">
-                    <div class="quick-summary-price" id="quickPrice">$0.00</div>
-                    <div class="quick-summary-bar">
-                        <div class="quick-summary-fill" id="quickConfluenceFill"></div>
-                    </div>
-                    <div class="quick-summary-bias" id="quickBias">--</div>
-                    <div class="quick-tf-dots" id="quickTfDots">
-                        <!-- TF dots will be rendered dynamically -->
-                    </div>
-                </div>
-
+            <!-- Main Content Area (Single Coin View) -->
+            <main class="main-content" id="singleCoinView">
                 <!-- Confluence Section (Price moved to header) -->
                 <section class="card confluence-card">
                     <div class="card-header">
@@ -172,147 +162,182 @@
                     </div>
                 </section>
 
-                <!-- TF Toggles Section (Fixed at top, not scrollable) -->
-                <section class="card tf-controls-card">
-                    <div class="card-header">
-                        <h2>📈 Timeframes</h2>
-                        <button class="btn btn-sm btn-card-settings" id="tfSettingsBtn" title="Timeframe & Alert Settings">⚙️</button>
-                    </div>
-                    <!-- TF Settings (collapsible) -->
-                    <div class="card-settings" id="tfSettings" style="display: none;">
-                        <div class="card-settings-section">
-                            <span class="settings-section-label">🔔 Alerts</span>
-                            <div class="card-settings-row">
-                                <label for="alertSeconds">Alert before close</label>
-                                <div class="input-with-unit">
-                                    <input type="number" id="alertSeconds" min="5" max="120" value="30">
-                                    <span>sec</span>
+                <!-- Coin TF Blocks Area (Main + Added + Add Button) -->
+                <div class="tf-blocks-area" id="tfBlocksArea">
+                    <!-- Main Coin TF Block with FULL settings -->
+                    <div class="tf-block main-tf-block" id="mainTfBlock">
+                        <div class="tf-block-header">
+                            <span class="tf-block-title">📊 <span id="mainBlockCoinName">Timeframes</span></span>
+                            <button class="btn btn-sm btn-card-settings" id="mainBlockSettingsBtn" title="Settings">⚙️</button>
+                        </div>
+                        <!-- FULL Settings (collapsible) -->
+                        <div class="tf-block-settings" id="mainBlockSettings" style="display: none;">
+                            <div class="card-settings-section">
+                                <span class="settings-section-label">🔔 Alerts</span>
+                                <div class="card-settings-row">
+                                    <label for="alertSeconds">Alert before close</label>
+                                    <div class="input-with-unit">
+                                        <input type="number" id="alertSeconds" min="5" max="120" value="30">
+                                        <span>sec</span>
+                                    </div>
+                                </div>
+                                <div class="card-settings-row">
+                                    <label for="minConfluence">Min TFs for alert</label>
+                                    <input type="number" id="minConfluence" min="1" max="6" value="2">
+                                </div>
+                                <div class="card-settings-row">
+                                    <label for="enableSound">Sound alerts</label>
+                                    <input type="checkbox" id="enableSound" checked>
                                 </div>
                             </div>
-                            <div class="card-settings-row">
-                                <label for="minConfluence">Min TFs for alert</label>
-                                <input type="number" id="minConfluence" min="1" max="6" value="2">
+                            <div class="card-settings-section">
+                                <span class="settings-section-label">🎨 Display</span>
+                                <div class="card-settings-row">
+                                    <label for="viewModeSelect">Display Mode</label>
+                                    <select id="viewModeSelect">
+                                        <option value="clear">Clear</option>
+                                        <option value="advanced">Advanced</option>
+                                    </select>
+                                </div>
+                                <div class="card-settings-row">
+                                    <label for="candlePopupType">Price Info Style</label>
+                                    <select id="candlePopupType">
+                                        <option value="hover-tab">Hover Tab</option>
+                                        <option value="click-popup">Click Popup</option>
+                                    </select>
+                                </div>
+                                <div class="card-settings-row">
+                                    <label>Show in cards</label>
+                                    <div class="modifier-toggles">
+                                        <label class="mini-toggle"><input type="checkbox" id="showRSI" checked><span>RSI</span></label>
+                                        <label class="mini-toggle"><input type="checkbox" id="showMACD" checked><span>MACD</span></label>
+                                        <label class="mini-toggle"><input type="checkbox" id="showVolume" checked><span>Vol</span></label>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="card-settings-row">
-                                <label for="enableSound">Sound alerts</label>
-                                <input type="checkbox" id="enableSound" checked>
+                            <div class="card-settings-section">
+                                <span class="settings-section-label">📊 Chart Indicators</span>
+                                <div class="card-settings-row">
+                                    <label>Show on chart</label>
+                                    <div class="modifier-toggles">
+                                        <label class="mini-toggle"><input type="checkbox" id="showChartVolume" checked><span>Vol</span></label>
+                                        <label class="mini-toggle"><input type="checkbox" id="showChartMA"><span>MA</span></label>
+                                        <label class="mini-toggle"><input type="checkbox" id="showChartEMA" checked><span>EMA</span></label>
+                                        <label class="mini-toggle"><input type="checkbox" id="showChartVWAP"><span>VWAP</span></label>
+                                    </div>
+                                </div>
+                                <div class="card-settings-row">
+                                    <label for="volumeTypeSelect">Volume Style</label>
+                                    <select id="volumeTypeSelect">
+                                        <option value="buysell">Buy/Sell</option>
+                                        <option value="regular">Regular</option>
+                                    </select>
+                                </div>
+                                <div class="card-settings-row">
+                                    <label for="maLinesInputTF">MA Periods</label>
+                                    <input type="text" id="maLinesInputTF" placeholder="20" value="20" class="input-sm">
+                                </div>
+                                <div class="card-settings-row">
+                                    <label for="emaLinesInputTF">EMA Periods</label>
+                                    <input type="text" id="emaLinesInputTF" placeholder="21" value="21" class="input-sm">
+                                </div>
                             </div>
-                        </div>
-                        <div class="card-settings-section">
-                            <span class="settings-section-label">🎨 Display</span>
-                            <div class="card-settings-row">
-                                <label for="themeSelect">Theme</label>
-                                <select id="themeSelect">
-                                    <option value="dark">🌙 Dark</option>
-                                    <option value="light-simple">☀️ Light</option>
-                                    <option value="light-colorful">🌈 Colorful</option>
-                                </select>
+                            <div class="card-settings-section">
+                                <span class="settings-section-label">🕯️ Candle Patterns</span>
+                                <div class="patterns-grid">
+                                    <label class="pattern-toggle"><input type="checkbox" id="patternDoji" checked><span>Doji</span></label>
+                                    <label class="pattern-toggle"><input type="checkbox" id="patternHammer" checked><span>Hammer</span></label>
+                                    <label class="pattern-toggle"><input type="checkbox" id="patternInvHammer" checked><span>Inv Hammer</span></label>
+                                    <label class="pattern-toggle"><input type="checkbox" id="patternHangingMan" checked><span>Hanging Man</span></label>
+                                    <label class="pattern-toggle"><input type="checkbox" id="patternShootStar" checked><span>Shoot Star</span></label>
+                                    <label class="pattern-toggle"><input type="checkbox" id="patternMarubozu" checked><span>Marubozu</span></label>
+                                    <label class="pattern-toggle"><input type="checkbox" id="patternSpinTop" checked><span>Spin Top</span></label>
+                                    <label class="pattern-toggle"><input type="checkbox" id="patternBullEngulf" checked><span>Bull Engulf</span></label>
+                                    <label class="pattern-toggle"><input type="checkbox" id="patternBearEngulf" checked><span>Bear Engulf</span></label>
+                                    <label class="pattern-toggle"><input type="checkbox" id="patternBullHarami" checked><span>Bull Harami</span></label>
+                                    <label class="pattern-toggle"><input type="checkbox" id="patternBearHarami" checked><span>Bear Harami</span></label>
+                                    <label class="pattern-toggle"><input type="checkbox" id="patternPiercing" checked><span>Piercing</span></label>
+                                    <label class="pattern-toggle"><input type="checkbox" id="patternDarkCloud" checked><span>Dark Cloud</span></label>
+                                    <label class="pattern-toggle"><input type="checkbox" id="patternTweezTop" checked><span>Tweez Top</span></label>
+                                    <label class="pattern-toggle"><input type="checkbox" id="patternTweezBot" checked><span>Tweez Bot</span></label>
+                                    <label class="pattern-toggle"><input type="checkbox" id="patternMorningStar" checked><span>Morning ⭐</span></label>
+                                    <label class="pattern-toggle"><input type="checkbox" id="patternEveningStar" checked><span>Evening ⭐</span></label>
+                                    <label class="pattern-toggle"><input type="checkbox" id="pattern3Soldiers" checked><span>3 Soldiers</span></label>
+                                    <label class="pattern-toggle"><input type="checkbox" id="pattern3Crows" checked><span>3 Crows</span></label>
+                                </div>
+                                <div class="pattern-actions">
+                                    <button class="btn btn-xs" id="selectAllPatterns">Select All</button>
+                                    <button class="btn btn-xs" id="deselectAllPatterns">Deselect All</button>
+                                </div>
                             </div>
-                            <div class="card-settings-row">
-                                <label for="viewModeSelect">Display Mode</label>
-                                <select id="viewModeSelect">
-                                    <option value="clear">Clear</option>
-                                    <option value="advanced">Advanced</option>
-                                </select>
-                            </div>
-                            <div class="card-settings-row">
-                                <label for="candlePopupType">Price Info Style</label>
-                                <select id="candlePopupType">
-                                    <option value="hover-tab">Hover Tab</option>
-                                    <option value="click-popup">Click Popup</option>
-                                </select>
-                            </div>
-                            <div class="card-settings-row">
-                                <label>Show in cards</label>
-                                <div class="modifier-toggles">
-                                    <label class="mini-toggle"><input type="checkbox" id="showRSI" checked><span>RSI</span></label>
-                                    <label class="mini-toggle"><input type="checkbox" id="showMACD" checked><span>MACD</span></label>
-                                    <label class="mini-toggle"><input type="checkbox" id="showVolume" checked><span>Vol</span></label>
+                            <div class="card-settings-section">
+                                <span class="settings-section-label">👁️ Display Options</span>
+                                <div class="display-toggles">
+                                    <label class="mini-toggle"><input type="checkbox" id="showPriceInfo" checked><span>Price Info</span></label>
+                                    <label class="mini-toggle"><input type="checkbox" id="showTimers" checked><span>Timers</span></label>
+                                    <label class="mini-toggle"><input type="checkbox" id="showIndicatorBadges" checked><span>Indicator Badges</span></label>
+                                    <label class="mini-toggle"><input type="checkbox" id="showConfluenceBar" checked><span>Confluence Bar</span></label>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <!-- TF Toggles with Timers - Always visible -->
-                    <div class="tf-toggles-row" id="tfTogglesRow">
-                        <!-- TF toggle buttons with timers will be loaded dynamically -->
-                    </div>
-                    <div class="chart-options">
-                        <button id="indicatorsBtn" class="btn btn-sm btn-indicators">📈 Indicators</button>
-                        <div class="chart-quick-toggles">
-                            <label class="quick-toggle"><input type="checkbox" id="showChartVolume" checked><span>Vol</span></label>
-                            <label class="quick-toggle"><input type="checkbox" id="showChartMA"><span>MA</span></label>
-                            <label class="quick-toggle"><input type="checkbox" id="showChartEMA" checked><span>EMA</span></label>
+                        <!-- TF Toggles -->
+                        <div class="tf-block-toggles" id="mainBlockToggles">
+                            <!-- TF toggle buttons will be loaded dynamically -->
                         </div>
-                        <span class="chart-help">Scroll/Pinch to zoom • Drag to pan</span>
+                        <div class="chart-options">
+                            <span class="chart-help">Scroll/Pinch to zoom • Drag to pan</span>
+                        </div>
+                        <!-- Charts -->
+                        <div class="tf-block-charts" id="timeframesList">
+                            <!-- Timeframe chart rows -->
+                        </div>
                     </div>
-                </section>
-
-                <!-- Timeframe Charts (This scrolls with the page) -->
-                <div class="timeframes-list" id="timeframesList">
-                    <!-- Timeframe rows will be loaded dynamically -->
+                    
+                    <!-- Added Coin TF Blocks will be inserted here -->
+                    <div class="added-tf-blocks" id="addedTfBlocks">
+                        <!-- Each added coin gets a complete TF block with full settings -->
+                    </div>
+                    
+                    <!-- Add Column (+ button at top, ad below) -->
+                    <div class="add-column" id="addColumn">
+                        <div class="add-coin-box" id="addCoinBox">
+                            <button class="add-coin-btn" id="addCoinBtn" title="Add coin to compare (max 3)">
+                                <span class="add-coin-plus">+</span>
+                                <span class="add-coin-text">Add</span>
+                            </button>
+                            <!-- Dropdown -->
+                            <div class="add-coin-dropdown" id="addCoinDropdown" style="display: none;">
+                                <input type="text" class="coin-dropdown-search" id="coinDropdownSearch" placeholder="Search coins...">
+                                <div class="coin-dropdown-list" id="coinDropdownList">
+                                    <!-- Coins will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Ad below the + button -->
+                        <div class="ad-container ad-side-column" id="adSideColumn">
+                            <div class="ad-placeholder">
+                                <span class="ad-label">Ad</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </main>
         </div>
 
-        <!-- Indicators Modal -->
-        <div class="modal" id="indicatorsModal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>📈 Chart Indicators</h2>
-                    <button class="btn btn-icon modal-close" id="closeIndicators">✕</button>
-                </div>
-                <div class="modal-body">
-                    <div class="settings-group">
-                        <h3>Moving Averages</h3>
-                        <div class="setting-item">
-                            <label for="maLinesInput">MA Lines (periods)</label>
-                            <input type="text" id="maLinesInput" placeholder="e.g., 20, 50, 200" value="20">
-                        </div>
-                        <div class="setting-item">
-                            <label for="emaLinesInput">EMA Lines (periods)</label>
-                            <input type="text" id="emaLinesInput" placeholder="e.g., 9, 21, 55" value="21">
-                        </div>
-                        <div class="setting-item">
-                            <label for="showChartVWAP">Show VWAP</label>
-                            <input type="checkbox" id="showChartVWAPModal">
-                        </div>
-                    </div>
-                    <div class="settings-group">
-                        <h3>Oscillators</h3>
-                        <div class="setting-item">
-                            <label for="rsiLinesInput">RSI Periods</label>
-                            <input type="text" id="rsiLinesInput" placeholder="e.g., 14, 7, 21" value="14">
-                        </div>
-                        <div class="setting-item">
-                            <label for="showChartMACDModal">Show MACD on chart</label>
-                            <input type="checkbox" id="showChartMACDModal">
-                        </div>
-                    </div>
-                    <div class="settings-group">
-                        <h3>Overlays</h3>
-                        <div class="setting-item">
-                            <label for="showChartPatternsModal">Show Pattern Labels</label>
-                            <input type="checkbox" id="showChartPatternsModal" checked>
-                        </div>
-                        <div class="setting-item">
-                            <label for="showChartMarkersModal">Show Confluence Markers</label>
-                            <input type="checkbox" id="showChartMarkersModal" checked>
-                        </div>
-                        <div class="setting-item">
-                            <label for="showChartVolumeModal">Show Volume Bars</label>
-                            <input type="checkbox" id="showChartVolumeModal" checked>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-primary" id="saveIndicators">Apply</button>
+        <!-- Bottom Ad Banner (Halal-Filtered) -->
+        <div class="ad-container ad-banner-bottom" id="adBannerBottom">
+            <div class="ad-placeholder">
+                <!-- Google AdSense code goes here -->
+                <span class="ad-label">Advertisement</span>
+                <div class="ad-slot" id="adSlotBottom">
+                    <!-- AdSense auto ad or manual ad unit -->
                 </div>
             </div>
         </div>
 
         <!-- Footer -->
         <footer class="footer">
-            <p>MTFCCM v3.5 | Binance Data | ☪️ Halal - Spot Only | Jan 2025+</p>
+            <p>MTFCCM v3.9.8 | Binance Data | ☪️ Halal - Spot Only | Feb 2025</p>
             <div class="footer-support">
                 <span>Support this project:</span>
                 <a href="#" id="tipJarBtn" class="tip-link">☕ Buy me a coffee</a>
