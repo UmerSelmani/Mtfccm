@@ -1,9 +1,9 @@
 /**
  * MTFCCM - Multi-Timeframe Candle Close Monitor
- * Main Application Logic v3.9.8 - Multi-coin view, TF price info, OHLCV colors
+ * Main Application Logic v3.9.9 - Multi-coin view, TF price info, OHLCV colors
  */
 
-const APP_VERSION = "3.9.8";
+const APP_VERSION = "3.9.9";
 
 // ============================================
 // STATE MANAGEMENT
@@ -906,11 +906,29 @@ function calculateMACD(candles) {
     const prevHistogram = prevMacdLine - calculateEMA([...Array(prevCloses.length - 26).fill(0), prevMacdLine], 9);
     
     return {
-        macdLine, signalLine, histogram,
+        macdLine, signalLine, histogram, prevHistogram,
         isBullish: histogram > prevHistogram,
         crossedUp: histogram > 0 && prevHistogram <= 0,
         crossedDown: histogram < 0 && prevHistogram >= 0
     };
+}
+
+// Calculate body percentage of candle (body / total range)
+function calculateBodyPercentage(candle) {
+    const range = candle.high - candle.low;
+    if (range === 0) return 0;
+    const body = Math.abs(candle.close - candle.open);
+    return (body / range) * 100;
+}
+
+// Calculate volume ratio compared to average
+function calculateVolumeRatio(candles, period = 20) {
+    if (candles.length < 2) return 1;
+    const latestVol = candles[candles.length - 1].volume;
+    const avgPeriod = Math.min(period, candles.length - 1);
+    const avgVol = candles.slice(-avgPeriod - 1, -1).reduce((sum, c) => sum + c.volume, 0) / avgPeriod;
+    if (avgVol === 0) return 1;
+    return latestVol / avgVol;
 }
 
 function calculateMACDArray(candles) {
@@ -3526,8 +3544,26 @@ function renderAddedCoins() {
                     <button class="tf-block-remove" onclick="removeAddedCoin('${symbol}')" title="Remove">✕</button>
                 </div>
             </div>
-            <!-- FULL Settings (same as main block) -->
+            <!-- FULL Settings (COMPLETE clone of main block) -->
             <div class="tf-block-settings" id="blockSettings-${symbol}" style="display: none;">
+                <div class="card-settings-section">
+                    <span class="settings-section-label">🎨 Display</span>
+                    <div class="card-settings-row">
+                        <label>Display Mode</label>
+                        <select id="viewMode-${symbol}" class="input-sm">
+                            <option value="clear">Clear</option>
+                            <option value="advanced" selected>Advanced</option>
+                        </select>
+                    </div>
+                    <div class="card-settings-row">
+                        <label>Show in cards</label>
+                        <div class="modifier-toggles">
+                            <label class="mini-toggle"><input type="checkbox" id="showRSI-${symbol}" checked><span>RSI</span></label>
+                            <label class="mini-toggle"><input type="checkbox" id="showMACD-${symbol}" checked><span>MACD</span></label>
+                            <label class="mini-toggle"><input type="checkbox" id="showVolume-${symbol}" checked><span>Vol</span></label>
+                        </div>
+                    </div>
+                </div>
                 <div class="card-settings-section">
                     <span class="settings-section-label">📊 Chart Indicators</span>
                     <div class="card-settings-row">
@@ -3557,19 +3593,47 @@ function renderAddedCoins() {
                 </div>
                 <div class="card-settings-section">
                     <span class="settings-section-label">🕯️ Candle Patterns</span>
-                    <div class="patterns-grid patterns-grid-mini">
+                    <div class="patterns-grid">
                         <label class="pattern-toggle"><input type="checkbox" id="pattern-${symbol}-Doji" checked><span>Doji</span></label>
                         <label class="pattern-toggle"><input type="checkbox" id="pattern-${symbol}-Hammer" checked><span>Hammer</span></label>
-                        <label class="pattern-toggle"><input type="checkbox" id="pattern-${symbol}-Engulf" checked><span>Engulf</span></label>
-                        <label class="pattern-toggle"><input type="checkbox" id="pattern-${symbol}-Star" checked><span>Stars</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="pattern-${symbol}-InvHammer" checked><span>Inv Ham</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="pattern-${symbol}-HangingMan" checked><span>Hang Man</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="pattern-${symbol}-ShootStar" checked><span>Shoot Star</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="pattern-${symbol}-Marubozu" checked><span>Marubozu</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="pattern-${symbol}-SpinTop" checked><span>Spin Top</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="pattern-${symbol}-BullEngulf" checked><span>Bull Eng</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="pattern-${symbol}-BearEngulf" checked><span>Bear Eng</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="pattern-${symbol}-BullHarami" checked><span>Bull Har</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="pattern-${symbol}-BearHarami" checked><span>Bear Har</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="pattern-${symbol}-Piercing" checked><span>Piercing</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="pattern-${symbol}-DarkCloud" checked><span>Dark Cloud</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="pattern-${symbol}-TweezTop" checked><span>Tweez Top</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="pattern-${symbol}-TweezBot" checked><span>Tweez Bot</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="pattern-${symbol}-MorningStar" checked><span>Morning ⭐</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="pattern-${symbol}-EveningStar" checked><span>Evening ⭐</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="pattern-${symbol}-3Soldiers" checked><span>3 Soldiers</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="pattern-${symbol}-3Crows" checked><span>3 Crows</span></label>
                     </div>
                 </div>
                 <div class="card-settings-section">
-                    <span class="settings-section-label">👁️ Display</span>
+                    <span class="settings-section-label">👁️ Display Options</span>
                     <div class="display-toggles">
-                        <label class="mini-toggle"><input type="checkbox" id="showPriceInfo-${symbol}" checked><span>Price</span></label>
+                        <label class="mini-toggle"><input type="checkbox" id="showPriceInfo-${symbol}" checked><span>Price Info</span></label>
                         <label class="mini-toggle"><input type="checkbox" id="showTimers-${symbol}" checked><span>Timers</span></label>
-                        <label class="mini-toggle"><input type="checkbox" id="showBadges-${symbol}" checked><span>Badges</span></label>
+                        <label class="mini-toggle"><input type="checkbox" id="showIndicatorBadges-${symbol}" checked><span>Indicator Badges</span></label>
+                    </div>
+                </div>
+                <div class="card-settings-section">
+                    <span class="settings-section-label">🏷️ Badge Alerts</span>
+                    <div class="patterns-grid">
+                        <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-LowVol" checked><span>LowVol</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-HighVol" checked><span>HighVol</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-MACDUp" checked><span>MACD↑</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-MACDDown" checked><span>MACD↓</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-RejHi" checked><span>RejHi</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-RejLo" checked><span>RejLo</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-OB" checked><span>OB</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-OS" checked><span>OS</span></label>
                     </div>
                 </div>
             </div>
@@ -3744,9 +3808,49 @@ function renderAddedCoinTimeframeRow(symbol, coin, tf, candles) {
     const directionIcon = direction === 'bull' ? '🟢' : '🔴';
     const dirClass = direction === 'bull' ? 'bullish' : 'bearish';
     
-    // Calculate change %
+    // Calculate change % from first candle
     const firstCandle = candles[0];
     const changePct = ((latestCandle.close - firstCandle.open) / firstCandle.open * 100);
+    
+    // Calculate indicators
+    const rsi = calculateRSI(candles, 14);
+    const bodyPct = calculateBodyPercentage(latestCandle);
+    const volumeRatio = calculateVolumeRatio(candles);
+    const macdData = calculateMACD(candles);
+    
+    // Build alerts
+    const alerts = [];
+    
+    // RSI alerts
+    if (rsi >= 80) alerts.push({ label: 'ExtOB', class: 'rsi-ob' });
+    else if (rsi >= 70) alerts.push({ label: 'OB', class: 'rsi-ob' });
+    if (rsi <= 20) alerts.push({ label: 'ExtOS', class: 'rsi-os' });
+    else if (rsi <= 30) alerts.push({ label: 'OS', class: 'rsi-os' });
+    
+    // Volume alerts
+    if (volumeRatio >= 2) alerts.push({ label: 'HighVol', class: 'vol-high' });
+    if (volumeRatio <= 0.5) alerts.push({ label: 'LowVol', class: 'vol-low' });
+    
+    // MACD alerts
+    if (macdData && macdData.histogram > 0 && macdData.prevHistogram <= 0) {
+        alerts.push({ label: 'MACD↑', class: 'macd-bull' });
+    }
+    if (macdData && macdData.histogram < 0 && macdData.prevHistogram >= 0) {
+        alerts.push({ label: 'MACD↓', class: 'macd-bear' });
+    }
+    
+    // Rejection alerts (wick analysis)
+    const range = latestCandle.high - latestCandle.low;
+    const upperWick = latestCandle.high - Math.max(latestCandle.open, latestCandle.close);
+    const lowerWick = Math.min(latestCandle.open, latestCandle.close) - latestCandle.low;
+    if (range > 0) {
+        if (upperWick / range > 0.6) alerts.push({ label: 'RejHi', class: 'rsi-ob' });
+        if (lowerWick / range > 0.6) alerts.push({ label: 'RejLo', class: 'rsi-os' });
+    }
+    
+    const alertsHtml = alerts.length > 0
+        ? alerts.slice(0, 3).map(a => `<span class="alert-group ${a.class}">${a.label}</span>`).join('')
+        : '<span class="alert-group dim">--</span>';
     
     // Get timer
     const secondsToClose = getSecondsToClose(tf);
@@ -3761,9 +3865,17 @@ function renderAddedCoinTimeframeRow(symbol, coin, tf, candles) {
                 <span class="tf-direction">${directionIcon}</span>
             </div>
             <div class="tf-timer">${formatTime(secondsToClose)}</div>
-            <div class="tf-price-info" style="font-size:0.7rem;">
+            <div class="tf-price-info">
                 <span class="tf-price-value">$${latestCandle.close.toFixed(coin.decimals)}</span>
                 <span class="tf-price-change ${changePct >= 0 ? 'positive' : 'negative'}">${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%</span>
+                <span class="tf-price-hl">H:<span class="price-high">$${latestCandle.high.toFixed(coin.decimals)}</span></span>
+                <span class="tf-price-hl">L:<span class="price-low">$${latestCandle.low.toFixed(coin.decimals)}</span></span>
+            </div>
+            <div class="tf-stats-mini">
+                <span class="tf-stat-mini" style="color:${changePct >= 0 ? 'var(--bull-color)' : 'var(--bear-color)'}">${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%</span>
+                <span class="tf-stat-mini">B${bodyPct.toFixed(0)}%</span>
+                <span class="tf-stat-mini">V${volumeRatio.toFixed(1)}x</span>
+                <span class="tf-stat-mini">RSI${rsi.toFixed(0)}</span>
             </div>
         </div>
         <div class="tf-chart-wrapper">
@@ -3771,6 +3883,7 @@ function renderAddedCoinTimeframeRow(symbol, coin, tf, candles) {
                 <canvas class="tf-chart-canvas" id="${canvasId}"></canvas>
             </div>
         </div>
+        <div class="tf-alerts tf-alerts-grouped">${alertsHtml}</div>
     `;
     
     // Draw chart
