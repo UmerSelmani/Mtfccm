@@ -2973,20 +2973,34 @@ body.no-ads .ad-container {
     gap: 0.75rem;
     align-items: flex-start;
     overflow-x: auto;
+    overflow-y: visible;
+    width: 100%;
     max-width: 100%;
     padding-bottom: 0.5rem;
 }
 
 /* TF Block - Each coin's complete timeframe section */
 .tf-block {
-    flex: 0 0 auto;
-    width: 340px;
-    min-width: 300px;
-    max-width: 400px;
+    flex: 1 1 300px;
+    min-width: 280px;
+    max-width: 100%;
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     overflow: hidden;
+}
+
+/* When only one block, expand to fill */
+.tf-block:only-of-type {
+    flex: 1 1 100%;
+    max-width: 100%;
+}
+
+/* When multiple blocks, limit width */
+.tf-blocks-area:has(.added-tf-blocks:not(:empty)) .tf-block {
+    flex: 0 0 auto;
+    width: 320px;
+    max-width: 350px;
 }
 
 .main-tf-block {
@@ -3094,8 +3108,7 @@ body.no-ads .ad-container {
 }
 
 .tf-block-charts {
-    max-height: 600px;
-    overflow-y: auto;
+    overflow-y: visible;
 }
 
 /* Added TF Blocks Container */
@@ -3265,12 +3278,14 @@ body.no-ads .ad-container {
     .tf-blocks-area {
         flex-direction: column;
         gap: 0.5rem;
+        overflow-x: visible;
     }
     
     .tf-block {
-        width: 100%;
-        min-width: 100%;
-        max-width: 100%;
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        flex: none !important;
     }
     
     .added-tf-blocks {

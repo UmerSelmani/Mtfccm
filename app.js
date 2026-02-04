@@ -1,9 +1,9 @@
 /**
- * MTFCCM - Multi-Timeframe Candle Close Monitor
- * Main Application Logic v3.9.9 - Multi-coin view, TF price info, OHLCV colors
+ * MTFCM - Multi-Timeframe Candle Close Monitor
+ * Main Application Logic v4.0.0 - Multi-coin view, TF price info, OHLCV colors
  */
 
-const APP_VERSION = "3.9.9";
+const APP_VERSION = "4.0.0";
 
 // ============================================
 // STATE MANAGEMENT
@@ -3856,6 +3856,7 @@ function renderAddedCoinTimeframeRow(symbol, coin, tf, candles) {
     const secondsToClose = getSecondsToClose(tf);
     
     const canvasId = `chart-${symbol}-${tf.id}`;
+    const tabId = `candleInfoTab-${symbol}-${tf.id}`;
     
     row.className = `tf-row ${dirClass}`;
     row.innerHTML = `
@@ -3879,6 +3880,16 @@ function renderAddedCoinTimeframeRow(symbol, coin, tf, candles) {
             </div>
         </div>
         <div class="tf-chart-wrapper">
+            <div class="candle-info-tab" id="${tabId}" style="display:none;">
+                <div class="candle-info-tf">${tf.label}</div>
+                <div class="candle-info-data">
+                    <span class="candle-info-item"><b class="label-open">O:</b> <span id="candleO-${symbol}-${tf.id}" class="price-open">--</span></span>
+                    <span class="candle-info-item"><b class="label-high">H:</b> <span id="candleH-${symbol}-${tf.id}" class="price-high">--</span></span>
+                    <span class="candle-info-item"><b class="label-low">L:</b> <span id="candleL-${symbol}-${tf.id}" class="price-low">--</span></span>
+                    <span class="candle-info-item"><b class="label-close">C:</b> <span id="candleC-${symbol}-${tf.id}" class="price-close">--</span></span>
+                    <span class="candle-info-item"><b class="label-volume">V:</b> <span id="candleV-${symbol}-${tf.id}" class="price-volume">--</span></span>
+                </div>
+            </div>
             <div class="tf-chart-container">
                 <canvas class="tf-chart-canvas" id="${canvasId}"></canvas>
             </div>
@@ -3886,11 +3897,16 @@ function renderAddedCoinTimeframeRow(symbol, coin, tf, candles) {
         <div class="tf-alerts tf-alerts-grouped">${alertsHtml}</div>
     `;
     
-    // Draw chart
+    // Store candles for interaction
+    if (!state.addedCoinCandles) state.addedCoinCandles = {};
+    state.addedCoinCandles[`${symbol}-${tf.id}`] = { candles, coin };
+    
+    // Draw chart and setup interaction
     setTimeout(() => {
         const canvas = document.getElementById(canvasId);
         if (canvas) {
             drawAddedCoinChart(canvas, candles, coin);
+            setupAddedCoinChartInteraction(canvasId, symbol, tf.id, coin);
         }
     }, 50);
 }
@@ -3961,6 +3977,61 @@ function drawAddedCoinChart(canvas, candles, coin) {
         const bodyHeight = Math.max(1, Math.abs(closeY - openY));
         ctx.fillRect(x - candleWidth / 2, bodyTop, candleWidth, bodyHeight);
     });
+}
+
+// Setup chart interaction for added coins (hover to show prices)
+function setupAddedCoinChartInteraction(canvasId, symbol, tfId, coin) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    
+    const tabId = `candleInfoTab-${symbol}-${tfId}`;
+    const dataKey = `${symbol}-${tfId}`;
+    
+    const handleMove = (clientX, clientY) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = clientX - rect.left;
+        
+        const data = state.addedCoinCandles?.[dataKey];
+        if (!data || !data.candles) return;
+        
+        const candles = data.candles.slice(-30);
+        const candleWidth = rect.width / candles.length;
+        const candleIndex = Math.floor(x / candleWidth);
+        
+        if (candleIndex >= 0 && candleIndex < candles.length) {
+            const candle = candles[candleIndex];
+            const decimals = coin.decimals || 2;
+            
+            // Update info tab
+            const tabEl = document.getElementById(tabId);
+            if (tabEl) {
+                tabEl.style.display = 'block';
+                
+                document.getElementById(`candleO-${symbol}-${tfId}`).textContent = `$${candle.open.toFixed(decimals)}`;
+                document.getElementById(`candleH-${symbol}-${tfId}`).textContent = `$${candle.high.toFixed(decimals)}`;
+                document.getElementById(`candleL-${symbol}-${tfId}`).textContent = `$${candle.low.toFixed(decimals)}`;
+                document.getElementById(`candleC-${symbol}-${tfId}`).textContent = `$${candle.close.toFixed(decimals)}`;
+                document.getElementById(`candleV-${symbol}-${tfId}`).textContent = formatVolume(candle.volume);
+            }
+        }
+    };
+    
+    const handleLeave = () => {
+        const tabEl = document.getElementById(tabId);
+        if (tabEl) tabEl.style.display = 'none';
+    };
+    
+    // Mouse events
+    canvas.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
+    canvas.addEventListener('mouseleave', handleLeave);
+    
+    // Touch events
+    canvas.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 1) {
+            handleMove(e.touches[0].clientX, e.touches[0].clientY);
+        }
+    });
+    canvas.addEventListener('touchend', handleLeave);
 }
 
 function drawMiniCoinChart(canvas, klines) {
