@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#16213e"/>
+    </linearGradient>
+    <linearGradient id="bullGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#059669"/>
+      <stop offset="100%" style="stop-color:#10b981"/>
+    </linearGradient>
+    <linearGradient id="bearGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#dc2626"/>
+      <stop offset="100%" style="stop-color:#ef4444"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#8b5cf6"/>
+      <stop offset="100%" style="stop-color:#a78bfa"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background Circle -->
+  <circle cx="60" cy="60" r="58" fill="url(#bgGrad)" stroke="url(#accentGrad)" stroke-width="2"/>
+  
+  <!-- Multiple Timeframe Candles (representing 1m, 5m, 15m, 1h) -->
+  <!-- Candle 1 (1m - small, bear) -->
+  <line x1="25" y1="35" x2="25" y2="65" stroke="url(#bearGrad)" stroke-width="1.5"/>
+  <rect x="22" y="40" width="6" height="18" rx="1" fill="url(#bearGrad)"/>
+  
+  <!-- Candle 2 (5m - medium, bull) -->
+  <line x1="42" y1="30" x2="42" y2="70" stroke="url(#bullGrad)" stroke-width="2"/>
+  <rect x="38" y="38" width="8" height="24" rx="1" fill="url(#bullGrad)"/>
+  
+  <!-- Candle 3 (15m - large, bull) -->
+  <line x1="60" y1="25" x2="60" y2="75" stroke="url(#bullGrad)" stroke-width="2.5"/>
+  <rect x="54" y="35" width="12" height="30" rx="1" fill="url(#bullGrad)"/>
+  
+  <!-- Candle 4 (1h - largest, bear) -->
+  <line x1="80" y1="28" x2="80" y2="72" stroke="url(#bearGrad)" stroke-width="2"/>
+  <rect x="74" y="38" width="12" height="26" rx="1" fill="url(#bearGrad)"/>
+  
+  <!-- Candle 5 (4h - accent, bull) -->
+  <line x1="97" y1="32" x2="97" y2="68" stroke="url(#accentGrad)" stroke-width="1.5"/>
+  <rect x="93" y="42" width="8" height="20" rx="1" fill="url(#accentGrad)"/>
+  
+  <!-- Timer Arc (represents close timing) -->
+  <path d="M 20 85 Q 60 95 100 85" fill="none" stroke="url(#accentGrad)" stroke-width="2" stroke-dasharray="4 2"/>
+  
+  <!-- Confluence indicator dots -->
+  <circle cx="35" cy="90" r="3" fill="#10b981"/>
+  <circle cx="50" cy="88" r="3" fill="#10b981"/>
+  <circle cx="65" cy="87" r="3" fill="#10b981"/>
+  <circle cx="80" cy="88" r="3" fill="#ef4444"/>
+  
+  <!-- Halal crescent (subtle) -->
+  <path d="M 95 18 A 8 8 0 1 0 95 10 A 6 6 0 1 1 95 18" fill="#f59e0b" opacity="0.8"/>
+</svg>
