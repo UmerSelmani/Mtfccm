@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MTFCM - Multi-Timeframe Candle Close Monitor</title>
+    <meta name="description" content="MTFCM - Multi-Timeframe Confluence Monitor for halal spot crypto trading. Analyze multiple timeframes with real-time Binance data.">
+    <title>MTFCM - Multi-Timeframe Confluence Monitor</title>
     <link rel="stylesheet" href="styles.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -168,7 +170,25 @@
                     <!-- Main Coin TF Block with FULL settings -->
                     <div class="tf-block main-tf-block" id="mainTfBlock">
                         <div class="tf-block-header">
-                            <span class="tf-block-title">📊 <span id="mainBlockCoinName">Timeframes</span></span>
+                            <span class="tf-block-title">
+                                <img class="coin-logo" id="mainBlockLogo" src="" style="display:none;" onerror="this.style.display='none';">
+                                <div class="coin-swap-wrapper">
+                                    <div class="custom-coin-dropdown" id="mainCoinDropdown">
+                                        <button class="coin-dropdown-trigger" id="mainCoinTrigger" type="button">
+                                            <img class="coin-dd-icon" id="mainDDIcon" src="" onerror="this.style.display='none'">
+                                            <span class="coin-dd-name" id="mainDDName">BTC</span>
+                                            <span class="coin-dd-arrow">▾</span>
+                                        </button>
+                                        <div class="coin-dropdown-menu" id="mainCoinMenu">
+                                            <input type="text" class="coin-dropdown-search" id="mainCoinDDSearch" placeholder="Search coins...">
+                                            <div class="coin-dropdown-list" id="mainCoinDDList">
+                                                <!-- Populated by JS -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <span class="coin-price" id="mainBlockPrice"></span>
+                            </span>
                             <button class="btn btn-sm btn-card-settings" id="mainBlockSettingsBtn" title="Settings">⚙️</button>
                         </div>
                         <!-- FULL Settings (collapsible) -->
@@ -225,6 +245,7 @@
                                         <label class="mini-toggle"><input type="checkbox" id="showChartMA"><span>MA</span></label>
                                         <label class="mini-toggle"><input type="checkbox" id="showChartEMA" checked><span>EMA</span></label>
                                         <label class="mini-toggle"><input type="checkbox" id="showChartVWAP"><span>VWAP</span></label>
+                                        <label class="mini-toggle"><input type="checkbox" id="showPriceScale"><span>Price Scale</span></label>
                                     </div>
                                 </div>
                                 <div class="card-settings-row">
@@ -351,7 +372,7 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>MTFCM v4.2.0 | Binance Data | ☪️ Halal - Spot Only | Feb 2026</p>
+            <p>MTFCM v4.3.1 | Binance Data | ☪️ Halal - Spot Only | Feb 2026</p>
             <div class="footer-support">
                 <span>Support this project:</span>
                 <a href="#" id="tipJarBtn" class="tip-link">☕ Buy me a coffee</a>
