@@ -1,4 +1,4 @@
-# MTFCCM - Multi-Timeframe Candle Close Monitor
+# MTFCM - Multi-Timeframe Candle Close Monitor
 
 ## 🚀 Quick Start
 
@@ -148,6 +148,6 @@ This tool is for informational purposes only. Not financial advice. Always do yo
 
 ## 📝 Version
 
-**MTFCCM Web v2.0**
+**MTFCM Web v4.1.0**
 
 Made with ❤️ for halal crypto trading
