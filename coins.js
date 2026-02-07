@@ -387,6 +387,7 @@ const DEFAULT_SETTINGS = {
     showChartMA: false,
     showChartEMA: true,
     showChartVWAP: false,
+    showPriceScale: false,
     // Display Options - v3.9.2
     showPriceInfo: true,
     showTimers: true,

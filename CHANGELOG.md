@@ -1,5 +1,27 @@
 # MTFCM Changelog
 
+## v4.3.0 (Feb 2026)
+
+### UX Overhaul
+- **Main coin dropdown**: Replaced sidebar-based coin selection with a dropdown in the header area. Primary coin switching is now instant without opening a panel.
+- **Sidebar → overlay**: Sidebar converted from sticky 180px panel to slide-in overlay on all screen sizes. Saves horizontal space for charts. Toggle via ☰ button in header.
+- **Disabled duplicates**: Coins already added to comparison are disabled in the main dropdown to prevent conflicts.
+
+### Visual Improvements
+- **Candle hover highlight**: Increased highlight opacity from 0.06→0.14 (dark) / 0.05→0.10 (light) for much better visibility. Added hover highlight to added coin charts (previously main chart only).
+- **Add button redesign**: Transformed from subtle dashed-border button to vibrant gradient button (accent→purple) with white text, shadow, and scale-up hover effect.
+- **Price scale toggle wired**: The "Show Price Scale" checkbox now actually works — toggle shows/hides Binance-style price axis on right side of all charts with tick marks, current price indicator, and hover price highlight.
+
+### Bug Fixes
+- **Ad overlay fix**: Fixed main content height calculation that caused ad banners to overlap chart area. Changed from fixed `calc()` to flex-based `height: 100%`.
+- **Theme change delay**: Wrapped chart redraws in `requestAnimationFrame()` so CSS variables apply before canvas reads theme colors. Added coins no longer flash wrong colors on theme switch.
+- **Sidebar close button**: Removed conflicting CSS rules for `.sidebar-close` display.
+
+### Misc
+- **Name update**: "Multi-Timeframe Candle Close Monitor" → "Multi-Timeframe Confluence Monitor"
+- **Meta description**: Added SEO meta description tag
+- **Font preconnect**: Added `crossorigin` attribute to font preconnect links for better performance
+
 ## v4.2.0 (Feb 2026)
 
 ### 🔴 Critical Bug Fix
