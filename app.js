@@ -1,6 +1,6 @@
 /**
  * MTFCM - Multi-Timeframe Confluence Monitor
- * Main Application Logic v4.3.1 - H/L at-candle labels, custom dropdown, vibrant themes
+ * Main Application Logic v4.4.0 - Unified chart engine for main & added coins
  */
 
 const APP_VERSION = "4.3.0";
@@ -285,9 +285,14 @@ function redrawAddedCoinCharts() {
         const tfId = parts[parts.length - 1];
         const symbol = parts.slice(0, -1).join('-');
         const canvasId = `chart-${symbol}-${tfId}`;
+        const chartTfId = `${symbol}-${tfId}`;
         const canvas = document.getElementById(canvasId);
         if (canvas && data.candles && data.coin) {
-            drawAddedCoinChart(canvas, data.candles, data.coin);
+            const analyzedData = state.data[chartTfId] || analyzeCandles(data.candles, chartTfId);
+            if (analyzedData) {
+                state.data[chartTfId] = analyzedData;
+                drawInteractiveChart(canvasId, analyzedData, chartTfId, { decimals: data.coin.decimals || 2 });
+            }
         }
     });
 }
@@ -1230,9 +1235,12 @@ function initChartState(tfId) {
     return state.chartStates[tfId];
 }
 
-function drawInteractiveChart(canvasId, data, tfId) {
+function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
     const canvas = document.getElementById(canvasId);
     if (!canvas || !data || !data.candles || data.candles.length === 0) return;
+    
+    // Store opts on canvas for re-draws from interaction handlers
+    canvas._chartOpts = opts;
     
     const ctx = canvas.getContext('2d');
     const container = canvas.parentElement;
@@ -1265,6 +1273,7 @@ function drawInteractiveChart(canvasId, data, tfId) {
     const showEMA = state.settings.showChartEMA;
     const showVWAP = state.settings.showChartVWAP;
     const showPriceScale = state.settings.showPriceScale;
+    const coinDecimals = opts.decimals || state.currentCoin?.decimals || 2;
     
     const padding = { top: 20, right: showPriceScale ? 55 : 5, bottom: 5, left: 5 };
     let mainChartHeight = height - padding.top - padding.bottom;
@@ -1339,7 +1348,7 @@ function drawInteractiveChart(canvasId, data, tfId) {
     
     // Draw price scale on right side (like Binance)
     if (showPriceScale) {
-        const decimals = state.currentCoin?.decimals || 2;
+        const decimals = coinDecimals;
         const scaleX = width - padding.right + 3;
         const numTicks = Math.min(6, Math.max(3, Math.floor(mainChartHeight / 30)));
         
@@ -1584,7 +1593,7 @@ function drawInteractiveChart(canvasId, data, tfId) {
             
             // If price scale is on, show highlighted price on the scale
             if (showPriceScale) {
-                const decimals = state.currentCoin?.decimals || 2;
+                const decimals = coinDecimals;
                 const priceText = hCandle.close.toFixed(decimals);
                 const tagW = ctx.measureText(priceText).width + 8;
                 ctx.fillStyle = isDark ? 'rgba(100,116,139,0.9)' : 'rgba(71,85,105,0.9)';
@@ -1694,7 +1703,7 @@ function drawInteractiveChart(canvasId, data, tfId) {
     }
     
     // Draw High/Low price labels at actual candle positions (like Binance)
-    const hlDecimals = state.currentCoin?.decimals || 2;
+    const hlDecimals = coinDecimals;
     ctx.font = 'bold 8px JetBrains Mono, monospace';
     
     // HIGH label - positioned at the highest candle
@@ -1935,13 +1944,15 @@ function drawInteractiveChart(canvasId, data, tfId) {
     }
 }
 
-function setupChartInteraction(canvasId, tfId) {
+function setupChartInteraction(canvasId, tfId, opts = {}) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
     
     const chartState = initChartState(tfId);
-    const data = state.data[tfId];
+    const data = opts.data || state.data[tfId];
     if (!data) return;
+    
+    const interactionDecimals = opts.decimals || state.currentCoin?.decimals || 4;
     
     // Create tooltip element if not exists
     let tooltip = document.getElementById('pattern-tooltip');
@@ -1965,7 +1976,7 @@ function setupChartInteraction(canvasId, tfId) {
     
     // Helper to show candle popup
     function showCandlePopup(candleInfo, x, y) {
-        const decimals = state.currentCoin?.decimals || 4;
+        const decimals = interactionDecimals;
         const vol = candleInfo.candle.volume;
         const buyVol = vol * (candleInfo.buyPct / 100);
         const sellVol = vol * (candleInfo.sellPct / 100);
@@ -2066,7 +2077,7 @@ function setupChartInteraction(canvasId, tfId) {
             const vEl = document.getElementById(`candleV-${tfId}`);
             const timeEl = document.getElementById(`candleTime-${tfId}`);
             
-            const decimals = state.currentCoin?.decimals || 2;
+            const decimals = interactionDecimals;
             
             if (tabEl) tabEl.style.display = 'block';
             if (oEl) oEl.textContent = '$' + closestCandle.candle.open.toFixed(decimals);
@@ -2148,7 +2159,7 @@ function setupChartInteraction(canvasId, tfId) {
             }
             if (closestIdx !== canvas.hoveredCandleIdx) {
                 canvas.hoveredCandleIdx = closestIdx;
-                drawInteractiveChart(canvasId, data, tfId);
+                drawInteractiveChart(canvasId, data, tfId, opts);
             }
         }
         
@@ -2185,7 +2196,7 @@ function setupChartInteraction(canvasId, tfId) {
         const dx = e.clientX - chartState.lastX;
         chartState.panX += dx * 0.2;
         chartState.lastX = e.clientX;
-        drawInteractiveChart(canvasId, data, tfId);
+        drawInteractiveChart(canvasId, data, tfId, opts);
     });
     
     canvas.addEventListener('mouseup', () => {
@@ -2200,7 +2211,7 @@ function setupChartInteraction(canvasId, tfId) {
         // Clear hover highlight
         if (canvas.hoveredCandleIdx !== -1) {
             canvas.hoveredCandleIdx = -1;
-            drawInteractiveChart(canvasId, data, tfId);
+            drawInteractiveChart(canvasId, data, tfId, opts);
         }
         // Hide the candle info tab for this chart
         const tabEl = document.getElementById(`candleInfoTab-${tfId}`);
@@ -2212,7 +2223,7 @@ function setupChartInteraction(canvasId, tfId) {
         e.preventDefault();
         const delta = e.deltaY > 0 ? 0.9 : 1.1;
         chartState.zoom = Math.max(0.3, Math.min(5, chartState.zoom * delta));
-        drawInteractiveChart(canvasId, data, tfId);
+        drawInteractiveChart(canvasId, data, tfId, opts);
     });
     
     // Touch events with pinch-to-zoom and long press
@@ -2289,7 +2300,7 @@ function setupChartInteraction(canvasId, tfId) {
             if (lastTouchDistance > 0) {
                 const scale = distance / lastTouchDistance;
                 chartState.zoom = Math.max(0.3, Math.min(5, chartState.zoom * scale));
-                drawInteractiveChart(canvasId, data, tfId);
+                drawInteractiveChart(canvasId, data, tfId, opts);
             }
             lastTouchDistance = distance;
         } else if (e.touches.length === 1 && !isTouchZooming && touchMoved) {
@@ -2297,7 +2308,7 @@ function setupChartInteraction(canvasId, tfId) {
             const dx = e.touches[0].clientX - touchStartX;
             chartState.panX += dx * 0.2;
             touchStartX = e.touches[0].clientX;
-            drawInteractiveChart(canvasId, data, tfId);
+            drawInteractiveChart(canvasId, data, tfId, opts);
         }
     }, { passive: false });
     
@@ -3816,6 +3827,10 @@ function removeAddedCoin(symbol) {
             if (key.startsWith(symbol)) delete state.addedCoinCandles[key];
         });
     }
+    // Clean up chart state/data/patterns for added coin TF keys
+    Object.keys(state.data).forEach(key => { if (key.startsWith(symbol + '-')) delete state.data[key]; });
+    Object.keys(state.patterns).forEach(key => { if (key.startsWith(symbol + '-')) delete state.patterns[key]; });
+    Object.keys(state.chartStates).forEach(key => { if (key.startsWith(symbol + '-')) delete state.chartStates[key]; });
     
     // Save to settings
     state.settings.comparisonCoins = [...state.addedCoins];
@@ -3849,6 +3864,10 @@ function _doSwapAddedCoin(oldSymbol, newSymbol) {
             if (key.startsWith(oldSymbol)) delete state.addedCoinCandles[key];
         });
     }
+    // Clean up chart state/data/patterns for old coin TF keys
+    Object.keys(state.data).forEach(key => { if (key.startsWith(oldSymbol + '-')) delete state.data[key]; });
+    Object.keys(state.patterns).forEach(key => { if (key.startsWith(oldSymbol + '-')) delete state.patterns[key]; });
+    Object.keys(state.chartStates).forEach(key => { if (key.startsWith(oldSymbol + '-')) delete state.chartStates[key]; });
     
     // Save to settings
     state.settings.comparisonCoins = [...state.addedCoins];
@@ -4176,12 +4195,13 @@ async function fetchAddedCoinTimeframe(symbol, coin, tf) {
         const klines = await response.json();
         
         const candles = klines.map(k => ({
-            time: k[0],
+            openTime: k[0],
             open: parseFloat(k[1]),
             high: parseFloat(k[2]),
             low: parseFloat(k[3]),
             close: parseFloat(k[4]),
-            volume: parseFloat(k[5])
+            volume: parseFloat(k[5]),
+            closeTime: k[6]
         }));
         
         // Store candles
@@ -4321,10 +4341,12 @@ function renderAddedCoinTimeframeRow(symbol, coin, tf, candles) {
                     <span class="candle-info-item"><b class="label-low">L:</b> <span id="candleL-${symbol}-${tf.id}" class="price-low">--</span></span>
                     <span class="candle-info-item"><b class="label-close">C:</b> <span id="candleC-${symbol}-${tf.id}" class="price-close">--</span></span>
                     <span class="candle-info-item"><b class="label-volume">V:</b> <span id="candleV-${symbol}-${tf.id}" class="price-volume">--</span></span>
+                    <span class="candle-info-item candle-info-time"><span id="candleTime-${symbol}-${tf.id}">--</span></span>
                 </div>
             </div>
             <div class="tf-chart-container">
                 <canvas class="tf-chart-canvas" id="${canvasId}"></canvas>
+                <span class="chart-help">Drag • Scroll zoom</span>
             </div>
         </div>
         <div class="tf-bottom">
@@ -4336,382 +4358,36 @@ function renderAddedCoinTimeframeRow(symbol, coin, tf, candles) {
     if (!state.addedCoinCandles) state.addedCoinCandles = {};
     state.addedCoinCandles[`${symbol}-${tf.id}`] = { candles, coin };
     
-    // Draw chart and setup interaction (with retry for layout timing)
+    // Use analyzeCandles to build same data format as main coin
+    const chartTfId = `${symbol}-${tf.id}`;
+    const analyzedData = analyzeCandles(candles, chartTfId);
+    if (analyzedData) {
+        // Store in state.data so drawInteractiveChart can use it
+        state.data[chartTfId] = analyzedData;
+        // Detect patterns for added coins too
+        state.patterns[chartTfId] = detectAllPatterns(candles);
+    }
+    
+    // Draw chart using the SAME function as main coin (with retry for layout timing)
+    const chartOpts = { decimals: coin.decimals || 2 };
     const drawChart = (attempt = 0) => {
         const canvas = document.getElementById(canvasId);
         if (!canvas) return;
         
         const rect = canvas.getBoundingClientRect();
         if ((rect.width < 10 || rect.height < 10) && attempt < 10) {
-            // Canvas not laid out yet, retry with increasing delay
             requestAnimationFrame(() => setTimeout(() => drawChart(attempt + 1), 50 * (attempt + 1)));
             return;
         }
         
-        drawAddedCoinChart(canvas, candles, coin);
-        setupAddedCoinChartInteraction(canvasId, symbol, tf.id, coin);
+        if (analyzedData) {
+            drawInteractiveChart(canvasId, analyzedData, chartTfId, chartOpts);
+            setupChartInteraction(canvasId, chartTfId, { data: analyzedData, decimals: coin.decimals || 2 });
+        }
     };
     requestAnimationFrame(() => setTimeout(drawChart, 50));
 }
 
-function drawAddedCoinChart(canvas, candles, coin) {
-    const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
-    
-    // Set canvas size
-    const rect = canvas.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
-    
-    // Guard against zero dimensions
-    if (width < 10 || height < 10) return;
-    
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
-    ctx.scale(dpr, dpr);
-    
-    if (!candles || candles.length === 0) return;
-    
-    // Use last 50 candles for display
-    const displayCandles = candles.slice(-50);
-    const decimals = coin.decimals || 2;
-    
-    const prices = displayCandles.flatMap(c => [c.high, c.low]);
-    const minPrice = Math.min(...prices);
-    const maxPrice = Math.max(...prices);
-    const priceRange = maxPrice - minPrice || 1;
-    
-    // Show volume from settings
-    const showVolume = state.settings.showChartVolume !== false;
-    const showEMA = state.settings.showChartEMA;
-    const showMA = state.settings.showChartMA;
-    const showPriceScale = state.settings.showPriceScale;
-    
-    const padding = { top: 18, right: showPriceScale ? 55 : 5, bottom: 5, left: 5 };
-    let mainChartHeight = height - padding.top - padding.bottom;
-    let volumeHeight = 0;
-    
-    if (showVolume) { volumeHeight = mainChartHeight * 0.18; mainChartHeight -= volumeHeight; }
-    
-    const chartWidth = width - padding.left - padding.right;
-    
-    const scaleY = (price) => padding.top + mainChartHeight - ((price - minPrice) / priceRange) * mainChartHeight;
-    
-    const candleSpacing = chartWidth / displayCandles.length;
-    const candleWidth = Math.max(2, candleSpacing * 0.7);
-    
-    // Theme colors
-    const theme = document.documentElement.getAttribute('data-theme') || 'dark';
-    const isDark = theme === 'dark';
-    const isLightColorful = theme === 'colorful';
-    
-    let bgColor, bullColor, bearColor, gridColor, textColor, emaColor, maColor;
-    if (isDark) {
-        bgColor = '#1e1e42'; bullColor = '#34d399'; bearColor = '#fb7185';
-        gridColor = '#2e2e52'; textColor = '#b8b8d0';
-        emaColor = '#fbbf24'; maColor = '#60a5fa';
-    } else if (isLightColorful) {
-        bgColor = '#faf5ff'; bullColor = '#059669'; bearColor = '#e11d48';
-        gridColor = '#ddd6fe'; textColor = '#4338ca';
-        emaColor = '#ea580c'; maColor = '#2563eb';
-    } else {
-        bgColor = '#fafbfc'; bullColor = '#16a34a'; bearColor = '#dc2626';
-        gridColor = '#f0f0f0'; textColor = '#9ca3af';
-        emaColor = '#d97706'; maColor = '#2563eb';
-    }
-    
-    // Clear background
-    ctx.fillStyle = bgColor;
-    ctx.fillRect(0, 0, width, height);
-    
-    // Draw grid lines
-    const gridLines = 4;
-    ctx.strokeStyle = gridColor;
-    ctx.lineWidth = 0.5;
-    for (let i = 0; i <= gridLines; i++) {
-        const y = padding.top + (mainChartHeight / gridLines) * i;
-        ctx.beginPath();
-        ctx.moveTo(padding.left, y);
-        ctx.lineTo(width - padding.right, y);
-        ctx.stroke();
-    }
-    
-    // Draw price scale on right side
-    if (showPriceScale) {
-        const scaleX = width - padding.right + 3;
-        const numTicks = Math.min(5, Math.max(3, Math.floor(mainChartHeight / 30)));
-        
-        ctx.font = '8px JetBrains Mono, monospace';
-        ctx.textAlign = 'left';
-        
-        // Separator line
-        ctx.strokeStyle = gridColor;
-        ctx.lineWidth = 0.5;
-        ctx.beginPath();
-        ctx.moveTo(width - padding.right, padding.top);
-        ctx.lineTo(width - padding.right, padding.top + mainChartHeight);
-        ctx.stroke();
-        
-        for (let i = 0; i <= numTicks; i++) {
-            const ratio = i / numTicks;
-            const price = maxPrice - ratio * priceRange;
-            const y = padding.top + ratio * mainChartHeight;
-            
-            ctx.strokeStyle = textColor;
-            ctx.beginPath();
-            ctx.moveTo(width - padding.right, y);
-            ctx.lineTo(width - padding.right + 3, y);
-            ctx.stroke();
-            
-            ctx.fillStyle = textColor;
-            ctx.fillText(price.toFixed(decimals), scaleX + 2, y + 3);
-        }
-        
-        // Current price indicator
-        const lastCandle = displayCandles[displayCandles.length - 1];
-        if (lastCandle) {
-            const curY = scaleY(lastCandle.close);
-            const isBull = lastCandle.close >= lastCandle.open;
-            const curColor = isBull ? bullColor : bearColor;
-            
-            ctx.fillStyle = curColor;
-            ctx.fillRect(width - padding.right, curY - 6, padding.right, 12);
-            ctx.beginPath();
-            ctx.moveTo(width - padding.right, curY - 5);
-            ctx.lineTo(width - padding.right - 4, curY);
-            ctx.lineTo(width - padding.right, curY + 5);
-            ctx.fill();
-            
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 8px JetBrains Mono, monospace';
-            ctx.textAlign = 'left';
-            ctx.fillText(lastCandle.close.toFixed(decimals), width - padding.right + 3, curY + 3);
-        }
-    }
-    
-    // Draw volume bars
-    if (showVolume && displayCandles.length > 0) {
-        const maxVol = Math.max(...displayCandles.map(c => c.volume));
-        const volBaseY = padding.top + mainChartHeight + volumeHeight;
-        
-        displayCandles.forEach((candle, i) => {
-            const x = padding.left + i * candleSpacing + candleSpacing / 2;
-            const isBull = candle.close >= candle.open;
-            const volH = maxVol > 0 ? (candle.volume / maxVol) * volumeHeight : 0;
-            
-            ctx.fillStyle = isBull ? `${bullColor}40` : `${bearColor}40`;
-            ctx.fillRect(x - candleWidth / 2, volBaseY - volH, candleWidth, volH);
-        });
-    }
-    
-    // Draw EMA line
-    if (showEMA && displayCandles.length >= 21) {
-        const period = (state.settings.emaLines && state.settings.emaLines[0]) || 21;
-        const allCandles = candles.slice(-(50 + period));
-        const closes = allCandles.map(c => c.close);
-        
-        // Calculate EMA
-        const multiplier = 2 / (period + 1);
-        let ema = closes.slice(0, period).reduce((a, b) => a + b, 0) / period;
-        const emaValues = [];
-        for (let i = period; i < closes.length; i++) {
-            ema = (closes[i] - ema) * multiplier + ema;
-            emaValues.push(ema);
-        }
-        
-        // Draw only the last displayCandles.length values
-        const startOffset = Math.max(0, emaValues.length - displayCandles.length);
-        ctx.strokeStyle = emaColor;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        let started = false;
-        for (let i = startOffset; i < emaValues.length; i++) {
-            const x = padding.left + (i - startOffset) * candleSpacing + candleSpacing / 2;
-            const y = scaleY(emaValues[i]);
-            if (!started) { ctx.moveTo(x, y); started = true; }
-            else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-    }
-    
-    // Draw MA line
-    if (showMA && displayCandles.length >= 20) {
-        const period = (state.settings.maLines && state.settings.maLines[0]) || 20;
-        const allCandles = candles.slice(-(50 + period));
-        const closes = allCandles.map(c => c.close);
-        const maValues = [];
-        for (let i = period - 1; i < closes.length; i++) {
-            const sum = closes.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0);
-            maValues.push(sum / period);
-        }
-        
-        const startOffset = Math.max(0, maValues.length - displayCandles.length);
-        ctx.strokeStyle = maColor;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        let started = false;
-        for (let i = startOffset; i < maValues.length; i++) {
-            const x = padding.left + (i - startOffset) * candleSpacing + candleSpacing / 2;
-            const y = scaleY(maValues[i]);
-            if (!started) { ctx.moveTo(x, y); started = true; }
-            else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-    }
-    
-    // Draw hovered candle highlight
-    if (typeof canvas.hoveredCandleIdx === 'number' && canvas.hoveredCandleIdx >= 0 && canvas.hoveredCandleIdx < displayCandles.length) {
-        const hx = padding.left + canvas.hoveredCandleIdx * candleSpacing;
-        ctx.fillStyle = isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.10)';
-        ctx.fillRect(hx, padding.top, candleSpacing, mainChartHeight + volumeHeight);
-    }
-    
-    // Draw candles
-    displayCandles.forEach((candle, i) => {
-        const x = padding.left + i * candleSpacing + candleSpacing / 2;
-        const isBull = candle.close >= candle.open;
-        const openY = scaleY(candle.open);
-        const closeY = scaleY(candle.close);
-        const highY = scaleY(candle.high);
-        const lowY = scaleY(candle.low);
-        
-        // Wick
-        ctx.strokeStyle = isBull ? bullColor : bearColor;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x, highY);
-        ctx.lineTo(x, lowY);
-        ctx.stroke();
-        
-        // Body
-        ctx.fillStyle = isBull ? bullColor : bearColor;
-        const bodyTop = Math.min(openY, closeY);
-        const bodyHeight = Math.max(1, Math.abs(closeY - openY));
-        ctx.fillRect(x - candleWidth / 2, bodyTop, candleWidth, bodyHeight);
-    });
-    
-    // Draw H/L price labels at actual candle positions (like Binance)
-    let highIdx = 0, lowIdx = 0;
-    displayCandles.forEach((c, i) => {
-        if (c.high > displayCandles[highIdx].high) highIdx = i;
-        if (c.low < displayCandles[lowIdx].low) lowIdx = i;
-    });
-    
-    const fontSize = Math.max(7, Math.min(9, width * 0.02));
-    ctx.font = `bold ${fontSize}px JetBrains Mono, monospace`;
-    
-    // HIGH label at actual candle
-    const highX = padding.left + highIdx * candleSpacing + candleSpacing / 2;
-    const highY = scaleY(displayCandles[highIdx].high);
-    const hOnRight = highX < (width - padding.right) / 2;
-    const hText = hOnRight ? `← ${displayCandles[highIdx].high.toFixed(decimals)}` : `${displayCandles[highIdx].high.toFixed(decimals)} →`;
-    const hW = ctx.measureText(hText).width + 6;
-    const hLX = hOnRight ? highX + candleSpacing * 0.5 : highX - hW - candleSpacing * 0.3;
-    
-    ctx.strokeStyle = `${bullColor}80`;
-    ctx.lineWidth = 0.7;
-    ctx.setLineDash([2, 2]);
-    ctx.beginPath();
-    ctx.moveTo(highX, highY);
-    ctx.lineTo(hOnRight ? hLX : hLX + hW, highY);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    
-    ctx.fillStyle = `${bullColor}e6`;
-    ctx.fillRect(hLX, highY - 5, hW, 11);
-    ctx.fillStyle = 'white';
-    ctx.textAlign = 'left';
-    ctx.fillText(hText, hLX + 3, highY + 3);
-    
-    // LOW label at actual candle
-    const lowX = padding.left + lowIdx * candleSpacing + candleSpacing / 2;
-    const lowY = scaleY(displayCandles[lowIdx].low);
-    const lOnRight = lowX < (width - padding.right) / 2;
-    const lText = lOnRight ? `← ${displayCandles[lowIdx].low.toFixed(decimals)}` : `${displayCandles[lowIdx].low.toFixed(decimals)} →`;
-    const lW = ctx.measureText(lText).width + 6;
-    const lLX = lOnRight ? lowX + candleSpacing * 0.5 : lowX - lW - candleSpacing * 0.3;
-    
-    ctx.strokeStyle = `${bearColor}80`;
-    ctx.lineWidth = 0.7;
-    ctx.setLineDash([2, 2]);
-    ctx.beginPath();
-    ctx.moveTo(lowX, lowY);
-    ctx.lineTo(lOnRight ? lLX : lLX + lW, lowY);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    
-    ctx.fillStyle = `${bearColor}e6`;
-    ctx.fillRect(lLX, lowY - 5, lW, 11);
-    ctx.fillStyle = 'white';
-    ctx.textAlign = 'left';
-    ctx.fillText(lText, lLX + 3, lowY + 3);
-}
-
-// Setup chart interaction for added coins (hover to show prices)
-function setupAddedCoinChartInteraction(canvasId, symbol, tfId, coin) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
-    
-    const tabId = `candleInfoTab-${symbol}-${tfId}`;
-    const dataKey = `${symbol}-${tfId}`;
-    
-    const handleMove = (clientX, clientY) => {
-        const rect = canvas.getBoundingClientRect();
-        const x = clientX - rect.left;
-        
-        const data = state.addedCoinCandles?.[dataKey];
-        if (!data || !data.candles) return;
-        
-        const candles = data.candles.slice(-50);
-        const candleWidth = rect.width / candles.length;
-        const candleIndex = Math.floor(x / candleWidth);
-        
-        if (candleIndex >= 0 && candleIndex < candles.length) {
-            // Set hover index and redraw for visual highlight
-            if (candleIndex !== canvas.hoveredCandleIdx) {
-                canvas.hoveredCandleIdx = candleIndex;
-                drawAddedCoinChart(canvas, data.candles, data.coin);
-            }
-            
-            const candle = candles[candleIndex];
-            const decimals = coin.decimals || 2;
-            
-            // Update info tab
-            const tabEl = document.getElementById(tabId);
-            if (tabEl) {
-                tabEl.style.display = 'block';
-                
-                document.getElementById(`candleO-${symbol}-${tfId}`).textContent = `$${candle.open.toFixed(decimals)}`;
-                document.getElementById(`candleH-${symbol}-${tfId}`).textContent = `$${candle.high.toFixed(decimals)}`;
-                document.getElementById(`candleL-${symbol}-${tfId}`).textContent = `$${candle.low.toFixed(decimals)}`;
-                document.getElementById(`candleC-${symbol}-${tfId}`).textContent = `$${candle.close.toFixed(decimals)}`;
-                document.getElementById(`candleV-${symbol}-${tfId}`).textContent = formatVolume(candle.volume);
-            }
-        }
-    };
-    
-    const handleLeave = () => {
-        canvas.hoveredCandleIdx = -1;
-        const data = state.addedCoinCandles?.[dataKey];
-        if (data && data.candles && data.coin) {
-            drawAddedCoinChart(canvas, data.candles, data.coin);
-        }
-        const tabEl = document.getElementById(tabId);
-        if (tabEl) tabEl.style.display = 'none';
-    };
-    
-    // Mouse events
-    canvas.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
-    canvas.addEventListener('mouseleave', handleLeave);
-    
-    // Touch events
-    canvas.addEventListener('touchmove', (e) => {
-        if (e.touches.length === 1) {
-            handleMove(e.touches[0].clientX, e.touches[0].clientY);
-        }
-    });
-    canvas.addEventListener('touchend', handleLeave);
-}
 
 function drawMiniCoinChart(canvas, klines) {
     const ctx = canvas.getContext('2d');
