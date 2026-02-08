@@ -1,6 +1,6 @@
 /**
  * MTFCM - Multi-Timeframe Confluence Monitor
- * Main Application Logic v4.4.0 - Unified chart engine for main & added coins
+ * Main Application Logic v4.5.0 - Unified dropdowns, unified refresh, full parity
  */
 
 const APP_VERSION = "4.3.0";
@@ -526,10 +526,7 @@ function selectCoin(symbol) {
         }
         
         // Sync custom coin dropdown trigger
-        const ddIcon = document.getElementById('mainDDIcon');
-        const ddName = document.getElementById('mainDDName');
-        if (ddIcon) { ddIcon.src = state.currentCoin.icon; ddIcon.style.display = 'inline'; ddIcon.onerror = () => ddIcon.style.display = 'none'; }
-        if (ddName) ddName.textContent = state.currentCoin.shortName;
+        updateDropdownTrigger(document.getElementById('mainCoinDropdown'), state.currentCoin);
         
         // Re-populate dropdown to update active/disabled/star states
         populateMainCoinSwap();
@@ -545,64 +542,79 @@ function selectCoin(symbol) {
     fetchAllCandleData();
     
     state.intervals.price = setInterval(fetchPriceData, 2000);
-    state.intervals.candles = setInterval(fetchAllCandleData, 10000);
+    state.intervals.candles = setInterval(fetchAllCandleData, 5000);
 }
 
-// Populate the main coin custom dropdown with icons
-function populateMainCoinSwap() {
-    const list = document.getElementById('mainCoinDDList');
-    const trigger = document.getElementById('mainCoinTrigger');
-    if (!list) return;
-    
-    const currentSymbol = state.currentCoin?.symbol;
-    const currentCoin = state.currentCoin;
+// ============================================
+// REUSABLE FANCY DROPDOWN SYSTEM
+// ============================================
+
+// Populate any coin dropdown list with icons, names, stars
+function populateCoinDropdownList(listEl, selectedSymbol, disabledSymbols = [], showStars = true) {
+    if (!listEl) return;
     const watchlist = getWatchlist();
     
-    // Update trigger display
-    if (currentCoin && trigger) {
-        const icon = document.getElementById('mainDDIcon');
-        const name = document.getElementById('mainDDName');
-        if (icon) { icon.src = currentCoin.icon; icon.style.display = 'inline'; icon.onerror = () => icon.style.display = 'none'; }
-        if (name) name.textContent = currentCoin.shortName;
-    }
-    
-    // Build dropdown items with star
-    list.innerHTML = state.coins.map(coin => {
-        const isAdded = state.addedCoins.includes(coin.symbol);
-        const isActive = coin.symbol === currentSymbol;
+    listEl.innerHTML = state.coins.map(coin => {
+        const isActive = coin.symbol === selectedSymbol;
+        const isDisabled = disabledSymbols.includes(coin.symbol);
         const isWatched = watchlist.includes(coin.symbol);
-        return `<div class="coin-dropdown-item ${isActive ? 'active' : ''} ${isAdded ? 'disabled' : ''}" data-symbol="${coin.symbol}">
+        return `<div class="coin-dropdown-item ${isActive ? 'active' : ''} ${isDisabled ? 'disabled' : ''}" data-symbol="${coin.symbol}">
             <img class="coin-item-icon" src="${coin.icon}" onerror="this.style.visibility='hidden'">
             <span class="coin-item-name">${coin.shortName}</span>
             <span class="coin-item-full">${coin.name}</span>
-            <span class="coin-item-star ${isWatched ? 'starred' : ''}" data-star-symbol="${coin.symbol}" title="${isWatched ? 'Remove from watchlist' : 'Add to watchlist'}">${isWatched ? '★' : '☆'}</span>
+            ${showStars ? `<span class="coin-item-star ${isWatched ? 'starred' : ''}" data-star-symbol="${coin.symbol}" title="${isWatched ? 'Remove from watchlist' : 'Add to watchlist'}">${isWatched ? '★' : '☆'}</span>` : ''}
         </div>`;
     }).join('');
 }
 
-// Setup main coin dropdown interactions
-function setupMainCoinDropdown() {
-    const dropdown = document.getElementById('mainCoinDropdown');
-    const trigger = document.getElementById('mainCoinTrigger');
-    const menu = document.getElementById('mainCoinMenu');
-    const search = document.getElementById('mainCoinDDSearch');
-    const list = document.getElementById('mainCoinDDList');
-    if (!dropdown || !trigger) return;
+// Filter coin dropdown items by search query
+function filterCoinDropdownList(listEl, query) {
+    if (!listEl) return;
+    const items = listEl.querySelectorAll('.coin-dropdown-item');
+    const q = query.toLowerCase().trim();
+    items.forEach(item => {
+        const symbol = item.dataset.symbol.toLowerCase();
+        const name = item.querySelector('.coin-item-full')?.textContent.toLowerCase() || '';
+        const shortName = item.querySelector('.coin-item-name')?.textContent.toLowerCase() || '';
+        item.style.display = (!q || symbol.includes(q) || name.includes(q) || shortName.includes(q)) ? 'flex' : 'none';
+    });
+}
+
+// Update the trigger button display for a fancy dropdown
+function updateDropdownTrigger(dropdownEl, coin) {
+    if (!dropdownEl || !coin) return;
+    const icon = dropdownEl.querySelector('.coin-dd-icon');
+    const name = dropdownEl.querySelector('.coin-dd-name');
+    if (icon) { icon.src = coin.icon; icon.style.display = 'inline'; icon.onerror = () => icon.style.display = 'none'; }
+    if (name) name.textContent = coin.shortName;
+}
+
+// Setup interactions for any fancy coin dropdown
+function setupCoinDropdown(dropdownEl, onSelect) {
+    if (!dropdownEl) return;
+    const trigger = dropdownEl.querySelector('.coin-dropdown-trigger');
+    const search = dropdownEl.querySelector('.coin-dropdown-search');
+    const list = dropdownEl.querySelector('.coin-dropdown-list');
+    if (!trigger) return;
     
     // Toggle dropdown
     trigger.addEventListener('click', (e) => {
         e.stopPropagation();
-        dropdown.classList.toggle('open');
-        if (dropdown.classList.contains('open') && search) {
+        // Close all other dropdowns first
+        document.querySelectorAll('.custom-coin-dropdown.open').forEach(dd => {
+            if (dd !== dropdownEl) dd.classList.remove('open');
+        });
+        dropdownEl.classList.toggle('open');
+        if (dropdownEl.classList.contains('open') && search) {
             search.value = '';
-            filterMainCoinDD('');
+            filterCoinDropdownList(list, '');
             setTimeout(() => search.focus(), 50);
         }
     });
     
     // Search filter
     if (search) {
-        search.addEventListener('input', (e) => filterMainCoinDD(e.target.value));
+        search.addEventListener('input', (e) => filterCoinDropdownList(list, e.target.value));
         search.addEventListener('click', (e) => e.stopPropagation());
     }
     
@@ -616,13 +628,11 @@ function setupMainCoinDropdown() {
                 const symbol = star.dataset.starSymbol;
                 if (symbol) {
                     toggleWatchlist(symbol);
-                    // Update star visuals
                     const watchlist = getWatchlist();
                     const isWatched = watchlist.includes(symbol);
                     star.textContent = isWatched ? '★' : '☆';
                     star.classList.toggle('starred', isWatched);
                     star.title = isWatched ? 'Remove from watchlist' : 'Add to watchlist';
-                    // Refresh sidebar
                     renderCoins();
                 }
                 return;
@@ -631,32 +641,68 @@ function setupMainCoinDropdown() {
             const item = e.target.closest('.coin-dropdown-item');
             if (!item || item.classList.contains('disabled')) return;
             const symbol = item.dataset.symbol;
-            if (symbol && symbol !== state.currentCoin?.symbol) {
-                selectCoin(symbol);
+            if (symbol) {
+                onSelect(symbol);
             }
-            dropdown.classList.remove('open');
+            dropdownEl.classList.remove('open');
         });
     }
+}
+
+// Generate fancy dropdown HTML
+function buildFancyDropdownHTML(id, selectedSymbol) {
+    const coin = state.coins.find(c => c.symbol === selectedSymbol);
+    const iconSrc = coin ? coin.icon : '';
+    const displayName = coin ? coin.shortName : '---';
+    return `
+        <div class="custom-coin-dropdown" id="${id}">
+            <button class="coin-dropdown-trigger" type="button">
+                <img class="coin-dd-icon" src="${iconSrc}" onerror="this.style.display='none'">
+                <span class="coin-dd-name">${displayName}</span>
+                <span class="coin-dd-arrow">▾</span>
+            </button>
+            <div class="coin-dropdown-menu">
+                <input type="text" class="coin-dropdown-search" placeholder="Search coins...">
+                <div class="coin-dropdown-list"></div>
+            </div>
+        </div>
+    `;
+}
+
+// Populate the main coin dropdown
+function populateMainCoinSwap() {
+    const dropdown = document.getElementById('mainCoinDropdown');
+    const list = dropdown?.querySelector('.coin-dropdown-list');
+    if (!dropdown) return;
     
-    // Close on outside click
-    document.addEventListener('click', (e) => {
-        if (!dropdown.contains(e.target)) {
-            dropdown.classList.remove('open');
+    // Update trigger
+    updateDropdownTrigger(dropdown, state.currentCoin);
+    
+    // Build disabled list: added coins
+    const disabled = [...state.addedCoins];
+    populateCoinDropdownList(list, state.currentCoin?.symbol, disabled, true);
+}
+
+// Setup main coin dropdown interactions
+function setupMainCoinDropdown() {
+    const dropdown = document.getElementById('mainCoinDropdown');
+    if (!dropdown) return;
+    
+    setupCoinDropdown(dropdown, (symbol) => {
+        if (symbol !== state.currentCoin?.symbol) {
+            selectCoin(symbol);
         }
     });
 }
 
-function filterMainCoinDD(query) {
-    const list = document.getElementById('mainCoinDDList');
-    if (!list) return;
-    const items = list.querySelectorAll('.coin-dropdown-item');
-    const q = query.toLowerCase().trim();
-    items.forEach(item => {
-        const symbol = item.dataset.symbol.toLowerCase();
-        const name = item.querySelector('.coin-item-full')?.textContent.toLowerCase() || '';
-        item.style.display = (!q || symbol.includes(q) || name.includes(q)) ? 'flex' : 'none';
+// Global: close all fancy dropdowns on outside click
+document.addEventListener('click', (e) => {
+    document.querySelectorAll('.custom-coin-dropdown.open').forEach(dd => {
+        if (!dd.contains(e.target)) {
+            dd.classList.remove('open');
+        }
     });
-}
+});
 
 // ============================================
 // BINANCE API
@@ -670,10 +716,45 @@ async function fetchPriceData() {
     const dot = document.getElementById('connectionDot');
     try {
         if (dot) dot.className = 'connection-dot loading';
-        const response = await fetch(`${BINANCE_API}/ticker/24hr?symbol=${state.currentCoin.symbol}`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        updatePriceDisplay(data);
+        
+        // Fetch main coin + all added coins in parallel
+        const allSymbols = [state.currentCoin.symbol, ...state.addedCoins];
+        const results = await Promise.allSettled(
+            allSymbols.map(sym => fetch(`${BINANCE_API}/ticker/24hr?symbol=${sym}`).then(r => r.json()))
+        );
+        
+        // Update main coin
+        if (results[0]?.status === 'fulfilled') {
+            updatePriceDisplay(results[0].value);
+        }
+        
+        // Update added coins
+        for (let i = 1; i < results.length; i++) {
+            if (results[i]?.status === 'fulfilled') {
+                const data = results[i].value;
+                const symbol = allSymbols[i];
+                const coin = state.coins.find(c => c.symbol === symbol);
+                if (!coin) continue;
+                
+                const price = parseFloat(data.lastPrice);
+                const change = parseFloat(data.priceChangePercent);
+                
+                // Update price display
+                const priceEl = document.getElementById(`blockPrice-${symbol}`);
+                if (priceEl) {
+                    priceEl.innerHTML = `
+                        <span class="price-value">$${price.toFixed(coin.decimals)}</span>
+                        <span class="price-change ${change >= 0 ? 'bull' : 'bear'}">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</span>
+                    `;
+                }
+                
+                if (state.addedCoinData?.[symbol]) {
+                    state.addedCoinData[symbol].price = price;
+                    state.addedCoinData[symbol].change = change;
+                }
+            }
+        }
+        
         if (dot) { dot.className = 'connection-dot'; dot.title = 'Connected'; }
     } catch (error) {
         console.error('Error fetching price:', error);
@@ -728,6 +809,24 @@ async function fetchAllCandleData() {
     
     renderTimeframeRows();
     calculateConfluence();
+    
+    // Also refresh all added coins in parallel
+    if (state.addedCoins.length > 0) {
+        const addedPromises = [];
+        state.addedCoins.forEach(symbol => {
+            const coin = state.coins.find(c => c.symbol === symbol);
+            if (!coin) return;
+            const coinTfState = state.addedCoinTfState?.[symbol] || [];
+            const coinEnabledTFs = coinTfState.filter(tf => tf.enabled);
+            coinEnabledTFs.forEach(ctf => {
+                const mainTf = state.timeframes.find(t => t.id === ctf.id);
+                if (mainTf) {
+                    addedPromises.push(fetchAddedCoinTimeframe(symbol, coin, mainTf));
+                }
+            });
+        });
+        await Promise.allSettled(addedPromises);
+    }
 }
 
 // ============================================
@@ -3697,35 +3796,15 @@ setInterval(() => {
 state.addedCoins = []; // Array of added coin symbols (max 3)
 
 function initCoinComparisonPanel() {
-    const addBtn = document.getElementById('addCoinBtn');
-    const dropdown = document.getElementById('addCoinDropdown');
-    const dropdownList = document.getElementById('coinDropdownList');
-    const searchInput = document.getElementById('coinDropdownSearch');
+    const addCoinDD = document.getElementById('addCoinDropdown');
     
-    if (!addBtn || !dropdown) return;
-    
-    // Toggle dropdown on button click
-    addBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const isVisible = dropdown.style.display !== 'none';
-        dropdown.style.display = isVisible ? 'none' : 'block';
-        if (!isVisible) {
-            populateCoinDropdown();
-            searchInput?.focus();
-        }
-    });
-    
-    // Close dropdown when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!dropdown.contains(e.target) && e.target !== addBtn) {
-            dropdown.style.display = 'none';
-        }
-    });
-    
-    // Search filter
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-            filterCoinDropdown(e.target.value);
+    if (addCoinDD) {
+        // Populate and setup fancy dropdown for add coin
+        const disabledSymbols = [state.currentCoin?.symbol, ...state.addedCoins].filter(Boolean);
+        populateCoinDropdownList(addCoinDD.querySelector('.coin-dropdown-list'), null, disabledSymbols, true);
+        
+        setupCoinDropdown(addCoinDD, (symbol) => {
+            addCoinToComparison(symbol);
         });
     }
     
@@ -3739,57 +3818,11 @@ function initCoinComparisonPanel() {
     updateAddButtonVisibility();
 }
 
-function populateCoinDropdown() {
-    const dropdownList = document.getElementById('coinDropdownList');
-    if (!dropdownList) return;
-    
-    const currentSymbol = state.currentCoin?.symbol;
-    
-    dropdownList.innerHTML = state.coins.map(coin => {
-        const isCurrentCoin = coin.symbol === currentSymbol;
-        const isAlreadyAdded = state.addedCoins.includes(coin.symbol);
-        const isDisabled = isCurrentCoin || isAlreadyAdded;
-        
-        // Get logo URL - try multiple sources with fallback
-        const baseSymbol = coin.symbol.replace('USDT', '').toLowerCase();
-        const logoUrl = getCoinLogoUrl(baseSymbol);
-        
-        return `
-            <div class="coin-dropdown-item ${isDisabled ? 'disabled' : ''}" 
-                 data-symbol="${coin.symbol}" 
-                 ${isDisabled ? '' : 'onclick="addCoinToComparison(\'' + coin.symbol + '\')"'}>
-                <img class="coin-dropdown-logo" src="${logoUrl}" onerror="this.onerror=null;this.src=getDefaultCoinLogo();">
-                <span class="coin-dropdown-name">${coin.name}</span>
-                <span class="coin-dropdown-symbol">${baseSymbol.toUpperCase()}</span>
-            </div>
-        `;
-    }).join('');
-}
-
-// Get coin logo URL with multiple fallback sources
-function getCoinLogoUrl(symbol) {
-    // Use CryptoCompare as primary source (better coverage)
-    return `https://www.cryptocompare.com/media/37746238/${symbol}.png`;
-}
-
-// Get default coin logo (gray circle with coin initial)
-function getDefaultCoinLogo() {
-    return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><circle cx="12" cy="12" r="12" fill="#4a5568"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="12" font-family="Arial">$</text></svg>');
-}
-
-function filterCoinDropdown(query) {
-    const dropdownList = document.getElementById('coinDropdownList');
-    if (!dropdownList) return;
-    
-    const items = dropdownList.querySelectorAll('.coin-dropdown-item');
-    const lowerQuery = query.toLowerCase();
-    
-    items.forEach(item => {
-        const name = item.querySelector('.coin-dropdown-name')?.textContent.toLowerCase() || '';
-        const symbol = item.dataset.symbol?.toLowerCase() || '';
-        const matches = name.includes(lowerQuery) || symbol.includes(lowerQuery);
-        item.style.display = matches ? 'flex' : 'none';
-    });
+function refreshAddCoinDropdown() {
+    const addCoinDD = document.getElementById('addCoinDropdown');
+    if (!addCoinDD) return;
+    const disabledSymbols = [state.currentCoin?.symbol, ...state.addedCoins].filter(Boolean);
+    populateCoinDropdownList(addCoinDD.querySelector('.coin-dropdown-list'), null, disabledSymbols, true);
 }
 
 function addCoinToComparison(symbol) {
@@ -3809,11 +3842,12 @@ function addCoinToComparison(symbol) {
     
     // Close dropdown
     const dropdown = document.getElementById('addCoinDropdown');
-    if (dropdown) dropdown.style.display = 'none';
+    if (dropdown) dropdown.classList.remove('open');
     
     // Render added coins
     renderAddedCoins();
     updateAddButtonVisibility();
+    refreshAddCoinDropdown();
 }
 
 function removeAddedCoin(symbol) {
@@ -3839,6 +3873,7 @@ function removeAddedCoin(symbol) {
     // Re-render
     renderAddedCoins();
     updateAddButtonVisibility();
+    refreshAddCoinDropdown();
 }
 
 function swapAddedCoin(oldSymbol, newSymbol) {
@@ -3897,7 +3932,6 @@ function renderAddedCoins() {
         if (!coin) return;
         
         const baseSymbol = symbol.replace('USDT', '');
-        const logoUrl = getCoinLogoUrl(baseSymbol.toLowerCase());
         
         // Initialize added coin's TF state if not exists
         if (!state.addedCoinTfState) state.addedCoinTfState = {};
@@ -3922,6 +3956,10 @@ function renderAddedCoins() {
             `;
         }).join('');
         
+        // Build fancy swap dropdown HTML (same as main coin)
+        const swapDDId = `coinSwapDD-${symbol}`;
+        const swapDropdownHtml = buildFancyDropdownHTML(swapDDId, symbol);
+        
         // Create full TF block with ALL settings (clone of main)
         const block = document.createElement('div');
         block.className = 'tf-block added-tf-block';
@@ -3930,16 +3968,8 @@ function renderAddedCoins() {
         block.innerHTML = `
             <div class="tf-block-header">
                 <span class="tf-block-title">
-                    <img class="coin-logo" src="${logoUrl}" onerror="this.style.display='none';" id="blockLogo-${symbol}">
                     <div class="coin-swap-wrapper">
-                        <select class="coin-swap-select" id="coinSwap-${symbol}" data-current="${symbol}">
-                            ${state.coins.map(c => {
-                                const isMain = c.symbol === state.currentCoin?.symbol;
-                                const isOtherAdded = state.addedCoins.includes(c.symbol) && c.symbol !== symbol;
-                                const disabled = isMain || isOtherAdded;
-                                return `<option value="${c.symbol}" ${c.symbol === symbol ? 'selected' : ''} ${disabled ? 'disabled' : ''}>${c.shortName} - ${c.name}</option>`;
-                            }).join('')}
-                        </select>
+                        ${swapDropdownHtml}
                     </div>
                     <span class="coin-price" id="blockPrice-${symbol}">Loading...</span>
                 </span>
@@ -4080,14 +4110,16 @@ function renderAddedCoins() {
             }
         });
         
-        // Add coin swap dropdown handler
-        const swapSelect = document.getElementById(`coinSwap-${symbol}`);
-        if (swapSelect) {
-            swapSelect.addEventListener('change', (e) => {
-                const newSymbol = e.target.value;
-                const oldSymbol = e.target.dataset.current;
-                if (newSymbol && newSymbol !== oldSymbol) {
-                    swapAddedCoin(oldSymbol, newSymbol);
+        // Add coin swap fancy dropdown handler
+        const swapDD = document.getElementById(`coinSwapDD-${symbol}`);
+        if (swapDD) {
+            // Populate with disabled coins (main + other added)
+            const disabledSwap = [state.currentCoin?.symbol, ...state.addedCoins.filter(s => s !== symbol)].filter(Boolean);
+            populateCoinDropdownList(swapDD.querySelector('.coin-dropdown-list'), symbol, disabledSwap, true);
+            
+            setupCoinDropdown(swapDD, (newSymbol) => {
+                if (newSymbol && newSymbol !== symbol) {
+                    swapAddedCoin(symbol, newSymbol);
                 }
             });
         }
@@ -4448,13 +4480,4 @@ function drawMiniCoinChart(canvas, klines) {
     });
 }
 
-// Refresh added coins periodically
-setInterval(() => {
-    state.addedCoins.forEach(symbol => {
-        const coin = state.coins.find(c => c.symbol === symbol);
-        if (coin) {
-            fetchAddedCoinFullData(symbol, coin);
-        }
-    });
-}, 10000);
 

@@ -334,15 +334,17 @@
                     <!-- Add Column (+ button at top, ad below) -->
                     <div class="add-column" id="addColumn">
                         <div class="add-coin-box" id="addCoinBox">
-                            <button class="add-coin-btn" id="addCoinBtn" title="Add coin to compare (max 3)">
-                                <span class="add-coin-plus">+</span>
-                                <span class="add-coin-text">Add</span>
-                            </button>
-                            <!-- Dropdown -->
-                            <div class="add-coin-dropdown" id="addCoinDropdown" style="display: none;">
-                                <input type="text" class="coin-dropdown-search" id="coinDropdownSearch" placeholder="Search coins...">
-                                <div class="coin-dropdown-list" id="coinDropdownList">
-                                    <!-- Coins will be populated here -->
+                            <div class="custom-coin-dropdown add-coin-dd" id="addCoinDropdown">
+                                <button class="coin-dropdown-trigger add-coin-trigger" type="button">
+                                    <span class="add-coin-plus">+</span>
+                                    <span class="coin-dd-name">Add Coin</span>
+                                    <span class="coin-dd-arrow">▾</span>
+                                </button>
+                                <div class="coin-dropdown-menu">
+                                    <input type="text" class="coin-dropdown-search" placeholder="Search coins...">
+                                    <div class="coin-dropdown-list">
+                                        <!-- Populated by JS -->
+                                    </div>
                                 </div>
                             </div>
                         </div>
