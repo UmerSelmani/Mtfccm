@@ -1,9 +1,9 @@
 /**
- * MTFCM - Multi-Timeframe Candle Close Monitor
- * Main Application Logic v4.1.0 - Fixed real-time data, improved performance
+ * MTFCM - Multi-Timeframe Confluence Monitor
+ * Main Application Logic v4.3.1 - H/L at-candle labels, custom dropdown, vibrant themes
  */
 
-const APP_VERSION = "4.2.0";
+const APP_VERSION = "4.3.0";
 
 // ============================================
 // STATE MANAGEMENT
@@ -81,6 +81,8 @@ function initApp() {
     state.timeframes = TIMEFRAMES_CONFIG;
     
     renderCoinsSidebar();
+    populateMainCoinSwap();
+    setupMainCoinDropdown();
     renderTFTogglesWithTimers();
     loadChartOptions();
     
@@ -136,6 +138,12 @@ function loadSettings() {
     // Ensure patterns setting exists
     if (state.settings.showPatterns === undefined) {
         state.settings.showPatterns = true;
+    }
+    
+    // Migrate old theme name
+    if (state.settings.theme === 'light-colorful') {
+        state.settings.theme = 'colorful';
+        saveSettings();
     }
     
     // Migrate old advancedMode to new viewMode
@@ -216,11 +224,13 @@ function loadInlineSettings() {
     const showTimersEl = document.getElementById('showTimers');
     const showIndicatorBadgesEl = document.getElementById('showIndicatorBadges');
     const showConfluenceBarEl = document.getElementById('showConfluenceBar');
+    const showPriceScaleEl = document.getElementById('showPriceScale');
     
     if (showPriceInfoEl) showPriceInfoEl.checked = state.settings.showPriceInfo !== false;
     if (showTimersEl) showTimersEl.checked = state.settings.showTimers !== false;
     if (showIndicatorBadgesEl) showIndicatorBadgesEl.checked = state.settings.showIndicatorBadges !== false;
     if (showConfluenceBarEl) showConfluenceBarEl.checked = state.settings.showConfluenceBar !== false;
+    if (showPriceScaleEl) showPriceScaleEl.checked = !!state.settings.showPriceScale;
 }
 
 function saveSettings() {
@@ -244,22 +254,42 @@ function applyTheme(theme) {
     if (themeBtn) {
         if (theme === 'dark') themeBtn.textContent = '☀️';
         else if (theme === 'light-simple') themeBtn.textContent = '🎨';
-        else if (theme === 'light-colorful') themeBtn.textContent = '🌙';
+        else if (theme === 'colorful') themeBtn.textContent = '🌙';
         else themeBtn.textContent = '🌙';
     }
 }
 
 function cycleTheme() {
-    const themes = ['dark', 'light-simple', 'light-colorful'];
+    const themes = ['dark', 'light-simple', 'colorful'];
     const currentIndex = themes.indexOf(state.settings.theme);
     const nextIndex = (currentIndex + 1) % themes.length;
     state.settings.theme = themes[nextIndex];
     applyTheme(state.settings.theme);
     saveSettings();
-    renderTimeframeRows();
     
-    const themeNames = { 'dark': 'Dark', 'light-simple': 'Light Simple', 'light-colorful': 'Light Colorful' };
+    // Wait for CSS to apply before redrawing charts
+    requestAnimationFrame(() => {
+        renderTimeframeRows();
+        redrawAddedCoinCharts();
+    });
+    
+    const themeNames = { 'dark': 'Dark', 'light-simple': 'Light', 'colorful': 'Colorful' };
     showKeyboardHint(`Theme: ${themeNames[themes[nextIndex]]}`);
+}
+
+// Redraw all added coin charts (for theme changes, resize, etc.)
+function redrawAddedCoinCharts() {
+    if (!state.addedCoinCandles) return;
+    Object.entries(state.addedCoinCandles).forEach(([key, data]) => {
+        const parts = key.split('-');
+        const tfId = parts[parts.length - 1];
+        const symbol = parts.slice(0, -1).join('-');
+        const canvasId = `chart-${symbol}-${tfId}`;
+        const canvas = document.getElementById(canvasId);
+        if (canvas && data.candles && data.coin) {
+            drawAddedCoinChart(canvas, data.candles, data.coin);
+        }
+    });
 }
 
 function showKeyboardHint(message) {
@@ -484,34 +514,20 @@ function selectCoin(symbol) {
     });
     
     if (state.currentCoin) {
-        const iconEl = document.getElementById('selectedCoinIcon');
-        const nameEl = document.getElementById('selectedCoinName');
-        const starBtn = document.getElementById('headerStarBtn');
-        const mainBlockCoinNameEl = document.getElementById('mainBlockCoinName');
         const mainTfBlock = document.getElementById('mainTfBlock');
         
-        if (iconEl) {
-            iconEl.src = state.currentCoin.icon;
-            iconEl.style.display = 'block';
-            iconEl.onerror = () => iconEl.style.display = 'none';
-        }
-        if (nameEl) {
-            nameEl.textContent = state.currentCoin.shortName;
-        }
-        // Update main TF block header with coin name
-        if (mainBlockCoinNameEl) {
-            mainBlockCoinNameEl.textContent = state.currentCoin.name;
-        }
         if (mainTfBlock) {
             mainTfBlock.dataset.symbol = symbol;
         }
-        // Update star button state
-        if (starBtn) {
-            const watchlist = getWatchlist();
-            const isStarred = watchlist.includes(symbol);
-            starBtn.textContent = isStarred ? '★' : '☆';
-            starBtn.classList.toggle('starred', isStarred);
-        }
+        
+        // Sync custom coin dropdown trigger
+        const ddIcon = document.getElementById('mainDDIcon');
+        const ddName = document.getElementById('mainDDName');
+        if (ddIcon) { ddIcon.src = state.currentCoin.icon; ddIcon.style.display = 'inline'; ddIcon.onerror = () => ddIcon.style.display = 'none'; }
+        if (ddName) ddName.textContent = state.currentCoin.shortName;
+        
+        // Re-populate dropdown to update active/disabled/star states
+        populateMainCoinSwap();
     }
     
     clearInterval(state.intervals.price);
@@ -525,6 +541,116 @@ function selectCoin(symbol) {
     
     state.intervals.price = setInterval(fetchPriceData, 2000);
     state.intervals.candles = setInterval(fetchAllCandleData, 10000);
+}
+
+// Populate the main coin custom dropdown with icons
+function populateMainCoinSwap() {
+    const list = document.getElementById('mainCoinDDList');
+    const trigger = document.getElementById('mainCoinTrigger');
+    if (!list) return;
+    
+    const currentSymbol = state.currentCoin?.symbol;
+    const currentCoin = state.currentCoin;
+    const watchlist = getWatchlist();
+    
+    // Update trigger display
+    if (currentCoin && trigger) {
+        const icon = document.getElementById('mainDDIcon');
+        const name = document.getElementById('mainDDName');
+        if (icon) { icon.src = currentCoin.icon; icon.style.display = 'inline'; icon.onerror = () => icon.style.display = 'none'; }
+        if (name) name.textContent = currentCoin.shortName;
+    }
+    
+    // Build dropdown items with star
+    list.innerHTML = state.coins.map(coin => {
+        const isAdded = state.addedCoins.includes(coin.symbol);
+        const isActive = coin.symbol === currentSymbol;
+        const isWatched = watchlist.includes(coin.symbol);
+        return `<div class="coin-dropdown-item ${isActive ? 'active' : ''} ${isAdded ? 'disabled' : ''}" data-symbol="${coin.symbol}">
+            <img class="coin-item-icon" src="${coin.icon}" onerror="this.style.visibility='hidden'">
+            <span class="coin-item-name">${coin.shortName}</span>
+            <span class="coin-item-full">${coin.name}</span>
+            <span class="coin-item-star ${isWatched ? 'starred' : ''}" data-star-symbol="${coin.symbol}" title="${isWatched ? 'Remove from watchlist' : 'Add to watchlist'}">${isWatched ? '★' : '☆'}</span>
+        </div>`;
+    }).join('');
+}
+
+// Setup main coin dropdown interactions
+function setupMainCoinDropdown() {
+    const dropdown = document.getElementById('mainCoinDropdown');
+    const trigger = document.getElementById('mainCoinTrigger');
+    const menu = document.getElementById('mainCoinMenu');
+    const search = document.getElementById('mainCoinDDSearch');
+    const list = document.getElementById('mainCoinDDList');
+    if (!dropdown || !trigger) return;
+    
+    // Toggle dropdown
+    trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle('open');
+        if (dropdown.classList.contains('open') && search) {
+            search.value = '';
+            filterMainCoinDD('');
+            setTimeout(() => search.focus(), 50);
+        }
+    });
+    
+    // Search filter
+    if (search) {
+        search.addEventListener('input', (e) => filterMainCoinDD(e.target.value));
+        search.addEventListener('click', (e) => e.stopPropagation());
+    }
+    
+    // Item click (coin select or star toggle)
+    if (list) {
+        list.addEventListener('click', (e) => {
+            // Handle star click
+            const star = e.target.closest('.coin-item-star');
+            if (star) {
+                e.stopPropagation();
+                const symbol = star.dataset.starSymbol;
+                if (symbol) {
+                    toggleWatchlist(symbol);
+                    // Update star visuals
+                    const watchlist = getWatchlist();
+                    const isWatched = watchlist.includes(symbol);
+                    star.textContent = isWatched ? '★' : '☆';
+                    star.classList.toggle('starred', isWatched);
+                    star.title = isWatched ? 'Remove from watchlist' : 'Add to watchlist';
+                    // Refresh sidebar
+                    renderCoins();
+                }
+                return;
+            }
+            // Handle coin select
+            const item = e.target.closest('.coin-dropdown-item');
+            if (!item || item.classList.contains('disabled')) return;
+            const symbol = item.dataset.symbol;
+            if (symbol && symbol !== state.currentCoin?.symbol) {
+                selectCoin(symbol);
+            }
+            dropdown.classList.remove('open');
+        });
+    }
+    
+    // Close on outside click
+    document.addEventListener('click', (e) => {
+        if (!dropdown.contains(e.target)) {
+            dropdown.classList.remove('open');
+        }
+    });
+}
+
+function filterMainCoinDD(query) {
+    const list = document.getElementById('mainCoinDDList');
+    if (!list) return;
+    const items = list.querySelectorAll('.coin-dropdown-item');
+    const q = query.toLowerCase().trim();
+    items.forEach(item => {
+        const symbol = item.dataset.symbol.toLowerCase();
+        const name = item.querySelector('.coin-item-full')?.textContent.toLowerCase() || '';
+        item.style.display = (!q || symbol.includes(q) || name.includes(q)) ? 'flex' : 'none';
+    });
 }
 
 // ============================================
@@ -846,7 +972,7 @@ function analyzeCandles(candles, tfId) {
     const macd = calculateMACD(candles);
     const macdArray = calculateMACDArray(candles);
     
-    const alerts = generateAlerts(rsi, macd, volumeRatio, bodyPct, upperWickPct, lowerWickPct);
+    const alerts = generateAlerts(rsi, macd, volumeRatio, bodyPct, upperWickPct, lowerWickPct, current, previous);
     
     return {
         tfId,
@@ -869,7 +995,18 @@ function analyzeCandles(candles, tfId) {
     };
 }
 
-function generateAlerts(rsi, macd, volumeRatio, bodyPct, upperWickPct, lowerWickPct) {
+function generateAlerts(rsi, macd, volumeRatio, bodyPct, upperWickPct, lowerWickPct, current, previous) {
+    // Engulfing detection
+    let bullEngulfing = false, bearEngulfing = false;
+    if (current && previous) {
+        const currBody = Math.abs(current.close - current.open);
+        const prevBody = Math.abs(previous.close - previous.open);
+        const currBull = current.close >= current.open;
+        const prevBull = previous.close >= previous.open;
+        bullEngulfing = currBull && !prevBull && currBody > prevBody && current.close > previous.open && current.open < previous.close;
+        bearEngulfing = !currBull && prevBull && currBody > prevBody && current.open > previous.close && current.close < previous.open;
+    }
+    
     return {
         overbought: rsi >= RSI_CONFIG.overbought,
         extremeOB: rsi >= RSI_CONFIG.extremeOverbought,
@@ -879,12 +1016,15 @@ function generateAlerts(rsi, macd, volumeRatio, bodyPct, upperWickPct, lowerWick
         volSpike: volumeRatio >= VOLUME_CONFIG.spikeThreshold,
         lowVol: volumeRatio <= VOLUME_CONFIG.lowThreshold,
         indecision: bodyPct <= 20,
+        bigBody: bodyPct >= 80,
         rejectHigh: upperWickPct >= 50,
         rejectLow: lowerWickPct >= 50,
         macdBull: macd.isBullish,
         macdBear: !macd.isBullish,
         macdCrossUp: macd.crossedUp,
-        macdCrossDown: macd.crossedDown
+        macdCrossDown: macd.crossedDown,
+        bullEngulfing,
+        bearEngulfing
     };
 }
 
@@ -1124,8 +1264,9 @@ function drawInteractiveChart(canvasId, data, tfId) {
     const showMA = state.settings.showChartMA;
     const showEMA = state.settings.showChartEMA;
     const showVWAP = state.settings.showChartVWAP;
+    const showPriceScale = state.settings.showPriceScale;
     
-    const padding = { top: 20, right: 5, bottom: 5, left: 5 };
+    const padding = { top: 20, right: showPriceScale ? 55 : 5, bottom: 5, left: 5 };
     let mainChartHeight = height - padding.top - padding.bottom;
     let volumeHeight = 0, rsiHeight = 0, macdHeight = 0;
     
@@ -1157,27 +1298,27 @@ function drawInteractiveChart(canvasId, data, tfId) {
     // Theme-aware colors
     const theme = document.documentElement.getAttribute('data-theme') || 'dark';
     const isDark = theme === 'dark';
-    const isLightColorful = theme === 'light-colorful';
+    const isLightColorful = theme === 'colorful';
     
     let bgColor, bullColor, bearColor, gridColor, textColor, maColor, emaColor, vwapColor;
     
     if (isDark) {
-        bgColor = '#252542';
-        bullColor = '#10b981';
-        bearColor = '#ef4444';
-        gridColor = '#3d3d5c';
-        textColor = '#b0b0c0';
-        maColor = '#3b82f6';
-        emaColor = '#f59e0b';
-        vwapColor = '#a855f7';
+        bgColor = '#1e1e42';
+        bullColor = '#34d399';
+        bearColor = '#fb7185';
+        gridColor = '#2e2e52';
+        textColor = '#b8b8d0';
+        maColor = '#60a5fa';
+        emaColor = '#fbbf24';
+        vwapColor = '#c084fc';
     } else if (isLightColorful) {
-        bgColor = '#f8fafc';
-        bullColor = '#22c55e';
-        bearColor = '#f43f5e';
-        gridColor = '#e2e8f0';
-        textColor = '#475569';
-        maColor = '#06b6d4';
-        emaColor = '#f97316';
+        bgColor = '#faf5ff';
+        bullColor = '#059669';
+        bearColor = '#e11d48';
+        gridColor = '#ddd6fe';
+        textColor = '#4338ca';
+        maColor = '#2563eb';
+        emaColor = '#ea580c';
         vwapColor = '#d946ef';
     } else {
         // light-simple
@@ -1195,6 +1336,76 @@ function drawInteractiveChart(canvasId, data, tfId) {
     
     ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, width, height);
+    
+    // Draw price scale on right side (like Binance)
+    if (showPriceScale) {
+        const decimals = state.currentCoin?.decimals || 2;
+        const scaleX = width - padding.right + 3;
+        const numTicks = Math.min(6, Math.max(3, Math.floor(mainChartHeight / 30)));
+        
+        ctx.font = '8px JetBrains Mono, monospace';
+        ctx.textAlign = 'left';
+        
+        // Separator line
+        ctx.strokeStyle = gridColor;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(width - padding.right, padding.top);
+        ctx.lineTo(width - padding.right, padding.top + mainChartHeight);
+        ctx.stroke();
+        
+        for (let i = 0; i <= numTicks; i++) {
+            const ratio = i / numTicks;
+            const price = maxPrice - ratio * priceRange;
+            const y = padding.top + ratio * mainChartHeight;
+            
+            // Grid line
+            ctx.strokeStyle = gridColor;
+            ctx.globalAlpha = 0.3;
+            ctx.beginPath();
+            ctx.moveTo(padding.left, y);
+            ctx.lineTo(width - padding.right, y);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            
+            // Tick mark
+            ctx.strokeStyle = textColor;
+            ctx.beginPath();
+            ctx.moveTo(width - padding.right, y);
+            ctx.lineTo(width - padding.right + 3, y);
+            ctx.stroke();
+            
+            // Price label
+            ctx.fillStyle = textColor;
+            ctx.fillText(price.toFixed(decimals), scaleX + 2, y + 3);
+        }
+        
+        // Current price indicator on the scale
+        const lastCandle = displayCandles[displayCandles.length - 1];
+        if (lastCandle) {
+            const curY = scaleY(lastCandle.close);
+            const isBull = lastCandle.close >= lastCandle.open;
+            const curColor = isBull ? bullColor : bearColor;
+            
+            // Price tag background
+            ctx.fillStyle = curColor;
+            const priceText = lastCandle.close.toFixed(decimals);
+            const tagW = ctx.measureText(priceText).width + 8;
+            ctx.fillRect(width - padding.right, curY - 6, padding.right, 12);
+            
+            // Arrow
+            ctx.beginPath();
+            ctx.moveTo(width - padding.right, curY - 5);
+            ctx.lineTo(width - padding.right - 4, curY);
+            ctx.lineTo(width - padding.right, curY + 5);
+            ctx.fill();
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 8px JetBrains Mono, monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText(priceText, width - padding.right + 3, curY + 3);
+        }
+    }
     
     // Clear pattern data for tooltip
     canvas.patternData = [];
@@ -1351,6 +1562,41 @@ function drawInteractiveChart(canvasId, data, tfId) {
     // Draw candles with H/L labels
     // Store candle positions for click detection
     canvas.candleData = [];
+    
+    // Draw hovered candle highlight column (behind candles)
+    if (typeof canvas.hoveredCandleIdx === 'number' && canvas.hoveredCandleIdx >= 0 && canvas.hoveredCandleIdx < displayCandles.length) {
+        const hx = padding.left + canvas.hoveredCandleIdx * candleSpacing;
+        ctx.fillStyle = isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.10)';
+        ctx.fillRect(hx, padding.top, candleSpacing, mainChartHeight + volumeHeight);
+        
+        // Crosshair horizontal line at current price
+        const hCandle = displayCandles[canvas.hoveredCandleIdx];
+        if (hCandle) {
+            const crossY = scaleY(hCandle.close);
+            ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)';
+            ctx.lineWidth = 0.5;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(padding.left, crossY);
+            ctx.lineTo(width - padding.right, crossY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // If price scale is on, show highlighted price on the scale
+            if (showPriceScale) {
+                const decimals = state.currentCoin?.decimals || 2;
+                const priceText = hCandle.close.toFixed(decimals);
+                const tagW = ctx.measureText(priceText).width + 8;
+                ctx.fillStyle = isDark ? 'rgba(100,116,139,0.9)' : 'rgba(71,85,105,0.9)';
+                ctx.fillRect(width - padding.right, crossY - 6, padding.right, 12);
+                ctx.fillStyle = '#fff';
+                ctx.font = '8px JetBrains Mono, monospace';
+                ctx.textAlign = 'left';
+                ctx.fillText(priceText, width - padding.right + 3, crossY + 3);
+            }
+        }
+    }
+    
     displayCandles.forEach((candle, i) => {
         const x = padding.left + i * candleSpacing + candleSpacing / 2;
         const isBull = candle.close >= candle.open;
@@ -1447,33 +1693,64 @@ function drawInteractiveChart(canvasId, data, tfId) {
         });
     }
     
-    // Draw High/Low price labels LAST (on top of everything)
+    // Draw High/Low price labels at actual candle positions (like Binance)
+    const hlDecimals = state.currentCoin?.decimals || 2;
     ctx.font = 'bold 8px JetBrains Mono, monospace';
-    ctx.textAlign = 'center';
     
-    // High price label - positioned at the candle with highest high
-    const highX = padding.left + maxPriceIdx * candleSpacing + candleSpacing / 2;
-    const highY = scaleY(maxPrice) - 4;
-    const highText = `H:${maxPrice.toFixed(state.currentCoin?.decimals || 2)}`;
-    const highLabelWidth = ctx.measureText(highText).width + 6;
+    // HIGH label - positioned at the highest candle
+    const highCandleX = padding.left + maxPriceIdx * candleSpacing + candleSpacing / 2;
+    const highCandleY = scaleY(maxPrice);
+    const highText = `← ${maxPrice.toFixed(hlDecimals)}`;
+    const highTextW = ctx.measureText(highText).width + 6;
     
-    // Background for high label
-    ctx.fillStyle = 'rgba(16, 185, 129, 0.95)';
-    ctx.fillRect(highX - highLabelWidth / 2, highY - 9, highLabelWidth, 11);
+    // Decide label side: if candle is in right half, put label on left
+    const highOnRight = highCandleX < (width - padding.right) / 2;
+    const highLabelX = highOnRight ? highCandleX + candleSpacing * 0.6 : highCandleX - highTextW - candleSpacing * 0.3;
+    const highLabelText = highOnRight ? `← ${maxPrice.toFixed(hlDecimals)}` : `${maxPrice.toFixed(hlDecimals)} →`;
+    const highLW = ctx.measureText(highLabelText).width + 8;
+    const highLX = highOnRight ? highCandleX + candleSpacing * 0.6 : highCandleX - highLW - candleSpacing * 0.3;
+    
+    // Dashed line from candle to label
+    ctx.strokeStyle = 'rgba(16, 185, 129, 0.5)';
+    ctx.lineWidth = 0.8;
+    ctx.setLineDash([2, 2]);
+    ctx.beginPath();
+    ctx.moveTo(highCandleX, highCandleY);
+    ctx.lineTo(highOnRight ? highLX : highLX + highLW, highCandleY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // High badge at candle position
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.9)';
+    ctx.fillRect(highLX, highCandleY - 6, highLW, 13);
     ctx.fillStyle = 'white';
-    ctx.fillText(highText, highX, highY);
+    ctx.textAlign = 'left';
+    ctx.fillText(highLabelText, highLX + 4, highCandleY + 4);
     
-    // Low price label - positioned at the candle with lowest low
-    const lowX = padding.left + minPriceIdx * candleSpacing + candleSpacing / 2;
-    const lowY = scaleY(minPrice) + 11;
-    const lowText = `L:${minPrice.toFixed(state.currentCoin?.decimals || 2)}`;
-    const lowLabelWidth = ctx.measureText(lowText).width + 6;
+    // LOW label - positioned at the lowest candle
+    const lowCandleX = padding.left + minPriceIdx * candleSpacing + candleSpacing / 2;
+    const lowCandleY = scaleY(minPrice);
+    const lowOnRight = lowCandleX < (width - padding.right) / 2;
+    const lowLabelText = lowOnRight ? `← ${minPrice.toFixed(hlDecimals)}` : `${minPrice.toFixed(hlDecimals)} →`;
+    const lowLW = ctx.measureText(lowLabelText).width + 8;
+    const lowLX = lowOnRight ? lowCandleX + candleSpacing * 0.6 : lowCandleX - lowLW - candleSpacing * 0.3;
     
-    // Background for low label
-    ctx.fillStyle = 'rgba(239, 68, 68, 0.95)';
-    ctx.fillRect(lowX - lowLabelWidth / 2, lowY - 9, lowLabelWidth, 11);
+    // Dashed line from candle to label
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
+    ctx.lineWidth = 0.8;
+    ctx.setLineDash([2, 2]);
+    ctx.beginPath();
+    ctx.moveTo(lowCandleX, lowCandleY);
+    ctx.lineTo(lowOnRight ? lowLX : lowLX + lowLW, lowCandleY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Low badge at candle position
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.9)';
+    ctx.fillRect(lowLX, lowCandleY - 6, lowLW, 13);
     ctx.fillStyle = 'white';
-    ctx.fillText(lowText, lowX, lowY);
+    ctx.textAlign = 'left';
+    ctx.fillText(lowLabelText, lowLX + 4, lowCandleY + 4);
     
     // Volume bars - supports regular or buy/sell split
     if (showVolume) {
@@ -1856,10 +2133,27 @@ function setupChartInteraction(canvasId, tfId) {
     });
     
     canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        
+        // Calculate hovered candle index for highlight column
+        if (!chartState.isDragging && canvas.candleData && canvas.candleData.length > 0) {
+            let closestIdx = -1;
+            let closestDist = Infinity;
+            for (let i = 0; i < canvas.candleData.length; i++) {
+                const cd = canvas.candleData[i];
+                const cx = cd.x + cd.width / 2;
+                const dist = Math.abs(x - cx);
+                if (dist < closestDist) { closestDist = dist; closestIdx = i; }
+            }
+            if (closestIdx !== canvas.hoveredCandleIdx) {
+                canvas.hoveredCandleIdx = closestIdx;
+                drawInteractiveChart(canvasId, data, tfId);
+            }
+        }
+        
         // Update candle info tab only if in hover-tab mode
         if (state.settings.candlePopupType === 'hover-tab') {
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
             updateCandleInfoTab(canvas, data, tfId, x);
         }
         
@@ -1903,6 +2197,11 @@ function setupChartInteraction(canvasId, tfId) {
         chartState.isDragging = false;
         canvas.style.cursor = 'grab';
         tooltip.style.display = 'none';
+        // Clear hover highlight
+        if (canvas.hoveredCandleIdx !== -1) {
+            canvas.hoveredCandleIdx = -1;
+            drawInteractiveChart(canvasId, data, tfId);
+        }
         // Hide the candle info tab for this chart
         const tabEl = document.getElementById(`candleInfoTab-${tfId}`);
         if (tabEl) tabEl.style.display = 'none';
@@ -2216,19 +2515,26 @@ function renderTimeframeRows() {
         else if (alerts.highVol) activeAlerts.push({ label: 'HighVol', class: 'vol-high', priority: 3 });
         if (alerts.lowVol) activeAlerts.push({ label: 'LowVol', class: 'vol-low', priority: 4 });
         
-        // MACD group
-        if (alerts.macdBull) activeAlerts.push({ label: 'MACD↑', class: 'macd-bull', priority: 3 });
-        if (alerts.macdBear) activeAlerts.push({ label: 'MACD↓', class: 'macd-bear', priority: 3 });
+        // MACD group - crosses are highest priority
+        if (alerts.macdCrossUp) activeAlerts.push({ label: 'MACDx↑', class: 'macd-bull', priority: 1 });
+        else if (alerts.macdBull) activeAlerts.push({ label: 'MACD↑', class: 'macd-bull', priority: 3 });
+        if (alerts.macdCrossDown) activeAlerts.push({ label: 'MACDx↓', class: 'macd-bear', priority: 1 });
+        else if (alerts.macdBear) activeAlerts.push({ label: 'MACD↓', class: 'macd-bear', priority: 3 });
         
         // Candle structure
+        if (alerts.bigBody) activeAlerts.push({ label: 'BigBody', class: data.isBullish ? 'macd-bull' : 'macd-bear', priority: 3 });
         if (alerts.indecision) activeAlerts.push({ label: 'Indeci', class: 'neutral', priority: 5 });
         if (alerts.rejectHigh) activeAlerts.push({ label: 'RejHi', class: 'rsi-ob', priority: 4 });
         if (alerts.rejectLow) activeAlerts.push({ label: 'RejLo', class: 'rsi-os', priority: 4 });
         
-        // Sort by priority and take top 3
+        // Engulfing patterns
+        if (alerts.bullEngulfing) activeAlerts.push({ label: 'BullEng', class: 'macd-bull', priority: 1 });
+        if (alerts.bearEngulfing) activeAlerts.push({ label: 'BearEng', class: 'macd-bear', priority: 1 });
+        
+        // Sort by priority and take top 5
         activeAlerts.sort((a, b) => a.priority - b.priority);
-        const topAlerts = activeAlerts.slice(0, 3);
-        const moreCount = activeAlerts.length - 3;
+        const topAlerts = activeAlerts.slice(0, 5);
+        const moreCount = activeAlerts.length - 5;
         
         const alertsHtml = topAlerts.length > 0 
             ? topAlerts.map(a => `<span class="alert-group ${a.class}">${a.label}</span>`).join('') +
@@ -2264,6 +2570,13 @@ function renderTimeframeRows() {
                         ${showPriceInfo ? `<span class="tf-price-value" id="tf-price-${tf.id}">$${currentPrice.toFixed(decimals)}</span>
                         <span class="tf-price-change ${tfChangePct >= 0 ? 'positive' : 'negative'}" id="tf-change-${tf.id}">${tfChangePct >= 0 ? '+' : ''}${tfChangePct.toFixed(2)}%</span>` : ''}
                     </div>
+                    ${showPriceInfo ? `<div class="tf-info-row tf-info-secondary">
+                        <span class="tf-price-hl" id="tf-high-${tf.id}">H:$${tfHigh.toFixed(decimals)}</span>
+                        <span class="tf-price-hl" id="tf-low-${tf.id}">L:$${tfLow.toFixed(decimals)}</span>
+                        ${showIndicatorBadges ? `<span class="tf-stat-mini">B${data.bodyPct.toFixed(0)}%</span>
+                        <span class="tf-stat-mini">V${data.volumeRatio.toFixed(1)}x</span>
+                        <span class="tf-stat-mini">RSI${data.rsi.toFixed(0)}</span>` : ''}
+                    </div>` : ''}
                 </div>
                 <div class="tf-chart-wrapper">
                     <div class="candle-info-tab" id="candleInfoTab-${tf.id}" style="display:none;">
@@ -2283,13 +2596,6 @@ function renderTimeframeRows() {
                     </div>
                 </div>
                 <div class="tf-bottom">
-                    <div class="tf-bottom-stats">
-                        ${showPriceInfo ? `<span class="tf-price-hl" id="tf-high-${tf.id}">H:$${tfHigh.toFixed(decimals)}</span>
-                        <span class="tf-price-hl" id="tf-low-${tf.id}">L:$${tfLow.toFixed(decimals)}</span>` : ''}
-                        ${showIndicatorBadges ? `<span class="tf-stat-mini">B${data.bodyPct.toFixed(0)}%</span>
-                        <span class="tf-stat-mini">V${data.volumeRatio.toFixed(1)}x</span>
-                        <span class="tf-stat-mini">RSI${data.rsi.toFixed(0)}</span>` : ''}
-                    </div>
                     <div class="tf-bottom-alerts">${alertsHtml}</div>
                 </div>
             </div>
@@ -2692,11 +2998,12 @@ function setupEventListeners() {
     });
     
     // Display Options (from TF Settings)
-    ['showPriceInfo', 'showTimers', 'showIndicatorBadges', 'showConfluenceBar'].forEach(id => {
+    ['showPriceInfo', 'showTimers', 'showIndicatorBadges', 'showConfluenceBar', 'showPriceScale'].forEach(id => {
         document.getElementById(id)?.addEventListener('change', (e) => {
             state.settings[id] = e.target.checked;
             saveSettings();
             renderTimeframeRows();
+            redrawAddedCoinCharts();
         });
     });
     
@@ -2747,19 +3054,6 @@ function setupEventListeners() {
         });
     });
     
-    // Header star button (watchlist toggle)
-    document.getElementById('headerStarBtn')?.addEventListener('click', () => {
-        if (state.currentCoin) {
-            toggleWatchlist(state.currentCoin.symbol);
-            // Update star button state
-            const starBtn = document.getElementById('headerStarBtn');
-            const watchlist = getWatchlist();
-            const isStarred = watchlist.includes(state.currentCoin.symbol);
-            starBtn.textContent = isStarred ? '★' : '☆';
-            starBtn.classList.toggle('starred', isStarred);
-        }
-    });
-    
     // Confluence history toggle
     document.getElementById('historyToggle')?.addEventListener('click', () => {
         const historySection = document.getElementById('confluenceHistory');
@@ -2799,6 +3093,7 @@ function setupEventListeners() {
         applyTheme(state.settings.theme);
         saveSettings();
         renderTimeframeRows();
+        redrawAddedCoinCharts();
     });
     
     // Multi-coin view toggle
@@ -2828,17 +3123,7 @@ function setupEventListeners() {
             if (state.multiCoinMode) {
                 updateMultiCoinPanels();
             }
-            // Redraw added coin charts on resize
-            if (state.addedCoinCandles) {
-                Object.entries(state.addedCoinCandles).forEach(([key, data]) => {
-                    const [symbol, tfId] = key.split('-');
-                    const canvasId = `chart-${symbol}-${tfId}`;
-                    const canvas = document.getElementById(canvasId);
-                    if (canvas && data.candles && data.coin) {
-                        drawAddedCoinChart(canvas, data.candles, data.coin);
-                    }
-                });
-            }
+            redrawAddedCoinCharts();
         }, 200);
     });
 }
@@ -3343,9 +3628,10 @@ function drawPanelChart(panelId, tfId) {
     // Theme colors
     const theme = document.documentElement.getAttribute('data-theme') || 'dark';
     const isDark = theme === 'dark';
-    const bgColor = isDark ? '#252542' : '#f8fafc';
-    const bullColor = '#10b981';
-    const bearColor = '#ef4444';
+    const isColorful = theme === 'colorful';
+    const bgColor = isDark ? '#1e1e42' : (isColorful ? '#faf5ff' : '#fafbfc');
+    const bullColor = isDark ? '#34d399' : '#059669';
+    const bearColor = isDark ? '#fb7185' : '#e11d48';
     
     ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, width, height);
@@ -3638,6 +3924,9 @@ function renderAddedCoins() {
                     </div>
                     <span class="coin-price" id="blockPrice-${symbol}">Loading...</span>
                 </span>
+                <div class="tf-block-toggles-inline" id="blockToggles-${symbol}">
+                    ${tfTogglesHtml}
+                </div>
                 <div>
                     <button class="btn btn-sm btn-card-settings" data-symbol="${symbol}" title="Settings">⚙️</button>
                     <button class="tf-block-remove" onclick="removeAddedCoin('${symbol}')" title="Remove">✕</button>
@@ -3727,18 +4016,22 @@ function renderAddedCoins() {
                     <div class="patterns-grid">
                         <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-LowVol" checked><span>LowVol</span></label>
                         <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-HighVol" checked><span>HighVol</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-VolSpike" checked><span>VolSpike</span></label>
                         <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-MACDUp" checked><span>MACD↑</span></label>
                         <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-MACDDown" checked><span>MACD↓</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-MACDCrossUp" checked><span>MACDx↑</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-MACDCrossDown" checked><span>MACDx↓</span></label>
                         <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-RejHi" checked><span>RejHi</span></label>
                         <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-RejLo" checked><span>RejLo</span></label>
                         <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-OB" checked><span>OB</span></label>
                         <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-OS" checked><span>OS</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-ExtOB" checked><span>ExtOB</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-ExtOS" checked><span>ExtOS</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-Indecision" checked><span>Indeci</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-BigBody" checked><span>BigBody</span></label>
+                        <label class="pattern-toggle"><input type="checkbox" id="badge-${symbol}-Engulf" checked><span>Engulf</span></label>
                     </div>
                 </div>
-            </div>
-            <!-- TF Toggles -->
-            <div class="tf-block-toggles" id="blockToggles-${symbol}">
-                ${tfTogglesHtml}
             </div>
             <div class="chart-options">
                 <span class="chart-help">Scroll/Pinch to zoom • Drag to pan</span>
@@ -3792,6 +4085,9 @@ function renderAddedCoins() {
         // Fetch price and render timeframes
         fetchAddedCoinFullData(symbol, coin);
     });
+    
+    // Sync main coin dropdown (disable already-added coins)
+    populateMainCoinSwap();
 }
 
 // Toggle TF for added coin (independent from main)
@@ -3840,22 +4136,26 @@ async function fetchAddedCoinFullData(symbol, coin) {
             state.addedCoinData[symbol].change = change;
         }
         
-        // Clear charts container first
         const chartsContainer = document.getElementById(`blockCharts-${symbol}`);
-        if (chartsContainer) {
-            chartsContainer.innerHTML = '';
-        }
+        if (!chartsContainer) return;
         
         // Use this coin's TF state (independent from main)
         const coinTfState = state.addedCoinTfState?.[symbol] || [];
         const enabledTFs = coinTfState.filter(tf => tf.enabled);
         
         if (enabledTFs.length === 0) {
-            if (chartsContainer) {
-                chartsContainer.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-muted);font-size:0.75rem;">Select timeframes above</div>';
-            }
+            chartsContainer.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-muted);font-size:0.75rem;">Select timeframes above</div>';
             return;
         }
+        
+        // Remove rows for TFs that are no longer enabled
+        const enabledIds = new Set(enabledTFs.map(tf => tf.id));
+        chartsContainer.querySelectorAll('.tf-row').forEach(row => {
+            if (!enabledIds.has(row.dataset.tf)) row.remove();
+        });
+        // Remove placeholder text if present
+        const placeholder = chartsContainer.querySelector('div[style*="text-align"]');
+        if (placeholder && !placeholder.classList.contains('tf-row')) placeholder.remove();
         
         // Fetch all enabled TFs in parallel for faster loading
         const tfPromises = enabledTFs.map(tf => {
@@ -3920,9 +4220,8 @@ function renderAddedCoinTimeframeRow(symbol, coin, tf, candles) {
     const directionIcon = direction === 'bull' ? '🟢' : '🔴';
     const dirClass = direction === 'bull' ? 'bullish' : 'bearish';
     
-    // Calculate change % from first candle
-    const firstCandle = candles[0];
-    const changePct = ((latestCandle.close - firstCandle.open) / firstCandle.open * 100);
+    // Calculate change % from current candle (open to close) - same as main coin
+    const changePct = latestCandle.open !== 0 ? ((latestCandle.close - latestCandle.open) / latestCandle.open) * 100 : 0;
     
     // Calculate indicators
     const rsi = calculateRSI(candles, 14);
@@ -3940,14 +4239,19 @@ function renderAddedCoinTimeframeRow(symbol, coin, tf, candles) {
     else if (rsi <= 30) alerts.push({ label: 'OS', class: 'rsi-os' });
     
     // Volume alerts
-    if (volumeRatio >= 2) alerts.push({ label: 'HighVol', class: 'vol-high' });
+    if (volumeRatio >= 3) alerts.push({ label: 'VolSpike', class: 'vol-high' });
+    else if (volumeRatio >= 2) alerts.push({ label: 'HighVol', class: 'vol-high' });
     if (volumeRatio <= 0.5) alerts.push({ label: 'LowVol', class: 'vol-low' });
     
-    // MACD alerts
+    // MACD alerts - crosses first
     if (macdData && macdData.histogram > 0 && macdData.prevHistogram <= 0) {
+        alerts.push({ label: 'MACDx↑', class: 'macd-bull' });
+    } else if (macdData && macdData.histogram > macdData.prevHistogram) {
         alerts.push({ label: 'MACD↑', class: 'macd-bull' });
     }
     if (macdData && macdData.histogram < 0 && macdData.prevHistogram >= 0) {
+        alerts.push({ label: 'MACDx↓', class: 'macd-bear' });
+    } else if (macdData && macdData.histogram < macdData.prevHistogram) {
         alerts.push({ label: 'MACD↓', class: 'macd-bear' });
     }
     
@@ -3960,8 +4264,28 @@ function renderAddedCoinTimeframeRow(symbol, coin, tf, candles) {
         if (lowerWick / range > 0.6) alerts.push({ label: 'RejLo', class: 'rsi-os' });
     }
     
+    // Body alerts
+    if (bodyPct >= 80) alerts.push({ label: 'BigBody', class: direction === 'bull' ? 'macd-bull' : 'macd-bear' });
+    if (bodyPct <= 20) alerts.push({ label: 'Indeci', class: 'neutral' });
+    
+    // Engulfing
+    if (candles.length >= 2) {
+        const prev = candles[candles.length - 2];
+        const currBody = Math.abs(latestCandle.close - latestCandle.open);
+        const prevBody = Math.abs(prev.close - prev.open);
+        const currBull = latestCandle.close >= latestCandle.open;
+        const prevBull = prev.close >= prev.open;
+        if (currBull && !prevBull && currBody > prevBody && latestCandle.close > prev.open && latestCandle.open < prev.close) {
+            alerts.push({ label: 'BullEng', class: 'macd-bull' });
+        }
+        if (!currBull && prevBull && currBody > prevBody && latestCandle.open > prev.close && latestCandle.close < prev.open) {
+            alerts.push({ label: 'BearEng', class: 'macd-bear' });
+        }
+    }
+    
     const alertsHtml = alerts.length > 0
-        ? alerts.slice(0, 3).map(a => `<span class="alert-group ${a.class}">${a.label}</span>`).join('')
+        ? alerts.slice(0, 5).map(a => `<span class="alert-group ${a.class}">${a.label}</span>`).join('') +
+          (alerts.length > 5 ? `<span class="alerts-more" title="${alerts.slice(5).map(a => a.label).join(', ')}">+${alerts.length - 5}</span>` : '')
         : '<span class="alert-group dim">--</span>';
     
     // Get timer
@@ -3980,6 +4304,13 @@ function renderAddedCoinTimeframeRow(symbol, coin, tf, candles) {
                 <span class="tf-price-value">$${latestCandle.close.toFixed(coin.decimals)}</span>
                 <span class="tf-price-change ${changePct >= 0 ? 'positive' : 'negative'}">${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%</span>
             </div>
+            <div class="tf-info-row tf-info-secondary">
+                <span class="tf-price-hl">H:$${latestCandle.high.toFixed(coin.decimals)}</span>
+                <span class="tf-price-hl">L:$${latestCandle.low.toFixed(coin.decimals)}</span>
+                <span class="tf-stat-mini">B${bodyPct.toFixed(0)}%</span>
+                <span class="tf-stat-mini">V${volumeRatio.toFixed(1)}x</span>
+                <span class="tf-stat-mini">RSI${rsi.toFixed(0)}</span>
+            </div>
         </div>
         <div class="tf-chart-wrapper">
             <div class="candle-info-tab" id="${tabId}" style="display:none;">
@@ -3997,13 +4328,6 @@ function renderAddedCoinTimeframeRow(symbol, coin, tf, candles) {
             </div>
         </div>
         <div class="tf-bottom">
-            <div class="tf-bottom-stats">
-                <span class="tf-price-hl">H:$${latestCandle.high.toFixed(coin.decimals)}</span>
-                <span class="tf-price-hl">L:$${latestCandle.low.toFixed(coin.decimals)}</span>
-                <span class="tf-stat-mini">B${bodyPct.toFixed(0)}%</span>
-                <span class="tf-stat-mini">V${volumeRatio.toFixed(1)}x</span>
-                <span class="tf-stat-mini">RSI${rsi.toFixed(0)}</span>
-            </div>
             <div class="tf-bottom-alerts">${alertsHtml}</div>
         </div>
     `;
@@ -4061,8 +4385,9 @@ function drawAddedCoinChart(canvas, candles, coin) {
     const showVolume = state.settings.showChartVolume !== false;
     const showEMA = state.settings.showChartEMA;
     const showMA = state.settings.showChartMA;
+    const showPriceScale = state.settings.showPriceScale;
     
-    const padding = { top: 18, right: 5, bottom: 5, left: 5 };
+    const padding = { top: 18, right: showPriceScale ? 55 : 5, bottom: 5, left: 5 };
     let mainChartHeight = height - padding.top - padding.bottom;
     let volumeHeight = 0;
     
@@ -4078,20 +4403,20 @@ function drawAddedCoinChart(canvas, candles, coin) {
     // Theme colors
     const theme = document.documentElement.getAttribute('data-theme') || 'dark';
     const isDark = theme === 'dark';
-    const isLightColorful = theme === 'light-colorful';
+    const isLightColorful = theme === 'colorful';
     
     let bgColor, bullColor, bearColor, gridColor, textColor, emaColor, maColor;
     if (isDark) {
-        bgColor = '#252542'; bullColor = '#10b981'; bearColor = '#ef4444';
-        gridColor = '#3d3d5c'; textColor = '#b0b0c0';
-        emaColor = '#f59e0b'; maColor = '#3b82f6';
+        bgColor = '#1e1e42'; bullColor = '#34d399'; bearColor = '#fb7185';
+        gridColor = '#2e2e52'; textColor = '#b8b8d0';
+        emaColor = '#fbbf24'; maColor = '#60a5fa';
     } else if (isLightColorful) {
-        bgColor = '#f8fafc'; bullColor = '#059669'; bearColor = '#dc2626';
-        gridColor = '#e2e8f0'; textColor = '#64748b';
-        emaColor = '#d97706'; maColor = '#2563eb';
+        bgColor = '#faf5ff'; bullColor = '#059669'; bearColor = '#e11d48';
+        gridColor = '#ddd6fe'; textColor = '#4338ca';
+        emaColor = '#ea580c'; maColor = '#2563eb';
     } else {
-        bgColor = '#ffffff'; bullColor = '#16a34a'; bearColor = '#dc2626';
-        gridColor = '#f1f5f9'; textColor = '#94a3b8';
+        bgColor = '#fafbfc'; bullColor = '#16a34a'; bearColor = '#dc2626';
+        gridColor = '#f0f0f0'; textColor = '#9ca3af';
         emaColor = '#d97706'; maColor = '#2563eb';
     }
     
@@ -4109,6 +4434,59 @@ function drawAddedCoinChart(canvas, candles, coin) {
         ctx.moveTo(padding.left, y);
         ctx.lineTo(width - padding.right, y);
         ctx.stroke();
+    }
+    
+    // Draw price scale on right side
+    if (showPriceScale) {
+        const scaleX = width - padding.right + 3;
+        const numTicks = Math.min(5, Math.max(3, Math.floor(mainChartHeight / 30)));
+        
+        ctx.font = '8px JetBrains Mono, monospace';
+        ctx.textAlign = 'left';
+        
+        // Separator line
+        ctx.strokeStyle = gridColor;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(width - padding.right, padding.top);
+        ctx.lineTo(width - padding.right, padding.top + mainChartHeight);
+        ctx.stroke();
+        
+        for (let i = 0; i <= numTicks; i++) {
+            const ratio = i / numTicks;
+            const price = maxPrice - ratio * priceRange;
+            const y = padding.top + ratio * mainChartHeight;
+            
+            ctx.strokeStyle = textColor;
+            ctx.beginPath();
+            ctx.moveTo(width - padding.right, y);
+            ctx.lineTo(width - padding.right + 3, y);
+            ctx.stroke();
+            
+            ctx.fillStyle = textColor;
+            ctx.fillText(price.toFixed(decimals), scaleX + 2, y + 3);
+        }
+        
+        // Current price indicator
+        const lastCandle = displayCandles[displayCandles.length - 1];
+        if (lastCandle) {
+            const curY = scaleY(lastCandle.close);
+            const isBull = lastCandle.close >= lastCandle.open;
+            const curColor = isBull ? bullColor : bearColor;
+            
+            ctx.fillStyle = curColor;
+            ctx.fillRect(width - padding.right, curY - 6, padding.right, 12);
+            ctx.beginPath();
+            ctx.moveTo(width - padding.right, curY - 5);
+            ctx.lineTo(width - padding.right - 4, curY);
+            ctx.lineTo(width - padding.right, curY + 5);
+            ctx.fill();
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 8px JetBrains Mono, monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText(lastCandle.close.toFixed(decimals), width - padding.right + 3, curY + 3);
+        }
     }
     
     // Draw volume bars
@@ -4181,6 +4559,13 @@ function drawAddedCoinChart(canvas, candles, coin) {
         ctx.stroke();
     }
     
+    // Draw hovered candle highlight
+    if (typeof canvas.hoveredCandleIdx === 'number' && canvas.hoveredCandleIdx >= 0 && canvas.hoveredCandleIdx < displayCandles.length) {
+        const hx = padding.left + canvas.hoveredCandleIdx * candleSpacing;
+        ctx.fillStyle = isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.10)';
+        ctx.fillRect(hx, padding.top, candleSpacing, mainChartHeight + volumeHeight);
+    }
+    
     // Draw candles
     displayCandles.forEach((candle, i) => {
         const x = padding.left + i * candleSpacing + candleSpacing / 2;
@@ -4205,29 +4590,61 @@ function drawAddedCoinChart(canvas, candles, coin) {
         ctx.fillRect(x - candleWidth / 2, bodyTop, candleWidth, bodyHeight);
     });
     
-    // Draw H/L price labels
+    // Draw H/L price labels at actual candle positions (like Binance)
     let highIdx = 0, lowIdx = 0;
     displayCandles.forEach((c, i) => {
         if (c.high > displayCandles[highIdx].high) highIdx = i;
         if (c.low < displayCandles[lowIdx].low) lowIdx = i;
     });
     
-    // High label
-    const highCandle = displayCandles[highIdx];
-    const highX = padding.left + highIdx * candleSpacing + candleSpacing / 2;
-    const highY = scaleY(highCandle.high);
-    ctx.fillStyle = bullColor;
-    ctx.font = `bold ${Math.max(8, Math.min(10, width * 0.025))}px JetBrains Mono, monospace`;
-    ctx.textAlign = highIdx > displayCandles.length / 2 ? 'right' : 'left';
-    ctx.fillText(`H:$${highCandle.high.toFixed(decimals)}`, highX + (highIdx > displayCandles.length / 2 ? -4 : 4), highY - 3);
+    const fontSize = Math.max(7, Math.min(9, width * 0.02));
+    ctx.font = `bold ${fontSize}px JetBrains Mono, monospace`;
     
-    // Low label
-    const lowCandle = displayCandles[lowIdx];
+    // HIGH label at actual candle
+    const highX = padding.left + highIdx * candleSpacing + candleSpacing / 2;
+    const highY = scaleY(displayCandles[highIdx].high);
+    const hOnRight = highX < (width - padding.right) / 2;
+    const hText = hOnRight ? `← ${displayCandles[highIdx].high.toFixed(decimals)}` : `${displayCandles[highIdx].high.toFixed(decimals)} →`;
+    const hW = ctx.measureText(hText).width + 6;
+    const hLX = hOnRight ? highX + candleSpacing * 0.5 : highX - hW - candleSpacing * 0.3;
+    
+    ctx.strokeStyle = `${bullColor}80`;
+    ctx.lineWidth = 0.7;
+    ctx.setLineDash([2, 2]);
+    ctx.beginPath();
+    ctx.moveTo(highX, highY);
+    ctx.lineTo(hOnRight ? hLX : hLX + hW, highY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    ctx.fillStyle = `${bullColor}e6`;
+    ctx.fillRect(hLX, highY - 5, hW, 11);
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'left';
+    ctx.fillText(hText, hLX + 3, highY + 3);
+    
+    // LOW label at actual candle
     const lowX = padding.left + lowIdx * candleSpacing + candleSpacing / 2;
-    const lowY = scaleY(lowCandle.low);
-    ctx.fillStyle = bearColor;
-    ctx.textAlign = lowIdx > displayCandles.length / 2 ? 'right' : 'left';
-    ctx.fillText(`L:$${lowCandle.low.toFixed(decimals)}`, lowX + (lowIdx > displayCandles.length / 2 ? -4 : 4), lowY + 12);
+    const lowY = scaleY(displayCandles[lowIdx].low);
+    const lOnRight = lowX < (width - padding.right) / 2;
+    const lText = lOnRight ? `← ${displayCandles[lowIdx].low.toFixed(decimals)}` : `${displayCandles[lowIdx].low.toFixed(decimals)} →`;
+    const lW = ctx.measureText(lText).width + 6;
+    const lLX = lOnRight ? lowX + candleSpacing * 0.5 : lowX - lW - candleSpacing * 0.3;
+    
+    ctx.strokeStyle = `${bearColor}80`;
+    ctx.lineWidth = 0.7;
+    ctx.setLineDash([2, 2]);
+    ctx.beginPath();
+    ctx.moveTo(lowX, lowY);
+    ctx.lineTo(lOnRight ? lLX : lLX + lW, lowY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    ctx.fillStyle = `${bearColor}e6`;
+    ctx.fillRect(lLX, lowY - 5, lW, 11);
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'left';
+    ctx.fillText(lText, lLX + 3, lowY + 3);
 }
 
 // Setup chart interaction for added coins (hover to show prices)
@@ -4250,6 +4667,12 @@ function setupAddedCoinChartInteraction(canvasId, symbol, tfId, coin) {
         const candleIndex = Math.floor(x / candleWidth);
         
         if (candleIndex >= 0 && candleIndex < candles.length) {
+            // Set hover index and redraw for visual highlight
+            if (candleIndex !== canvas.hoveredCandleIdx) {
+                canvas.hoveredCandleIdx = candleIndex;
+                drawAddedCoinChart(canvas, data.candles, data.coin);
+            }
+            
             const candle = candles[candleIndex];
             const decimals = coin.decimals || 2;
             
@@ -4268,6 +4691,11 @@ function setupAddedCoinChartInteraction(canvasId, symbol, tfId, coin) {
     };
     
     const handleLeave = () => {
+        canvas.hoveredCandleIdx = -1;
+        const data = state.addedCoinCandles?.[dataKey];
+        if (data && data.candles && data.coin) {
+            drawAddedCoinChart(canvas, data.candles, data.coin);
+        }
         const tabEl = document.getElementById(tabId);
         if (tabEl) tabEl.style.display = 'none';
     };
@@ -4314,9 +4742,10 @@ function drawMiniCoinChart(canvas, klines) {
     // Theme
     const theme = document.documentElement.getAttribute('data-theme') || 'dark';
     const isDark = theme === 'dark';
-    const bgColor = isDark ? '#1a1a2e' : '#f1f5f9';
-    const bullColor = '#10b981';
-    const bearColor = '#ef4444';
+    const isColorful = theme === 'colorful';
+    const bgColor = isDark ? '#161630' : (isColorful ? '#ede9fe' : '#fafbfc');
+    const bullColor = isDark ? '#34d399' : '#059669';
+    const bearColor = isDark ? '#fb7185' : '#e11d48';
     
     ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, width, height);
@@ -4351,5 +4780,5 @@ setInterval(() => {
             fetchAddedCoinFullData(symbol, coin);
         }
     });
-}, 30000);
+}, 10000);
 
