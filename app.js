@@ -101,6 +101,7 @@ function initApp() {
     
     setupEventListeners();
     setupSortListener();
+    initFancySelects();
     startTimerLoop();
     
     // Refresh coin data periodically
@@ -115,6 +116,68 @@ function setupSortListener() {
             renderCoinsSidebar();
         });
     }
+}
+
+// ============================================
+// FANCY SELECT INITIALIZATION
+// ============================================
+
+function initFancySelects() {
+    document.querySelectorAll('.fancy-select').forEach(wrapper => {
+        const select = wrapper.querySelector('select');
+        if (!select || wrapper.querySelector('.fancy-select-trigger')) return; // already init
+        
+        // Build trigger
+        const trigger = document.createElement('div');
+        trigger.className = 'fancy-select-trigger';
+        const selectedOpt = select.options[select.selectedIndex];
+        trigger.innerHTML = `<span class="fancy-select-label">${selectedOpt ? selectedOpt.text : ''}</span><span class="fancy-select-arrow">▾</span>`;
+        
+        // Build options panel
+        const optionsDiv = document.createElement('div');
+        optionsDiv.className = 'fancy-select-options';
+        Array.from(select.options).forEach(opt => {
+            const optEl = document.createElement('div');
+            optEl.className = `fancy-select-option${opt.selected ? ' selected' : ''}`;
+            optEl.dataset.value = opt.value;
+            optEl.textContent = opt.text;
+            optionsDiv.appendChild(optEl);
+        });
+        
+        wrapper.appendChild(trigger);
+        wrapper.appendChild(optionsDiv);
+        
+        // Toggle open
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Close all other fancy selects
+            document.querySelectorAll('.fancy-select.open').forEach(fs => {
+                if (fs !== wrapper) fs.classList.remove('open');
+            });
+            wrapper.classList.toggle('open');
+        });
+        
+        // Option click
+        optionsDiv.addEventListener('click', (e) => {
+            const optEl = e.target.closest('.fancy-select-option');
+            if (!optEl) return;
+            
+            const value = optEl.dataset.value;
+            select.value = value;
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+            
+            // Update visual
+            trigger.querySelector('.fancy-select-label').textContent = optEl.textContent;
+            optionsDiv.querySelectorAll('.fancy-select-option').forEach(o => o.classList.remove('selected'));
+            optEl.classList.add('selected');
+            wrapper.classList.remove('open');
+        });
+    });
+    
+    // Global close handler
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.fancy-select.open').forEach(fs => fs.classList.remove('open'));
+    });
 }
 
 // ============================================
@@ -162,6 +225,15 @@ function loadSettings() {
         state.settings.candlePopupType = 'hover-tab';
     }
     
+    // Ensure signal settings defaults
+    if (state.settings.enableSignalSound === undefined) state.settings.enableSignalSound = true;
+    if (state.settings.enableSignalPopup === undefined) state.settings.enableSignalPopup = true;
+    if (state.settings.signalCooldownMs === undefined) state.settings.signalCooldownMs = 60000;
+    
+    // Apply signal cooldown from settings
+    state.signalState = state.signalState || { current: 'NEUTRAL', lastChange: 0, cooldownMs: 60000 };
+    state.signalState.cooldownMs = state.settings.signalCooldownMs;
+    
     const tfStates = localStorage.getItem('mtfcm_timeframes');
     if (tfStates) {
         const parsed = JSON.parse(tfStates);
@@ -192,6 +264,15 @@ function loadInlineSettings() {
     if (alertSecondsEl) alertSecondsEl.value = state.settings.alertSeconds || 30;
     if (minConfluenceEl) minConfluenceEl.value = state.settings.minConfluence || 2;
     if (enableSoundEl) enableSoundEl.checked = state.settings.enableSound !== false;
+    
+    // Signal notification settings
+    const enableSignalSoundEl = document.getElementById('enableSignalSound');
+    const enableSignalPopupEl = document.getElementById('enableSignalPopup');
+    const signalCooldownEl = document.getElementById('signalCooldown');
+    
+    if (enableSignalSoundEl) enableSignalSoundEl.checked = state.settings.enableSignalSound !== false;
+    if (enableSignalPopupEl) enableSignalPopupEl.checked = state.settings.enableSignalPopup !== false;
+    if (signalCooldownEl) signalCooldownEl.value = String((state.settings.signalCooldownMs || 60000) / 1000);
     
     // Confluence settings
     const weightMethodEl = document.getElementById('weightMethod');
@@ -341,6 +422,7 @@ function loadChartOptions() {
     const maEl = document.getElementById('showChartMA');
     const emaEl = document.getElementById('showChartEMA');
     const vwapEl = document.getElementById('showChartVWAP');
+    const srEl = document.getElementById('showChartSR');
     
     if (rsiEl) rsiEl.checked = state.settings.showChartRSI || false;
     if (macdEl) macdEl.checked = state.settings.showChartMACD || false;
@@ -349,6 +431,7 @@ function loadChartOptions() {
     if (maEl) maEl.checked = state.settings.showChartMA || false;
     if (emaEl) emaEl.checked = state.settings.showChartEMA !== false;
     if (vwapEl) vwapEl.checked = state.settings.showChartVWAP || false;
+    if (srEl) srEl.checked = state.settings.showChartSR || false;
 }
 
 // ============================================
@@ -1076,6 +1159,29 @@ function analyzeCandles(candles, tfId) {
     const macd = calculateMACD(candles);
     const macdArray = calculateMACDArray(candles);
     
+    // Trend analysis - EMA alignment
+    const closes = candles.map(c => c.close);
+    const ema21 = calculateEMA(closes, 21);
+    const ema50 = closes.length >= 50 ? calculateEMA(closes, 50) : ema21;
+    const priceAboveEma21 = current.close > ema21;
+    const priceAboveEma50 = current.close > ema50;
+    const ema21AboveEma50 = ema21 > ema50;
+    
+    // Previous EMAs for trend direction
+    const prevCloses = closes.slice(0, -1);
+    const prevEma21 = prevCloses.length >= 21 ? calculateEMA(prevCloses, 21) : ema21;
+    const ema21Rising = ema21 > prevEma21;
+    
+    // RSI momentum direction
+    const prevRsi = rsiArray.length >= 2 ? rsiArray[rsiArray.length - 2] : rsi;
+    const rsiRising = rsi > prevRsi;
+    
+    const trend = {
+        ema21, ema50,
+        priceAboveEma21, priceAboveEma50, ema21AboveEma50, ema21Rising,
+        rsiRising
+    };
+    
     const alerts = generateAlerts(rsi, macd, volumeRatio, bodyPct, upperWickPct, lowerWickPct, current, previous);
     
     return {
@@ -1095,6 +1201,7 @@ function analyzeCandles(candles, tfId) {
         rsiArray,
         macd,
         macdArray,
+        trend,
         alerts
     };
 }
@@ -1241,14 +1348,95 @@ function calculateEMA(data, period) {
 }
 
 // ============================================
+// SUPPORT & RESISTANCE DETECTION
+// ============================================
+
+function calculateSupportResistance(candles, maxLevels = 5) {
+    if (!candles || candles.length < 20) return { support: [], resistance: [] };
+    
+    const pivots = [];
+    const lookback = 5; // candles left/right to confirm pivot
+    
+    // Find pivot highs and lows
+    for (let i = lookback; i < candles.length - lookback; i++) {
+        let isPivotHigh = true, isPivotLow = true;
+        
+        for (let j = 1; j <= lookback; j++) {
+            if (candles[i].high <= candles[i - j].high || candles[i].high <= candles[i + j].high) {
+                isPivotHigh = false;
+            }
+            if (candles[i].low >= candles[i - j].low || candles[i].low >= candles[i + j].low) {
+                isPivotLow = false;
+            }
+        }
+        
+        if (isPivotHigh) pivots.push({ price: candles[i].high, type: 'resistance', idx: i, strength: 1 });
+        if (isPivotLow) pivots.push({ price: candles[i].low, type: 'support', idx: i, strength: 1 });
+    }
+    
+    if (pivots.length === 0) return { support: [], resistance: [] };
+    
+    // Cluster nearby levels (within 0.3% of each other)
+    const currentPrice = candles[candles.length - 1].close;
+    const clusterThreshold = currentPrice * 0.003;
+    
+    const clusters = [];
+    const used = new Set();
+    
+    pivots.sort((a, b) => a.price - b.price);
+    
+    for (let i = 0; i < pivots.length; i++) {
+        if (used.has(i)) continue;
+        
+        let sumPrice = pivots[i].price;
+        let count = 1;
+        let maxIdx = pivots[i].idx;
+        const type = pivots[i].type;
+        used.add(i);
+        
+        for (let j = i + 1; j < pivots.length; j++) {
+            if (used.has(j)) continue;
+            if (Math.abs(pivots[j].price - pivots[i].price) <= clusterThreshold) {
+                sumPrice += pivots[j].price;
+                count++;
+                maxIdx = Math.max(maxIdx, pivots[j].idx);
+                used.add(j);
+            }
+        }
+        
+        clusters.push({
+            price: sumPrice / count,
+            touches: count,
+            type: sumPrice / count > currentPrice ? 'resistance' : 'support',
+            recency: maxIdx / candles.length, // 0-1, higher = more recent
+            strength: count + (maxIdx / candles.length) * 2 // touches + recency bonus
+        });
+    }
+    
+    // Sort by strength, take top levels
+    clusters.sort((a, b) => b.strength - a.strength);
+    
+    const support = clusters.filter(c => c.type === 'support').slice(0, maxLevels);
+    const resistance = clusters.filter(c => c.type === 'resistance').slice(0, maxLevels);
+    
+    return { support, resistance };
+}
+
+// ============================================
 // CONFLUENCE CALCULATION
 // ============================================
 
+// Signal state for cooldown
+state.signalState = state.signalState || { current: 'NEUTRAL', lastChange: 0, cooldownMs: 60000 };
+
 function calculateConfluence() {
     const enabledTFs = state.timeframes.filter(tf => tf.enabled);
-    let bullScore = 0, bearScore = 0, bullCount = 0, bearCount = 0;
     const weights = WEIGHT_METHODS[state.settings.weightMethod] || WEIGHT_METHODS.linear;
-    const tfWeights = [];
+    const tfDetails = [];
+    
+    let totalBullWeight = 0, totalBearWeight = 0;
+    let bullCount = 0, bearCount = 0;
+    let alignedTFs = 0;
     
     enabledTFs.forEach(tf => {
         const data = state.data[tf.id];
@@ -1258,69 +1446,256 @@ function calculateConfluence() {
         let modifiers = [];
         let finalWeight = baseWeight;
         
+        // ── ENHANCED DIRECTION SCORE ──
+        // Instead of just candle color, we score [-1 to +1] using 4 factors:
+        
+        let directionScore = 0;
+        let dirComponents = [];
+        
+        // 1. Candle direction: +0.25 or -0.25
+        directionScore += data.isBullish ? 0.25 : -0.25;
+        dirComponents.push(data.isBullish ? 'Candle↑' : 'Candle↓');
+        
+        // 2. Close position in range: maps [0,1] to [-0.25, +0.25]
+        const closePos = data.buyPct / 100; // 0-1
+        directionScore += (closePos - 0.5) * 0.5; // -0.25 to +0.25
+        
+        // 3. Price vs EMA21: +0.25 or -0.25
+        if (data.trend) {
+            directionScore += data.trend.priceAboveEma21 ? 0.25 : -0.25;
+            dirComponents.push(data.trend.priceAboveEma21 ? '>EMA21' : '<EMA21');
+            
+            // 4. EMA21 vs EMA50 (trend alignment): +0.25 or -0.25
+            directionScore += data.trend.ema21AboveEma50 ? 0.25 : -0.25;
+            dirComponents.push(data.trend.ema21AboveEma50 ? 'EMA↑' : 'EMA↓');
+        }
+        
+        // ── MOMENTUM SCORE ──
+        let momentumScore = 0;
+        
+        if (state.settings.useIndicatorMod && data.rsi && data.macd) {
+            // RSI zone: maps to [-0.5, +0.5]
+            if (data.rsi > 60) momentumScore += 0.5;
+            else if (data.rsi < 40) momentumScore -= 0.5;
+            else momentumScore += (data.rsi - 50) / 20; // gradual
+            
+            // RSI direction
+            if (data.trend && data.trend.rsiRising) momentumScore += 0.15;
+            else momentumScore -= 0.15;
+            
+            // MACD histogram: positive & rising = strong bull
+            if (data.macd.histogram > 0) momentumScore += 0.25;
+            else momentumScore -= 0.25;
+            
+            // MACD crossover events (extra weight)
+            if (data.macd.crossedUp) momentumScore += 0.3;
+            else if (data.macd.crossedDown) momentumScore -= 0.3;
+            
+            // Clamp to [-1, 1]
+            momentumScore = Math.max(-1, Math.min(1, momentumScore));
+        }
+        
+        // ── COMBINED TF SCORE [-1 to +1] ──
+        const hasIndicators = state.settings.useIndicatorMod && data.rsi && data.macd;
+        const tfScore = hasIndicators 
+            ? (directionScore * 0.6 + momentumScore * 0.4)  // 60% trend, 40% momentum
+            : directionScore;  // trend only
+        
+        // ── MODIFIERS (multiply weight) ──
         if (state.settings.useStrengthMod) {
             if (data.bodyPct >= BODY_CONFIG.strongThreshold) {
-                finalWeight *= 1.5;
-                modifiers.push('Body×1.5');
+                finalWeight *= 1.3;
+                modifiers.push('Body×1.3');
             } else if (data.bodyPct < BODY_CONFIG.weakThreshold) {
-                finalWeight *= 0.5;
-                modifiers.push('Body×0.5');
+                finalWeight *= 0.6;
+                modifiers.push('Body×0.6');
             }
         }
         
         if (state.settings.useVolumeMod) {
-            if (data.volumeRatio >= VOLUME_CONFIG.highThreshold) {
-                finalWeight *= 1.3;
-                modifiers.push('Vol×1.3');
+            if (data.volumeRatio >= VOLUME_CONFIG.spikeThreshold) {
+                finalWeight *= 1.4;
+                modifiers.push('Vol×1.4');
+            } else if (data.volumeRatio >= VOLUME_CONFIG.highThreshold) {
+                finalWeight *= 1.2;
+                modifiers.push('Vol×1.2');
             } else if (data.volumeRatio <= VOLUME_CONFIG.lowThreshold) {
                 finalWeight *= 0.7;
                 modifiers.push('Vol×0.7');
             }
         }
         
-        if (state.settings.useIndicatorMod && data.rsi && data.macd) {
-            const rsiConfirms = data.isBullish ? data.rsi < RSI_CONFIG.overbought : data.rsi > RSI_CONFIG.oversold;
-            const macdConfirms = data.isBullish === data.macd.isBullish;
-            
-            if (rsiConfirms && macdConfirms) {
-                finalWeight *= 1.4;
-                modifiers.push('Ind×1.4');
-            } else if (rsiConfirms || macdConfirms) {
-                finalWeight *= 1.2;
-                modifiers.push('Ind×1.2');
-            } else {
-                finalWeight *= 0.8;
-                modifiers.push('Ind×0.8');
-            }
+        // ── ACCUMULATE ──
+        const isBullTF = tfScore > 0;
+        const weightedScore = Math.abs(tfScore) * finalWeight;
+        
+        if (isBullTF) {
+            totalBullWeight += weightedScore;
+            bullCount++;
+        } else {
+            totalBearWeight += weightedScore;
+            bearCount++;
         }
         
-        tfWeights.push({
+        // Track alignment (all TFs same direction = stronger signal)
+        if (Math.abs(tfScore) > 0.3) alignedTFs++;
+        
+        tfDetails.push({
             tf: tf.label,
             base: baseWeight,
             final: finalWeight.toFixed(2),
             mods: modifiers.join(' '),
-            dir: data.isBullish ? '🟢' : '🔴'
+            dir: isBullTF ? '🟢' : '🔴',
+            score: tfScore.toFixed(2),
+            components: dirComponents.join(' ')
         });
-        
-        if (data.isBullish) {
-            bullScore += finalWeight;
-            bullCount++;
-        } else {
-            bearScore += finalWeight;
-            bearCount++;
-        }
     });
     
-    const totalScore = bullScore + bearScore;
-    const confluencePct = totalScore > 0 ? (bullScore / totalScore) * 100 : 50;
+    const totalScore = totalBullWeight + totalBearWeight;
+    const confluencePct = totalScore > 0 ? (totalBullWeight / totalScore) * 100 : 50;
     
     // Store in state for chart markers
     state.confluenceScore = confluencePct;
     
-    // Track high confluence moments (>= 70% or <= 30%)
+    // ── SIGNAL GENERATION ──
+    const signal = generateSignal(confluencePct, bullCount, bearCount, alignedTFs, enabledTFs.length);
+    
+    // Track high confluence moments
     trackConfluenceHistory(confluencePct, bullCount > bearCount ? 'BULL' : 'BEAR');
     
-    updateConfluenceDisplay(confluencePct, bullCount, bearCount, tfWeights);
+    updateConfluenceDisplay(confluencePct, bullCount, bearCount, tfDetails, signal);
+}
+
+// ── BUY/SELL SIGNAL GENERATOR ──
+function generateSignal(pct, bullCount, bearCount, alignedTFs, totalTFs) {
+    const now = Date.now();
+    const ss = state.signalState;
+    
+    // Determine raw signal tier
+    let rawSignal, signalClass;
+    if (pct >= 80 && alignedTFs >= Math.min(3, totalTFs)) {
+        rawSignal = 'STRONG BUY';
+        signalClass = 'signal-strong-buy';
+    } else if (pct >= 65) {
+        rawSignal = 'BUY';
+        signalClass = 'signal-buy';
+    } else if (pct <= 20 && alignedTFs >= Math.min(3, totalTFs)) {
+        rawSignal = 'STRONG SELL';
+        signalClass = 'signal-strong-sell';
+    } else if (pct <= 35) {
+        rawSignal = 'SELL';
+        signalClass = 'signal-sell';
+    } else {
+        rawSignal = 'NEUTRAL';
+        signalClass = 'signal-neutral';
+    }
+    
+    // Cooldown: don't flip signal too fast (60s minimum between changes)
+    const isNewSignal = rawSignal !== ss.current;
+    const cooldownPassed = (now - ss.lastChange) >= ss.cooldownMs;
+    
+    if (isNewSignal && cooldownPassed) {
+        ss.current = rawSignal;
+        ss.lastChange = now;
+        // Fire notifications
+        notifySignalChange(rawSignal);
+        return { signal: rawSignal, signalClass, isNew: true };
+    } else if (isNewSignal && !cooldownPassed) {
+        // In cooldown - show pending
+        return { signal: ss.current, signalClass: getSignalClass(ss.current), isNew: false, pending: rawSignal };
+    }
+    
+    return { signal: ss.current, signalClass: getSignalClass(ss.current), isNew: false };
+}
+
+function getSignalClass(signal) {
+    const map = {
+        'STRONG BUY': 'signal-strong-buy',
+        'BUY': 'signal-buy',
+        'NEUTRAL': 'signal-neutral',
+        'SELL': 'signal-sell',
+        'STRONG SELL': 'signal-strong-sell'
+    };
+    return map[signal] || 'signal-neutral';
+}
+
+// ============================================
+// SIGNAL NOTIFICATIONS
+// ============================================
+
+function notifySignalChange(signal) {
+    const coin = state.currentCoin?.shortName || 'Coin';
+    
+    // Sound notification
+    if (state.settings.enableSignalSound !== false) {
+        playSignalSound(signal);
+    }
+    
+    // Popup notification
+    if (state.settings.enableSignalPopup !== false) {
+        showSignalPopup(coin, signal);
+    }
+}
+
+function playSignalSound(signal) {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        
+        gain.gain.value = 0.15;
+        
+        if (signal.includes('BUY')) {
+            // Rising tone for buy
+            osc.frequency.setValueAtTime(440, ctx.currentTime);
+            osc.frequency.linearRampToValueAtTime(660, ctx.currentTime + 0.15);
+            if (signal.includes('STRONG')) {
+                osc.frequency.linearRampToValueAtTime(880, ctx.currentTime + 0.3);
+            }
+        } else if (signal.includes('SELL')) {
+            // Falling tone for sell
+            osc.frequency.setValueAtTime(660, ctx.currentTime);
+            osc.frequency.linearRampToValueAtTime(440, ctx.currentTime + 0.15);
+            if (signal.includes('STRONG')) {
+                osc.frequency.linearRampToValueAtTime(330, ctx.currentTime + 0.3);
+            }
+        } else {
+            // Short blip for neutral
+            osc.frequency.value = 520;
+        }
+        
+        const duration = signal.includes('STRONG') ? 0.35 : 0.2;
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + duration);
+    } catch (e) { /* silent fail */ }
+}
+
+function showSignalPopup(coin, signal) {
+    // Remove existing popup
+    const existing = document.getElementById('signalPopup');
+    if (existing) existing.remove();
+    
+    const popup = document.createElement('div');
+    popup.id = 'signalPopup';
+    popup.className = `signal-popup ${getSignalClass(signal)}`;
+    
+    const icon = signal.includes('BUY') ? '📈' : signal.includes('SELL') ? '📉' : '➡️';
+    popup.innerHTML = `
+        <div class="signal-popup-icon">${icon}</div>
+        <div class="signal-popup-text">
+            <strong>${coin}</strong>
+            <span>${signal}</span>
+        </div>
+        <button class="signal-popup-close" onclick="this.parentElement.remove()">✕</button>
+    `;
+    
+    document.body.appendChild(popup);
+    
+    // Auto dismiss after 5s
+    setTimeout(() => popup.remove(), 5000);
 }
 
 // ============================================
@@ -1371,6 +1746,7 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
     const showMA = state.settings.showChartMA;
     const showEMA = state.settings.showChartEMA;
     const showVWAP = state.settings.showChartVWAP;
+    const showSR = state.settings.showChartSR;
     const showPriceScale = state.settings.showPriceScale;
     const coinDecimals = opts.decimals || state.currentCoin?.decimals || 2;
     
@@ -1378,9 +1754,9 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
     let mainChartHeight = height - padding.top - padding.bottom;
     let volumeHeight = 0, rsiHeight = 0, macdHeight = 0;
     
-    if (showVolume) { volumeHeight = mainChartHeight * 0.18; mainChartHeight -= volumeHeight; }
-    if (showRSI) { rsiHeight = mainChartHeight * 0.1; mainChartHeight -= rsiHeight; }
-    if (showMACD) { macdHeight = mainChartHeight * 0.1; mainChartHeight -= macdHeight; }
+    if (showVolume) { volumeHeight = mainChartHeight * 0.23; mainChartHeight -= volumeHeight; }
+    if (showRSI) { rsiHeight = mainChartHeight * 0.15; mainChartHeight -= rsiHeight; }
+    if (showMACD) { macdHeight = mainChartHeight * 0.15; mainChartHeight -= macdHeight; }
     
     const chartWidth = width - padding.left - padding.right;
     
@@ -1665,6 +2041,43 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
             ctx.stroke();
             ctx.setLineDash([]);
         }
+    }
+    
+    // Support & Resistance levels
+    if (showSR && data.candles.length >= 20) {
+        const sr = calculateSupportResistance(data.candles);
+        const srColor = { support: 'rgba(34, 197, 94, 0.6)', resistance: 'rgba(239, 68, 68, 0.6)' };
+        const srBg = { support: 'rgba(34, 197, 94, 0.08)', resistance: 'rgba(239, 68, 68, 0.08)' };
+        
+        [...sr.support, ...sr.resistance].forEach(level => {
+            const y = scaleY(level.price);
+            if (y < padding.top || y > padding.top + mainChartHeight) return; // off-screen
+            
+            const color = srColor[level.type];
+            const bg = srBg[level.type];
+            
+            // Draw zone band (subtle fill)
+            ctx.fillStyle = bg;
+            ctx.fillRect(padding.left, y - 2, chartWidth, 4);
+            
+            // Draw dashed line
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(padding.left, y);
+            ctx.lineTo(padding.left + chartWidth, y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Label
+            ctx.font = 'bold 7px JetBrains Mono, monospace';
+            ctx.fillStyle = color;
+            ctx.textAlign = 'left';
+            const label = level.type === 'support' ? `S` : `R`;
+            const touchLabel = level.touches > 1 ? `${label}×${level.touches}` : label;
+            ctx.fillText(touchLabel, padding.left + 2, y - 3);
+        });
     }
     
     // Draw candles with H/L labels
@@ -2014,7 +2427,7 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
     // Draw indicator legend in top-right corner
     // (maColors and emaColors already defined above)
     
-    if (showMA || showEMA || showVWAP) {
+    if (showMA || showEMA || showVWAP || showSR) {
         ctx.font = 'bold 7px JetBrains Mono, monospace';
         ctx.textAlign = 'right';
         let legendY = padding.top + 8;
@@ -2039,6 +2452,11 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
         if (showVWAP) {
             ctx.fillStyle = vwapColor;
             ctx.fillText('VW', legendX, legendY);
+            legendY += 8;
+        }
+        if (showSR) {
+            ctx.fillStyle = 'rgba(34, 197, 94, 0.8)';
+            ctx.fillText('S/R', legendX, legendY);
         }
     }
 }
@@ -2753,12 +3171,13 @@ function updatePriceDisplay(data) {
     }
 }
 
-function updateConfluenceDisplay(pct, bullCount, bearCount, tfWeights) {
+function updateConfluenceDisplay(pct, bullCount, bearCount, tfWeights, signal) {
     const fill = document.getElementById('confluenceFill');
     const scoreEl = document.getElementById('confluenceScore');
     const bullEl = document.getElementById('bullCount');
     const bearEl = document.getElementById('bearCount');
     const biasEl = document.getElementById('biasIndicator');
+    const signalEl = document.getElementById('signalIndicator');
     const methodName = document.getElementById('methodName');
     const methodFormula = document.getElementById('methodFormula');
     const methodWeights = document.getElementById('methodWeights');
@@ -2779,6 +3198,24 @@ function updateConfluenceDisplay(pct, bullCount, bearCount, tfWeights) {
     biasEl.querySelector('.stat-value').textContent = bias;
     biasEl.querySelector('.stat-value').className = `stat-value ${biasClass}`;
     
+    // Signal display
+    if (signalEl && signal) {
+        const sv = signalEl.querySelector('.stat-value');
+        const prevSignal = sv.textContent;
+        
+        let displayText = signal.signal;
+        if (signal.pending) displayText += ` (→${signal.pending})`;
+        
+        sv.textContent = displayText;
+        sv.className = `stat-value signal-value ${signal.signalClass}`;
+        
+        // Pulse animation on new signal
+        if (signal.isNew && prevSignal !== signal.signal) {
+            sv.classList.add('signal-pulse');
+            setTimeout(() => sv.classList.remove('signal-pulse'), 4500);
+        }
+    }
+    
     const method = state.settings.weightMethod || 'linear';
     const methodData = WEIGHT_METHODS[method];
     
@@ -2789,16 +3226,17 @@ function updateConfluenceDisplay(pct, bullCount, bearCount, tfWeights) {
     if (methodFormula && methodData) {
         let formula = methodData.description || '';
         const mods = [];
-        if (state.settings.useStrengthMod) mods.push('Body(×0.5-1.5)');
-        if (state.settings.useVolumeMod) mods.push('Vol(×0.7-1.3)');
-        if (state.settings.useIndicatorMod) mods.push('Ind(×0.8-1.4)');
+        if (state.settings.useStrengthMod) mods.push('Body(×0.6-1.3)');
+        if (state.settings.useVolumeMod) mods.push('Vol(×0.7-1.4)');
+        if (state.settings.useIndicatorMod) mods.push('RSI+MACD momentum');
+        formula += '\nTrend: EMA21/50 alignment + candle + close position';
         if (mods.length > 0) formula += `\nModifiers: ${mods.join(', ')}`;
         methodFormula.textContent = formula;
     }
     
     if (methodWeights && tfWeights.length > 0) {
         methodWeights.innerHTML = tfWeights.map(w => 
-            `<div>${w.dir} ${w.tf}: ${w.base}→${w.final} ${w.mods ? `(${w.mods})` : ''}</div>`
+            `<div>${w.dir} ${w.tf}: ${w.base}→${w.final} [${w.score}] ${w.mods ? `(${w.mods})` : ''}</div>`
         ).join('');
     }
 }
@@ -2947,7 +3385,7 @@ function setupEventListeners() {
     }
     
     // Chart options - indicator toggles in TF settings
-    ['showChartVolume', 'showChartMA', 'showChartEMA', 'showChartVWAP'].forEach(id => {
+    ['showChartVolume', 'showChartMA', 'showChartEMA', 'showChartVWAP', 'showChartRSI', 'showChartMACD', 'showChartSR'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('change', (e) => {
             state.settings[id] = e.target.checked;
@@ -3080,6 +3518,24 @@ function setupEventListeners() {
     
     document.getElementById('enableSound')?.addEventListener('change', (e) => {
         state.settings.enableSound = e.target.checked;
+        saveSettings();
+    });
+    
+    // Signal notification settings
+    document.getElementById('enableSignalSound')?.addEventListener('change', (e) => {
+        state.settings.enableSignalSound = e.target.checked;
+        saveSettings();
+    });
+    
+    document.getElementById('enableSignalPopup')?.addEventListener('change', (e) => {
+        state.settings.enableSignalPopup = e.target.checked;
+        saveSettings();
+    });
+    
+    document.getElementById('signalCooldown')?.addEventListener('change', (e) => {
+        const ms = parseInt(e.target.value) * 1000;
+        state.settings.signalCooldownMs = ms;
+        state.signalState.cooldownMs = ms;
         saveSettings();
     });
     

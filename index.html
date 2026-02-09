@@ -49,14 +49,16 @@
                 <input type="text" id="coinSearch" placeholder="Search coins..." class="coin-search">
                 <div class="coin-sort-options">
                     <label>Sort:</label>
-                    <select id="coinSortSelect">
-                        <option value="default">Default</option>
-                        <option value="alpha">A-Z</option>
-                        <option value="alpha-desc">Z-A</option>
-                        <option value="volume">Volume ↓</option>
-                        <option value="change">24h Change ↓</option>
-                        <option value="change-asc">24h Change ↑</option>
-                    </select>
+                    <div class="fancy-select" id="coinSortFancy">
+                        <select id="coinSortSelect">
+                            <option value="default">Default</option>
+                            <option value="alpha">A-Z</option>
+                            <option value="alpha-desc">Z-A</option>
+                            <option value="volume">Volume ↓</option>
+                            <option value="change">24h Change ↓</option>
+                            <option value="change-asc">24h Change ↑</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="coins-list" id="coinsList">
                     <!-- Coins will be loaded dynamically -->
@@ -94,12 +96,14 @@
                     <div class="card-settings" id="confluenceSettings" style="display: none;">
                         <div class="card-settings-row">
                             <label for="weightMethod">Weighting</label>
-                            <select id="weightMethod">
-                                <option value="equal">Equal</option>
-                                <option value="linear" selected>Linear</option>
-                                <option value="exponential">Exponential</option>
-                                <option value="tiered">Tiered</option>
-                            </select>
+                            <div class="fancy-select">
+                                <select id="weightMethod">
+                                    <option value="equal">Equal</option>
+                                    <option value="linear" selected>Linear</option>
+                                    <option value="exponential">Exponential</option>
+                                    <option value="tiered">Tiered</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="card-settings-row">
                             <label>Modifiers</label>
@@ -138,11 +142,22 @@
                                 <span class="stat-value">—</span>
                                 <span class="stat-label">Bias</span>
                             </div>
+                            <div class="stat" id="signalIndicator">
+                                <span class="stat-value signal-value">—</span>
+                                <span class="stat-label">Signal</span>
+                            </div>
                         </div>
                         <div class="confluence-method" id="confluenceMethod">
                             <div class="method-title">Method: <span id="methodName">Linear</span></div>
                             <div class="method-formula" id="methodFormula">Loading...</div>
                             <div class="method-weights" id="methodWeights"></div>
+                            <div class="methods-comparison" id="methodsComparison">
+                                <div class="methods-compare-header" id="methodsCompareToggle">
+                                    <span>📐 Compare All Methods</span>
+                                    <span class="methods-compare-icon">▼</span>
+                                </div>
+                                <div class="methods-compare-body" id="methodsCompareBody" style="display:none;"></div>
+                            </div>
                         </div>
                         <!-- Historical Confluence Tracking -->
                         <div class="confluence-history" id="confluenceHistory">
@@ -206,20 +221,46 @@
                                 </div>
                             </div>
                             <div class="card-settings-section">
+                                <span class="settings-section-label">📢 Signal Notifications</span>
+                                <div class="card-settings-row">
+                                    <label for="enableSignalSound">Sound on signal change</label>
+                                    <input type="checkbox" id="enableSignalSound" checked>
+                                </div>
+                                <div class="card-settings-row">
+                                    <label for="enableSignalPopup">Popup notification</label>
+                                    <input type="checkbox" id="enableSignalPopup" checked>
+                                </div>
+                                <div class="card-settings-row">
+                                    <label for="signalCooldown">Signal cooldown</label>
+                                    <div class="fancy-select">
+                                        <select id="signalCooldown">
+                                            <option value="30">30s</option>
+                                            <option value="60" selected>60s</option>
+                                            <option value="120">2 min</option>
+                                            <option value="300">5 min</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-settings-section">
                                 <span class="settings-section-label">🎨 Display</span>
                                 <div class="card-settings-row">
                                     <label for="viewModeSelect">Display Mode</label>
-                                    <select id="viewModeSelect">
-                                        <option value="clear">Clear</option>
-                                        <option value="advanced">Advanced</option>
-                                    </select>
+                                    <div class="fancy-select">
+                                        <select id="viewModeSelect">
+                                            <option value="clear">Clear</option>
+                                            <option value="advanced">Advanced</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <div class="card-settings-row">
                                     <label for="candlePopupType">Price Info Style</label>
-                                    <select id="candlePopupType">
-                                        <option value="hover-tab">Hover Tab</option>
-                                        <option value="click-popup">Click Popup</option>
-                                    </select>
+                                    <div class="fancy-select">
+                                        <select id="candlePopupType">
+                                            <option value="hover-tab">Hover Tab</option>
+                                            <option value="click-popup">Click Popup</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <div class="card-settings-row">
                                     <label>Show in cards</label>
@@ -236,18 +277,23 @@
                                     <label>Show on chart</label>
                                     <div class="modifier-toggles">
                                         <label class="mini-toggle"><input type="checkbox" id="showChartVolume" checked><span>Vol</span></label>
+                                        <label class="mini-toggle"><input type="checkbox" id="showChartRSI"><span>RSI</span></label>
+                                        <label class="mini-toggle"><input type="checkbox" id="showChartMACD"><span>MACD</span></label>
                                         <label class="mini-toggle"><input type="checkbox" id="showChartMA"><span>MA</span></label>
                                         <label class="mini-toggle"><input type="checkbox" id="showChartEMA" checked><span>EMA</span></label>
                                         <label class="mini-toggle"><input type="checkbox" id="showChartVWAP"><span>VWAP</span></label>
+                                        <label class="mini-toggle"><input type="checkbox" id="showChartSR"><span>S/R</span></label>
                                         <label class="mini-toggle"><input type="checkbox" id="showPriceScale"><span>Price Scale</span></label>
                                     </div>
                                 </div>
                                 <div class="card-settings-row">
                                     <label for="volumeTypeSelect">Volume Style</label>
-                                    <select id="volumeTypeSelect">
-                                        <option value="buysell">Buy/Sell</option>
-                                        <option value="regular">Regular</option>
-                                    </select>
+                                    <div class="fancy-select">
+                                        <select id="volumeTypeSelect">
+                                            <option value="buysell">Buy/Sell</option>
+                                            <option value="regular">Regular</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <div class="card-settings-row">
                                     <label for="maLinesInputTF">MA Periods</label>
@@ -337,8 +383,7 @@
                             <div class="custom-coin-dropdown add-coin-dd" id="addCoinDropdown">
                                 <button class="coin-dropdown-trigger add-coin-trigger" type="button">
                                     <span class="add-coin-plus">+</span>
-                                    <span class="coin-dd-name">Add Coin</span>
-                                    <span class="coin-dd-arrow">▾</span>
+                                    <span class="add-coin-label">Add</span>
                                 </button>
                                 <div class="coin-dropdown-menu">
                                     <input type="text" class="coin-dropdown-search" placeholder="Search coins...">
@@ -413,6 +458,16 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Signal Notification Popup -->
+    <div class="signal-notification" id="signalNotification">
+        <div class="signal-notif-icon"></div>
+        <div class="signal-notif-text">
+            <span class="signal-notif-label">Signal Changed</span>
+            <span class="signal-notif-value"></span>
+        </div>
+        <button class="signal-notif-close" onclick="this.parentElement.classList.remove('show')">✕</button>
     </div>
 
     <script src="coins.js"></script>
