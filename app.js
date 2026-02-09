@@ -1076,6 +1076,29 @@ function analyzeCandles(candles, tfId) {
     const macd = calculateMACD(candles);
     const macdArray = calculateMACDArray(candles);
     
+    // Trend analysis - EMA alignment
+    const closes = candles.map(c => c.close);
+    const ema21 = calculateEMA(closes, 21);
+    const ema50 = closes.length >= 50 ? calculateEMA(closes, 50) : ema21;
+    const priceAboveEma21 = current.close > ema21;
+    const priceAboveEma50 = current.close > ema50;
+    const ema21AboveEma50 = ema21 > ema50;
+    
+    // Previous EMAs for trend direction
+    const prevCloses = closes.slice(0, -1);
+    const prevEma21 = prevCloses.length >= 21 ? calculateEMA(prevCloses, 21) : ema21;
+    const ema21Rising = ema21 > prevEma21;
+    
+    // RSI momentum direction
+    const prevRsi = rsiArray.length >= 2 ? rsiArray[rsiArray.length - 2] : rsi;
+    const rsiRising = rsi > prevRsi;
+    
+    const trend = {
+        ema21, ema50,
+        priceAboveEma21, priceAboveEma50, ema21AboveEma50, ema21Rising,
+        rsiRising
+    };
+    
     const alerts = generateAlerts(rsi, macd, volumeRatio, bodyPct, upperWickPct, lowerWickPct, current, previous);
     
     return {
@@ -1095,6 +1118,7 @@ function analyzeCandles(candles, tfId) {
         rsiArray,
         macd,
         macdArray,
+        trend,
         alerts
     };
 }
@@ -1244,11 +1268,17 @@ function calculateEMA(data, period) {
 // CONFLUENCE CALCULATION
 // ============================================
 
+// Signal state for cooldown
+state.signalState = state.signalState || { current: 'NEUTRAL', lastChange: 0, cooldownMs: 60000 };
+
 function calculateConfluence() {
     const enabledTFs = state.timeframes.filter(tf => tf.enabled);
-    let bullScore = 0, bearScore = 0, bullCount = 0, bearCount = 0;
     const weights = WEIGHT_METHODS[state.settings.weightMethod] || WEIGHT_METHODS.linear;
-    const tfWeights = [];
+    const tfDetails = [];
+    
+    let totalBullWeight = 0, totalBearWeight = 0;
+    let bullCount = 0, bearCount = 0;
+    let alignedTFs = 0;
     
     enabledTFs.forEach(tf => {
         const data = state.data[tf.id];
@@ -1258,69 +1288,175 @@ function calculateConfluence() {
         let modifiers = [];
         let finalWeight = baseWeight;
         
+        // ── ENHANCED DIRECTION SCORE ──
+        // Instead of just candle color, we score [-1 to +1] using 4 factors:
+        
+        let directionScore = 0;
+        let dirComponents = [];
+        
+        // 1. Candle direction: +0.25 or -0.25
+        directionScore += data.isBullish ? 0.25 : -0.25;
+        dirComponents.push(data.isBullish ? 'Candle↑' : 'Candle↓');
+        
+        // 2. Close position in range: maps [0,1] to [-0.25, +0.25]
+        const closePos = data.buyPct / 100; // 0-1
+        directionScore += (closePos - 0.5) * 0.5; // -0.25 to +0.25
+        
+        // 3. Price vs EMA21: +0.25 or -0.25
+        if (data.trend) {
+            directionScore += data.trend.priceAboveEma21 ? 0.25 : -0.25;
+            dirComponents.push(data.trend.priceAboveEma21 ? '>EMA21' : '<EMA21');
+            
+            // 4. EMA21 vs EMA50 (trend alignment): +0.25 or -0.25
+            directionScore += data.trend.ema21AboveEma50 ? 0.25 : -0.25;
+            dirComponents.push(data.trend.ema21AboveEma50 ? 'EMA↑' : 'EMA↓');
+        }
+        
+        // ── MOMENTUM SCORE ──
+        let momentumScore = 0;
+        
+        if (state.settings.useIndicatorMod && data.rsi && data.macd) {
+            // RSI zone: maps to [-0.5, +0.5]
+            if (data.rsi > 60) momentumScore += 0.5;
+            else if (data.rsi < 40) momentumScore -= 0.5;
+            else momentumScore += (data.rsi - 50) / 20; // gradual
+            
+            // RSI direction
+            if (data.trend && data.trend.rsiRising) momentumScore += 0.15;
+            else momentumScore -= 0.15;
+            
+            // MACD histogram: positive & rising = strong bull
+            if (data.macd.histogram > 0) momentumScore += 0.25;
+            else momentumScore -= 0.25;
+            
+            // MACD crossover events (extra weight)
+            if (data.macd.crossedUp) momentumScore += 0.3;
+            else if (data.macd.crossedDown) momentumScore -= 0.3;
+            
+            // Clamp to [-1, 1]
+            momentumScore = Math.max(-1, Math.min(1, momentumScore));
+        }
+        
+        // ── COMBINED TF SCORE [-1 to +1] ──
+        const hasIndicators = state.settings.useIndicatorMod && data.rsi && data.macd;
+        const tfScore = hasIndicators 
+            ? (directionScore * 0.6 + momentumScore * 0.4)  // 60% trend, 40% momentum
+            : directionScore;  // trend only
+        
+        // ── MODIFIERS (multiply weight) ──
         if (state.settings.useStrengthMod) {
             if (data.bodyPct >= BODY_CONFIG.strongThreshold) {
-                finalWeight *= 1.5;
-                modifiers.push('Body×1.5');
+                finalWeight *= 1.3;
+                modifiers.push('Body×1.3');
             } else if (data.bodyPct < BODY_CONFIG.weakThreshold) {
-                finalWeight *= 0.5;
-                modifiers.push('Body×0.5');
+                finalWeight *= 0.6;
+                modifiers.push('Body×0.6');
             }
         }
         
         if (state.settings.useVolumeMod) {
-            if (data.volumeRatio >= VOLUME_CONFIG.highThreshold) {
-                finalWeight *= 1.3;
-                modifiers.push('Vol×1.3');
+            if (data.volumeRatio >= VOLUME_CONFIG.spikeThreshold) {
+                finalWeight *= 1.4;
+                modifiers.push('Vol×1.4');
+            } else if (data.volumeRatio >= VOLUME_CONFIG.highThreshold) {
+                finalWeight *= 1.2;
+                modifiers.push('Vol×1.2');
             } else if (data.volumeRatio <= VOLUME_CONFIG.lowThreshold) {
                 finalWeight *= 0.7;
                 modifiers.push('Vol×0.7');
             }
         }
         
-        if (state.settings.useIndicatorMod && data.rsi && data.macd) {
-            const rsiConfirms = data.isBullish ? data.rsi < RSI_CONFIG.overbought : data.rsi > RSI_CONFIG.oversold;
-            const macdConfirms = data.isBullish === data.macd.isBullish;
-            
-            if (rsiConfirms && macdConfirms) {
-                finalWeight *= 1.4;
-                modifiers.push('Ind×1.4');
-            } else if (rsiConfirms || macdConfirms) {
-                finalWeight *= 1.2;
-                modifiers.push('Ind×1.2');
-            } else {
-                finalWeight *= 0.8;
-                modifiers.push('Ind×0.8');
-            }
+        // ── ACCUMULATE ──
+        const isBullTF = tfScore > 0;
+        const weightedScore = Math.abs(tfScore) * finalWeight;
+        
+        if (isBullTF) {
+            totalBullWeight += weightedScore;
+            bullCount++;
+        } else {
+            totalBearWeight += weightedScore;
+            bearCount++;
         }
         
-        tfWeights.push({
+        // Track alignment (all TFs same direction = stronger signal)
+        if (Math.abs(tfScore) > 0.3) alignedTFs++;
+        
+        tfDetails.push({
             tf: tf.label,
             base: baseWeight,
             final: finalWeight.toFixed(2),
             mods: modifiers.join(' '),
-            dir: data.isBullish ? '🟢' : '🔴'
+            dir: isBullTF ? '🟢' : '🔴',
+            score: tfScore.toFixed(2),
+            components: dirComponents.join(' ')
         });
-        
-        if (data.isBullish) {
-            bullScore += finalWeight;
-            bullCount++;
-        } else {
-            bearScore += finalWeight;
-            bearCount++;
-        }
     });
     
-    const totalScore = bullScore + bearScore;
-    const confluencePct = totalScore > 0 ? (bullScore / totalScore) * 100 : 50;
+    const totalScore = totalBullWeight + totalBearWeight;
+    const confluencePct = totalScore > 0 ? (totalBullWeight / totalScore) * 100 : 50;
     
     // Store in state for chart markers
     state.confluenceScore = confluencePct;
     
-    // Track high confluence moments (>= 70% or <= 30%)
+    // ── SIGNAL GENERATION ──
+    const signal = generateSignal(confluencePct, bullCount, bearCount, alignedTFs, enabledTFs.length);
+    
+    // Track high confluence moments
     trackConfluenceHistory(confluencePct, bullCount > bearCount ? 'BULL' : 'BEAR');
     
-    updateConfluenceDisplay(confluencePct, bullCount, bearCount, tfWeights);
+    updateConfluenceDisplay(confluencePct, bullCount, bearCount, tfDetails, signal);
+}
+
+// ── BUY/SELL SIGNAL GENERATOR ──
+function generateSignal(pct, bullCount, bearCount, alignedTFs, totalTFs) {
+    const now = Date.now();
+    const ss = state.signalState;
+    
+    // Determine raw signal tier
+    let rawSignal, signalClass;
+    if (pct >= 80 && alignedTFs >= Math.min(3, totalTFs)) {
+        rawSignal = 'STRONG BUY';
+        signalClass = 'signal-strong-buy';
+    } else if (pct >= 65) {
+        rawSignal = 'BUY';
+        signalClass = 'signal-buy';
+    } else if (pct <= 20 && alignedTFs >= Math.min(3, totalTFs)) {
+        rawSignal = 'STRONG SELL';
+        signalClass = 'signal-strong-sell';
+    } else if (pct <= 35) {
+        rawSignal = 'SELL';
+        signalClass = 'signal-sell';
+    } else {
+        rawSignal = 'NEUTRAL';
+        signalClass = 'signal-neutral';
+    }
+    
+    // Cooldown: don't flip signal too fast (60s minimum between changes)
+    const isNewSignal = rawSignal !== ss.current;
+    const cooldownPassed = (now - ss.lastChange) >= ss.cooldownMs;
+    
+    if (isNewSignal && cooldownPassed) {
+        ss.current = rawSignal;
+        ss.lastChange = now;
+        return { signal: rawSignal, signalClass, isNew: true };
+    } else if (isNewSignal && !cooldownPassed) {
+        // In cooldown - show pending
+        return { signal: ss.current, signalClass: getSignalClass(ss.current), isNew: false, pending: rawSignal };
+    }
+    
+    return { signal: ss.current, signalClass: getSignalClass(ss.current), isNew: false };
+}
+
+function getSignalClass(signal) {
+    const map = {
+        'STRONG BUY': 'signal-strong-buy',
+        'BUY': 'signal-buy',
+        'NEUTRAL': 'signal-neutral',
+        'SELL': 'signal-sell',
+        'STRONG SELL': 'signal-strong-sell'
+    };
+    return map[signal] || 'signal-neutral';
 }
 
 // ============================================
@@ -1378,9 +1514,9 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
     let mainChartHeight = height - padding.top - padding.bottom;
     let volumeHeight = 0, rsiHeight = 0, macdHeight = 0;
     
-    if (showVolume) { volumeHeight = mainChartHeight * 0.18; mainChartHeight -= volumeHeight; }
-    if (showRSI) { rsiHeight = mainChartHeight * 0.1; mainChartHeight -= rsiHeight; }
-    if (showMACD) { macdHeight = mainChartHeight * 0.1; mainChartHeight -= macdHeight; }
+    if (showVolume) { volumeHeight = mainChartHeight * 0.23; mainChartHeight -= volumeHeight; }
+    if (showRSI) { rsiHeight = mainChartHeight * 0.15; mainChartHeight -= rsiHeight; }
+    if (showMACD) { macdHeight = mainChartHeight * 0.15; mainChartHeight -= macdHeight; }
     
     const chartWidth = width - padding.left - padding.right;
     
@@ -2753,12 +2889,13 @@ function updatePriceDisplay(data) {
     }
 }
 
-function updateConfluenceDisplay(pct, bullCount, bearCount, tfWeights) {
+function updateConfluenceDisplay(pct, bullCount, bearCount, tfWeights, signal) {
     const fill = document.getElementById('confluenceFill');
     const scoreEl = document.getElementById('confluenceScore');
     const bullEl = document.getElementById('bullCount');
     const bearEl = document.getElementById('bearCount');
     const biasEl = document.getElementById('biasIndicator');
+    const signalEl = document.getElementById('signalIndicator');
     const methodName = document.getElementById('methodName');
     const methodFormula = document.getElementById('methodFormula');
     const methodWeights = document.getElementById('methodWeights');
@@ -2779,6 +2916,24 @@ function updateConfluenceDisplay(pct, bullCount, bearCount, tfWeights) {
     biasEl.querySelector('.stat-value').textContent = bias;
     biasEl.querySelector('.stat-value').className = `stat-value ${biasClass}`;
     
+    // Signal display
+    if (signalEl && signal) {
+        const sv = signalEl.querySelector('.stat-value');
+        const prevSignal = sv.textContent;
+        
+        let displayText = signal.signal;
+        if (signal.pending) displayText += ` (→${signal.pending})`;
+        
+        sv.textContent = displayText;
+        sv.className = `stat-value signal-value ${signal.signalClass}`;
+        
+        // Pulse animation on new signal
+        if (signal.isNew && prevSignal !== signal.signal) {
+            sv.classList.add('signal-pulse');
+            setTimeout(() => sv.classList.remove('signal-pulse'), 4500);
+        }
+    }
+    
     const method = state.settings.weightMethod || 'linear';
     const methodData = WEIGHT_METHODS[method];
     
@@ -2789,16 +2944,17 @@ function updateConfluenceDisplay(pct, bullCount, bearCount, tfWeights) {
     if (methodFormula && methodData) {
         let formula = methodData.description || '';
         const mods = [];
-        if (state.settings.useStrengthMod) mods.push('Body(×0.5-1.5)');
-        if (state.settings.useVolumeMod) mods.push('Vol(×0.7-1.3)');
-        if (state.settings.useIndicatorMod) mods.push('Ind(×0.8-1.4)');
+        if (state.settings.useStrengthMod) mods.push('Body(×0.6-1.3)');
+        if (state.settings.useVolumeMod) mods.push('Vol(×0.7-1.4)');
+        if (state.settings.useIndicatorMod) mods.push('RSI+MACD momentum');
+        formula += '\nTrend: EMA21/50 alignment + candle + close position';
         if (mods.length > 0) formula += `\nModifiers: ${mods.join(', ')}`;
         methodFormula.textContent = formula;
     }
     
     if (methodWeights && tfWeights.length > 0) {
         methodWeights.innerHTML = tfWeights.map(w => 
-            `<div>${w.dir} ${w.tf}: ${w.base}→${w.final} ${w.mods ? `(${w.mods})` : ''}</div>`
+            `<div>${w.dir} ${w.tf}: ${w.base}→${w.final} [${w.score}] ${w.mods ? `(${w.mods})` : ''}</div>`
         ).join('');
     }
 }
@@ -2947,7 +3103,7 @@ function setupEventListeners() {
     }
     
     // Chart options - indicator toggles in TF settings
-    ['showChartVolume', 'showChartMA', 'showChartEMA', 'showChartVWAP'].forEach(id => {
+    ['showChartVolume', 'showChartMA', 'showChartEMA', 'showChartVWAP', 'showChartRSI', 'showChartMACD'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('change', (e) => {
             state.settings[id] = e.target.checked;

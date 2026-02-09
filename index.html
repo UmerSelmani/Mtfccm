@@ -138,6 +138,10 @@
                                 <span class="stat-value">—</span>
                                 <span class="stat-label">Bias</span>
                             </div>
+                            <div class="stat" id="signalIndicator">
+                                <span class="stat-value signal-value">—</span>
+                                <span class="stat-label">Signal</span>
+                            </div>
                         </div>
                         <div class="confluence-method" id="confluenceMethod">
                             <div class="method-title">Method: <span id="methodName">Linear</span></div>
@@ -236,6 +240,8 @@
                                     <label>Show on chart</label>
                                     <div class="modifier-toggles">
                                         <label class="mini-toggle"><input type="checkbox" id="showChartVolume" checked><span>Vol</span></label>
+                                        <label class="mini-toggle"><input type="checkbox" id="showChartRSI"><span>RSI</span></label>
+                                        <label class="mini-toggle"><input type="checkbox" id="showChartMACD"><span>MACD</span></label>
                                         <label class="mini-toggle"><input type="checkbox" id="showChartMA"><span>MA</span></label>
                                         <label class="mini-toggle"><input type="checkbox" id="showChartEMA" checked><span>EMA</span></label>
                                         <label class="mini-toggle"><input type="checkbox" id="showChartVWAP"><span>VWAP</span></label>
@@ -337,8 +343,7 @@
                             <div class="custom-coin-dropdown add-coin-dd" id="addCoinDropdown">
                                 <button class="coin-dropdown-trigger add-coin-trigger" type="button">
                                     <span class="add-coin-plus">+</span>
-                                    <span class="coin-dd-name">Add Coin</span>
-                                    <span class="coin-dd-arrow">▾</span>
+                                    <span class="add-coin-label">Add</span>
                                 </button>
                                 <div class="coin-dropdown-menu">
                                     <input type="text" class="coin-dropdown-search" placeholder="Search coins...">
