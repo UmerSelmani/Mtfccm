@@ -1,5 +1,54 @@
 # MTFCM Changelog
 
+## v4.3.1 (Feb 2026)
+
+### H/L Labels - Binance Style
+- **At-candle positioning**: H/L price labels now float next to the actual highest/lowest candles on the chart (like Binance), instead of fixed badges in the upper-left corner.
+- **Dashed connector lines**: Subtle dashed lines connect the label to the candle for visual clarity.
+- **Smart positioning**: Labels auto-position left or right of the candle depending on chart position to avoid clipping.
+
+### Custom Coin Dropdown
+- **Icon-rich dropdown**: Main coin selector replaced with a custom dropdown showing coin icons, short names, and full names for each option.
+- **Built-in search**: Type to filter coins directly in the dropdown.
+- **Active/disabled states**: Current coin highlighted in accent color; coins already in comparison shown as disabled.
+- **Slide-in animation**: Smooth open/close with arrow rotation.
+
+### Theme Overhaul
+- **"Light Colorful" → "Colorful"**: Renamed and completely reworked with much more vibrant purple/pink/green gradients.
+- **Dark theme enhanced**: Richer accent colors — bull green (#34d399), bear pink (#fb7185), accent indigo (#818cf8), chart background deeper blue.
+- **Colorful UI accents**: Header, cards, footer, buttons, and chart blocks all get gradient treatments in colorful mode.
+- **Theme migration**: Users with old "light-colorful" setting automatically migrated.
+
+### Ad Container Fix
+- **Reduced height**: Ad banners reduced from 90px to 70px to be less intrusive.
+- **Flex containment**: Added `flex-grow: 0` to prevent ads from expanding beyond their allocated space.
+
+### Bug Fixes
+- Updated all chart canvas color palettes to match new theme variables.
+- Mini charts (sidebar, TF toggles) now use theme-appropriate colors for all 3 themes.
+
+## v4.3.0 (Feb 2026)
+
+### UX Overhaul
+- **Main coin dropdown**: Replaced sidebar-based coin selection with a dropdown in the header area. Primary coin switching is now instant without opening a panel.
+- **Sidebar → overlay**: Sidebar converted from sticky 180px panel to slide-in overlay on all screen sizes. Saves horizontal space for charts. Toggle via ☰ button in header.
+- **Disabled duplicates**: Coins already added to comparison are disabled in the main dropdown to prevent conflicts.
+
+### Visual Improvements
+- **Candle hover highlight**: Increased highlight opacity from 0.06→0.14 (dark) / 0.05→0.10 (light) for much better visibility. Added hover highlight to added coin charts (previously main chart only).
+- **Add button redesign**: Transformed from subtle dashed-border button to vibrant gradient button (accent→purple) with white text, shadow, and scale-up hover effect.
+- **Price scale toggle wired**: The "Show Price Scale" checkbox now actually works — toggle shows/hides Binance-style price axis on right side of all charts with tick marks, current price indicator, and hover price highlight.
+
+### Bug Fixes
+- **Ad overlay fix**: Fixed main content height calculation that caused ad banners to overlap chart area. Changed from fixed `calc()` to flex-based `height: 100%`.
+- **Theme change delay**: Wrapped chart redraws in `requestAnimationFrame()` so CSS variables apply before canvas reads theme colors. Added coins no longer flash wrong colors on theme switch.
+- **Sidebar close button**: Removed conflicting CSS rules for `.sidebar-close` display.
+
+### Misc
+- **Name update**: "Multi-Timeframe Candle Close Monitor" → "Multi-Timeframe Confluence Monitor"
+- **Meta description**: Added SEO meta description tag
+- **Font preconnect**: Added `crossorigin` attribute to font preconnect links for better performance
+
 ## v4.2.0 (Feb 2026)
 
 ### 🔴 Critical Bug Fix
