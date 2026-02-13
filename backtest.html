@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MTFCM — Strategy Tester</title>
+<style>
+:root {
+    --bg:#0f1117;--bg2:#1a1d27;--bg3:#252836;--bg4:#303348;
+    --text:#e4e4e7;--text2:#a1a1aa;--muted:#71717a;
+    --accent:#6366f1;--accent2:#8b5cf6;--bull:#22c55e;--bear:#ef4444;
+    --neutral:#eab308;--border:#2d3044;--radius:8px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;min-height:100vh;}
+a{color:var(--accent);text-decoration:none;}
+.app{max-width:1440px;margin:0 auto;padding:0.8rem;}
+
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;}
+.header h1{font-size:1.2rem;display:flex;align-items:center;gap:0.4rem;}
+.header .back-link{font-size:0.7rem;color:var(--text2);padding:0.3rem 0.6rem;background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border);}
+
+.mode-tabs{display:flex;gap:0.3rem;margin-bottom:1rem;flex-wrap:wrap;}
+.mode-tab{padding:0.5rem 1rem;font-size:0.75rem;font-weight:600;border:1.5px solid var(--border);border-radius:var(--radius);cursor:pointer;background:var(--bg2);color:var(--text2);transition:all 0.15s;font-family:inherit;}
+.mode-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.mode-tab:hover:not(.active){border-color:var(--accent);color:var(--text);}
+.mode-content{display:none;}
+.mode-content.active{display:block;}
+
+.config-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:0.8rem;margin-bottom:0.8rem;}
+.config-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:0.7rem;}
+.config-card h3{margin:0 0 0.4rem;color:var(--accent);font-size:0.75rem;display:flex;align-items:center;gap:0.3rem;}
+.row{display:flex;justify-content:space-between;align-items:center;padding:0.25rem 0;font-size:0.72rem;gap:0.5rem;}
+.row label{color:var(--text2);white-space:nowrap;}
+.row select,.row input[type="number"],.row input[type="text"]{
+    background:var(--bg3);border:1px solid var(--border);border-radius:4px;
+    color:var(--text);padding:0.25rem 0.4rem;font-size:0.68rem;width:110px;font-family:inherit;outline:none;
+}
+.row select:focus,.row input:focus{border-color:var(--accent);}
+.row input[type="checkbox"]{accent-color:var(--accent);width:15px;height:15px;}
+.row-hint{font-size:0.6rem;color:var(--muted);margin-top:-0.1rem;padding-bottom:0.15rem;}
+
+.tf-toggles{display:flex;gap:0.25rem;flex-wrap:wrap;}
+.tf-toggle{padding:0.2rem 0.5rem;font-size:0.65rem;font-weight:600;border:1.5px solid var(--border);
+    border-radius:4px;cursor:pointer;background:var(--bg3);color:var(--text2);transition:all 0.15s;user-select:none;}
+.tf-toggle.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.tf-toggle:hover:not(.active){border-color:var(--accent);}
+
+.signal-cfg{display:grid;grid-template-columns:1fr 1fr;gap:0.3rem 0.8rem;}
+
+.btn{padding:0.45rem 1rem;border:none;border-radius:var(--radius);font-weight:700;
+    font-size:0.75rem;cursor:pointer;transition:all 0.15s;font-family:inherit;display:inline-flex;align-items:center;gap:0.3rem;}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;}
+.btn-primary:hover{box-shadow:0 4px 16px rgba(99,102,241,0.3);transform:translateY(-1px);}
+.btn-primary:disabled{opacity:0.4;cursor:not-allowed;transform:none;box-shadow:none;}
+.btn-danger{background:linear-gradient(135deg,var(--bear),#dc2626);color:#fff;}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border);}
+.btn-secondary:hover{border-color:var(--accent);color:var(--text);}
+.btn-row{display:flex;gap:0.4rem;align-items:center;margin:0.6rem 0;flex-wrap:wrap;}
+
+.progress-bar{width:100%;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;display:none;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width 0.2s;width:0%;}
+.status{font-size:0.68rem;color:var(--text2);min-height:1rem;}
+
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:0.8rem;}
+.tab{padding:0.4rem 0.8rem;font-size:0.72rem;color:var(--text2);cursor:pointer;border:none;border-bottom:2px solid transparent;
+    background:none;font-family:inherit;transition:all 0.12s;}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
+.tab:hover:not(.active){color:var(--text);}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:0.4rem;margin-bottom:0.8rem;}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem;text-align:center;}
+.stat-card .val{font-size:1rem;font-weight:700;display:block;font-family:'JetBrains Mono',monospace;}
+.stat-card .lbl{font-size:0.58rem;color:var(--text2);margin-top:0.1rem;}
+.val.green{color:var(--bull);}.val.red{color:var(--bear);}.val.yellow{color:var(--neutral);}.val.accent{color:var(--accent);}
+
+.table-wrap{overflow-x:auto;max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);}
+table{width:100%;border-collapse:collapse;font-size:0.68rem;}
+th{background:var(--bg3);color:var(--text2);padding:0.35rem 0.5rem;text-align:left;font-weight:600;position:sticky;top:0;z-index:1;}
+td{padding:0.3rem 0.5rem;border-bottom:1px solid rgba(45,48,68,0.5);}
+tr:hover td{background:rgba(99,102,241,0.04);}
+.win{color:var(--bull);font-weight:600;}.loss{color:var(--bear);font-weight:600;}
+.tag{display:inline-block;padding:0.1rem 0.3rem;border-radius:3px;font-size:0.6rem;font-weight:600;white-space:nowrap;}
+.tag-buy{background:rgba(34,197,94,0.15);color:var(--bull);}
+.tag-sell{background:rgba(239,68,68,0.15);color:var(--bear);}
+.tag-neutral{background:rgba(234,179,8,0.15);color:var(--neutral);}
+.tag-sl{background:rgba(239,68,68,0.25);color:#fca5a5;}
+.tag-tp{background:rgba(34,197,94,0.25);color:#86efac;}
+.tag-sig{background:rgba(99,102,241,0.15);color:var(--accent);}
+
+.equity-chart{width:100%;height:200px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:0.8rem;}
+
+.matrix-wrap{overflow-x:auto;margin-bottom:1rem;}
+.matrix{border-collapse:collapse;font-size:0.62rem;width:100%;}
+.matrix th{background:var(--bg3);padding:0.3rem 0.4rem;font-weight:600;white-space:nowrap;}
+.matrix td{padding:0.3rem 0.4rem;text-align:center;font-weight:600;font-family:'JetBrains Mono',monospace;border:1px solid var(--border);}
+.matrix .row-label{text-align:left;background:var(--bg3);color:var(--text2);font-family:inherit;font-weight:500;white-space:nowrap;}
+
+.live-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;margin-bottom:0.8rem;}
+.live-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.3rem;}
+.live-status{display:flex;align-items:center;gap:0.4rem;font-size:0.75rem;font-weight:600;}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);animation:none;}
+.live-dot.active{background:var(--bull);animation:livePulse 1.5s infinite;}
+@keyframes livePulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+.live-stats{display:flex;gap:1rem;flex-wrap:wrap;font-size:0.7rem;}
+.live-stat{display:flex;flex-direction:column;align-items:center;}
+.live-stat .lv{font-weight:700;font-size:0.85rem;}
+.live-stat .ll{color:var(--text2);font-size:0.58rem;}
+.live-log{max-height:200px;overflow-y:auto;font-size:0.65rem;font-family:'JetBrains Mono',monospace;background:var(--bg);
+    border:1px solid var(--border);border-radius:4px;padding:0.4rem;margin-top:0.5rem;}
+.log-entry{padding:0.15rem 0;border-bottom:1px solid rgba(45,48,68,0.3);}
+.log-time{color:var(--muted);}
+.log-buy{color:var(--bull);}.log-sell{color:var(--bear);}.log-info{color:var(--accent);}
+
+.rules-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:0.8rem;margin-bottom:0.8rem;}
+.rules-card h3{color:var(--accent);margin-bottom:0.4rem;font-size:0.8rem;}
+.rule-section{margin-bottom:0.5rem;}
+.rule-section strong{color:var(--text);font-size:0.72rem;display:block;margin-bottom:0.15rem;}
+.rule-section p{color:var(--text2);font-size:0.68rem;line-height:1.5;}
+code{background:var(--bg3);padding:0.1rem 0.25rem;border-radius:3px;font-size:0.63rem;color:var(--accent);}
+
+@media(max-width:768px){
+    .config-grid{grid-template-columns:1fr;}
+    .stats-grid{grid-template-columns:repeat(3,1fr);}
+    .signal-cfg{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="app">
+    <div class="header">
+        <h1>🧪 Strategy Tester</h1>
+        <a href="./index.html" class="back-link">← Back to MTFCM</a>
+    </div>
+
+    <div class="mode-tabs">
+        <button class="mode-tab active" data-mode="backtest">📉 Historical Backtest</button>
+        <button class="mode-tab" data-mode="live">🔴 Live Paper Trade</button>
+        <button class="mode-tab" data-mode="matrix">🧪 All Combinations</button>
+        <button class="mode-tab" data-mode="rules">📋 Rules & Methodology</button>
+    </div>
+
+    <!-- ======== SHARED CONFIG ======== -->
+    <div class="config-grid" id="sharedConfig">
+        <div class="config-card">
+            <h3>📈 Market</h3>
+            <div class="row"><label>Symbol</label><input type="text" id="cfgSymbol" value="BTCUSDT"></div>
+            <div class="row"><label>Timeframes</label></div>
+            <div class="tf-toggles" id="tfToggles">
+                <div class="tf-toggle" data-tf="1m">1m</div>
+                <div class="tf-toggle active" data-tf="5m">5m</div>
+                <div class="tf-toggle active" data-tf="15m">15m</div>
+                <div class="tf-toggle" data-tf="30m">30m</div>
+                <div class="tf-toggle active" data-tf="1h">1h</div>
+                <div class="tf-toggle" data-tf="4h">4h</div>
+            </div>
+        </div>
+
+        <div class="config-card">
+            <h3>⚖️ Confluence Formula</h3>
+            <div class="row"><label>Weight Method</label>
+                <select id="cfgMethod">
+                    <option value="equal">Equal</option>
+                    <option value="linear" selected>Linear</option>
+                    <option value="exponential">Exponential</option>
+                    <option value="tiered">Tiered</option>
+                </select>
+            </div>
+            <div class="row"><label>Direction / Momentum</label><span style="font-size:0.65rem;color:var(--muted);">60% / 40%</span></div>
+            <div class="row-hint">L1: Candle dir + Close pos + Price vs EMA21 + EMA21 vs EMA50</div>
+            <div class="row-hint">L2: RSI zone + RSI dir + MACD hist + MACD crossover</div>
+            <div class="row"><label>Body Strength Mod</label><input type="checkbox" id="cfgBodyMod" checked></div>
+            <div class="row-hint">Strong (≥70%) ×1.3 · Weak (&lt;40%) ×0.6</div>
+            <div class="row"><label>Volume Mod</label><input type="checkbox" id="cfgVolMod" checked></div>
+            <div class="row-hint">Spike (≥2.5×) ×1.4 · High (≥1.5×) ×1.2 · Low (≤0.6×) ×0.7</div>
+            <div class="row"><label>RSI + MACD (Layer 2)</label><input type="checkbox" id="cfgIndMod" checked></div>
+            <div class="row-hint">Off = direction-only (Layer 1 at 100%)</div>
+        </div>
+
+        <div class="config-card">
+            <h3>🎯 Signal Thresholds</h3>
+            <div class="signal-cfg">
+                <div class="row"><label>Strong Buy ≥</label><input type="number" id="cfgSBuy" value="80" min="50" max="100" style="width:55px;"></div>
+                <div class="row"><label>Buy ≥</label><input type="number" id="cfgBuy" value="65" min="50" max="100" style="width:55px;"></div>
+                <div class="row"><label>Sell ≤</label><input type="number" id="cfgSell" value="35" min="0" max="50" style="width:55px;"></div>
+                <div class="row"><label>Strong Sell ≤</label><input type="number" id="cfgSSell" value="20" min="0" max="50" style="width:55px;"></div>
+            </div>
+            <div class="row"><label>Min aligned TFs (Strong)</label><input type="number" id="cfgMinAlign" value="3" min="1" max="6" style="width:55px;"></div>
+            <div class="row"><label>Cooldown (candles)</label><input type="number" id="cfgCooldown" value="10" min="0" max="100" style="width:55px;"></div>
+            <div class="row"><label>Min Volume Ratio</label><input type="number" id="cfgMinVol" value="0" step="0.1" min="0" max="5" style="width:55px;"></div>
+            <div class="row-hint">0 = no filter. Require vol > X× avg for signal change.</div>
+        </div>
+
+        <div class="config-card">
+            <h3>💰 Trade Rules</h3>
+            <div class="row"><label>Stop Loss %</label><input type="number" id="cfgSL" value="2" step="0.25" min="0.25" max="30"></div>
+            <div class="row"><label>Take Profit %</label><input type="number" id="cfgTP" value="4" step="0.25" min="0.25" max="100"></div>
+            <div class="row"><label>Trailing Stop</label><input type="checkbox" id="cfgTrailing"></div>
+            <div class="row-hint">Move SL to breakeven when 50% of TP reached.</div>
+            <div class="row"><label>Fee per trade %</label><input type="number" id="cfgFee" value="0.1" step="0.01" min="0" max="1"></div>
+            <div class="row"><label>Starting capital $</label><input type="number" id="cfgCapital" value="1000" step="100" min="100"></div>
+            <div class="row"><label>Position size %</label><input type="number" id="cfgPosSize" value="100" min="10" max="100" step="10"></div>
+            <div class="row-hint">% of capital per trade. 100 = all-in.</div>
+        </div>
+    </div>
+
+    <!-- ======== HISTORICAL BACKTEST ======== -->
+    <div class="mode-content active" id="mode-backtest">
+        <div class="row" style="margin-bottom:0.5rem;">
+            <label>Test Period</label>
+            <select id="cfgPeriod">
+                <option value="24h">24 Hours</option>
+                <option value="3d" selected>3 Days</option>
+                <option value="7d">7 Days</option>
+                <option value="14d">14 Days</option>
+                <option value="30d">30 Days</option>
+            </select>
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-primary" id="btnBacktest" onclick="runBacktest()">▶ Run Backtest</button>
+            <button class="btn btn-secondary" id="btnExportBT" onclick="exportCSV('bt')" style="display:none;">📥 Export CSV</button>
+            <div class="status" id="btStatus"></div>
+        </div>
+        <div class="progress-bar" id="btProgress"><div class="progress-fill" id="btFill"></div></div>
+
+        <div id="btResults" style="display:none;">
+            <div class="tabs" id="btTabs">
+                <button class="tab active" data-tab="bt-summary">Summary</button>
+                <button class="tab" data-tab="bt-trades">Trades</button>
+                <button class="tab" data-tab="bt-equity">Equity Curve</button>
+            </div>
+            <div class="tab-content active" id="tab-bt-summary">
+                <div class="stats-grid" id="btStats"></div>
+                <div id="btSignalBreakdown"></div>
+            </div>
+            <div class="tab-content" id="tab-bt-trades">
+                <div class="table-wrap"><table id="btTradesTable"><thead></thead><tbody></tbody></table></div>
+            </div>
+            <div class="tab-content" id="tab-bt-equity">
+                <canvas class="equity-chart" id="btEquityChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======== LIVE PAPER TRADING ======== -->
+    <div class="mode-content" id="mode-live">
+        <div class="btn-row">
+            <button class="btn btn-primary" id="btnStartLive" onclick="startLive()">🔴 Start Paper Trading</button>
+            <button class="btn btn-danger" id="btnStopLive" onclick="stopLive()" style="display:none;">⏹ Stop & Show Results</button>
+            <button class="btn btn-secondary" id="btnExportLive" onclick="exportCSV('live')" style="display:none;">📥 Export CSV</button>
+            <div class="status" id="liveStatus"></div>
+        </div>
+
+        <div class="live-panel" id="livePanel" style="display:none;">
+            <div class="live-header">
+                <div class="live-status"><div class="live-dot" id="liveDot"></div><span id="liveLabel">Waiting...</span></div>
+                <div class="live-stats">
+                    <div class="live-stat"><span class="lv" id="livePrice">—</span><span class="ll">Price</span></div>
+                    <div class="live-stat"><span class="lv" id="liveConf">—</span><span class="ll">Confluence</span></div>
+                    <div class="live-stat"><span class="lv" id="liveSignal">—</span><span class="ll">Signal</span></div>
+                    <div class="live-stat"><span class="lv" id="liveTrades">0</span><span class="ll">Trades</span></div>
+                    <div class="live-stat"><span class="lv" id="livePnL">$0.00</span><span class="ll">P&L</span></div>
+                    <div class="live-stat"><span class="lv" id="liveWR">—</span><span class="ll">Win Rate</span></div>
+                    <div class="live-stat"><span class="lv" id="livePos">None</span><span class="ll">Position</span></div>
+                </div>
+            </div>
+            <div class="live-log" id="liveLog"></div>
+        </div>
+
+        <div id="liveResults" style="display:none;">
+            <h3 style="margin-bottom:0.5rem;">Paper Trading Session Results</h3>
+            <div class="stats-grid" id="liveStatsGrid"></div>
+            <div class="table-wrap"><table id="liveTradesTable"><thead></thead><tbody></tbody></table></div>
+        </div>
+    </div>
+
+    <!-- ======== ALL COMBINATIONS ======== -->
+    <div class="mode-content" id="mode-matrix">
+        <p style="font-size:0.72rem;color:var(--text2);margin-bottom:0.5rem;">
+            Tests every combination of weight method × modifiers across the selected symbol & period.
+            <span style="color:var(--bull);">Green</span> = profitable · <span style="color:var(--bear);">Red</span> = losing · White = breakeven. Best combo gets 🏆.
+        </p>
+        <div class="row" style="margin-bottom:0.5rem;">
+            <label>Test Period</label>
+            <select id="cfgMatrixPeriod">
+                <option value="24h">24 Hours</option>
+                <option value="3d" selected>3 Days</option>
+                <option value="7d">7 Days</option>
+                <option value="14d">14 Days</option>
+            </select>
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-primary" id="btnMatrix" onclick="runMatrix()">🧪 Run All Combinations</button>
+            <button class="btn btn-secondary" id="btnExportMatrix" onclick="exportCSV('matrix')" style="display:none;">📥 Export CSV</button>
+            <div class="status" id="matrixStatus"></div>
+        </div>
+        <div class="progress-bar" id="matrixProgress"><div class="progress-fill" id="matrixFill"></div></div>
+        <div id="matrixResults"></div>
+    </div>
+
+    <!-- ======== RULES ======== -->
+    <div class="mode-content" id="mode-rules">
+        <div class="rules-card">
+            <h3>📋 Complete Rules & Methodology</h3>
+
+            <div class="rule-section">
+                <strong>1. What This Tests</strong>
+                <p>Replays historical Binance candle data through the exact MTFCM confluence formula. At each candle close of the tick timeframe (lowest enabled TF), it calculates confluence across all enabled timeframes and simulates trades. Live paper trader does the same in real-time.</p>
+            </div>
+            <div class="rule-section">
+                <strong>2. Layer 1 — Direction Score [-1 to +1]</strong>
+                <p>Per timeframe, four components at ±0.25 each:<br>
+                <code>Candle dir</code> close > open → +0.25, else -0.25<br>
+                <code>Close position</code> maps where close sits in [low, high] → [-0.25, +0.25]<br>
+                <code>Price vs EMA21</code> above → +0.25, below → -0.25<br>
+                <code>EMA21 vs EMA50</code> golden cross → +0.25, death cross → -0.25</p>
+            </div>
+            <div class="rule-section">
+                <strong>3. Layer 2 — Momentum Score [-1 to +1]</strong>
+                <p>When RSI+MACD enabled, per timeframe:<br>
+                <code>RSI zone</code> >60 → +0.5, <40 → -0.5, else gradual<br>
+                <code>RSI direction</code> rising → +0.15, falling → -0.15<br>
+                <code>MACD histogram</code> positive → +0.25, negative → -0.25<br>
+                <code>MACD crossover</code> bull cross → +0.3, bear cross → -0.3 (clamped to ±1)</p>
+            </div>
+            <div class="rule-section">
+                <strong>4. Combined Score</strong>
+                <p><code>TF Score = Direction × 0.6 + Momentum × 0.4</code><br>
+                Weight by method (Equal/Linear/Exponential/Tiered) + modifiers (body ×0.6-1.3, volume ×0.7-1.4).<br>
+                <code>Confluence% = BullWeight / (BullWeight + BearWeight) × 100</code></p>
+            </div>
+            <div class="rule-section">
+                <strong>5. Signal Thresholds (configurable)</strong>
+                <p><code>≥80% + 3+ aligned</code> → STRONG BUY · <code>≥65%</code> → BUY · <code>35-65%</code> → NEUTRAL<br>
+                <code>≤35%</code> → SELL · <code>≤20% + 3+ aligned</code> → STRONG SELL<br>
+                Cooldown locks signal for N candles after change. Min Volume requires vol ratio above threshold.</p>
+            </div>
+            <div class="rule-section">
+                <strong>6. Trade Execution</strong>
+                <p><b>Entry:</b> BUY/STRONG BUY signal → open at candle close.<br>
+                <b>Exits</b> (first hit): SL (candle low ≤ SL price) · TP (candle high ≥ TP price) · Signal exit (SELL/NEUTRAL).<br>
+                <b>Trailing:</b> SL moves to entry when 50% of TP reached.<br>
+                <b>Spot only:</b> no shorts (halal). SELL = exit only. Fees applied on entry + exit.</p>
+            </div>
+            <div class="rule-section">
+                <strong>7. Metrics</strong>
+                <p><code>Win Rate</code> = wins / total trades · <code>Profit Factor</code> = gross profit / gross loss (>1.5 viable, >2.0 strong)<br>
+                <code>Max Drawdown</code> = largest peak-to-trough decline · <code>R:R</code> = avg win / avg loss</p>
+            </div>
+            <div class="rule-section">
+                <strong>8. Limitations</strong>
+                <p>Uses close prices; real execution differs. SL/TP checked on candle high/low. Historical ≠ future. Educational only, not financial advice.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================
+// CONSTANTS
+// ============================================
+const WEIGHT_METHODS = {
+    equal:       {"1m":1,"5m":1,"15m":1,"30m":1,"1h":1,"4h":1},
+    linear:      {"1m":1,"5m":2,"15m":3,"30m":4,"1h":5,"4h":6},
+    exponential: {"1m":1,"5m":2,"15m":4,"30m":8,"1h":16,"4h":32},
+    tiered:      {"1m":1,"5m":3,"15m":3,"30m":7,"1h":7,"4h":15}
+};
+const TF_MINUTES = {"1m":1,"5m":5,"15m":15,"30m":30,"1h":60,"4h":240};
+const PERIOD_MS = {'24h':864e5,'3d':2592e5,'7d':6048e5,'14d':12096e5,'30d':25920e5};
+
+let btResult = null, liveState = null, matrixResult = null;
+
+function getConfig() {
+    const enabledTFs = [];
+    document.querySelectorAll('.tf-toggle.active').forEach(el => enabledTFs.push(el.dataset.tf));
+    return {
+        symbol: document.getElementById('cfgSymbol').value.toUpperCase().trim(),
+        enabledTFs,
+        method: document.getElementById('cfgMethod').value,
+        bodyMod: document.getElementById('cfgBodyMod').checked,
+        volMod: document.getElementById('cfgVolMod').checked,
+        indMod: document.getElementById('cfgIndMod').checked,
+        slPct: +document.getElementById('cfgSL').value,
+        tpPct: +document.getElementById('cfgTP').value,
+        trailing: document.getElementById('cfgTrailing').checked,
+        feePct: +document.getElementById('cfgFee').value,
+        capital: +document.getElementById('cfgCapital').value,
+        posSize: +document.getElementById('cfgPosSize').value / 100,
+        cooldown: +document.getElementById('cfgCooldown').value,
+        minVol: +document.getElementById('cfgMinVol').value,
+        sBuy: +document.getElementById('cfgSBuy').value,
+        buy: +document.getElementById('cfgBuy').value,
+        sell: +document.getElementById('cfgSell').value,
+        sSell: +document.getElementById('cfgSSell').value,
+        minAlign: +document.getElementById('cfgMinAlign').value,
+    };
+}
+
+// ============================================
+// FORMULA ENGINE (mirrors app.js exactly)
+// ============================================
+function calcEMA(data, period) {
+    if (data.length < period) return data[data.length - 1] || 0;
+    const m = 2 / (period + 1);
+    let ema = data.slice(0, period).reduce((a, b) => a + b, 0) / period;
+    for (let i = period; i < data.length; i++) ema = (data[i] - ema) * m + ema;
+    return ema;
+}
+function calcRSI(closes, period = 14) {
+    if (closes.length < period + 1) return 50;
+    let gains = 0, losses = 0;
+    for (let i = closes.length - period; i < closes.length; i++) {
+        const ch = closes[i] - closes[i - 1];
+        if (ch >= 0) gains += ch; else losses += Math.abs(ch);
+    }
+    const ag = gains / period, al = losses / period;
+    return al === 0 ? 100 : 100 - (100 / (1 + ag / al));
+}
+function calcMACD(closes) {
+    if (closes.length < 27) return { histogram: 0, prevHistogram: 0, crossedUp: false, crossedDown: false };
+    const ema12 = calcEMA(closes, 12), ema26 = calcEMA(closes, 26);
+    const macdLine = ema12 - ema26;
+    const signal = calcEMA([...Array(closes.length - 26).fill(0), macdLine], 9);
+    const histogram = macdLine - signal;
+    const prev = closes.slice(0, -1);
+    const pMacd = calcEMA(prev, 12) - calcEMA(prev, 26);
+    const pSig = calcEMA([...Array(prev.length - 26).fill(0), pMacd], 9);
+    const pH = pMacd - pSig;
+    return { histogram, prevHistogram: pH, crossedUp: histogram > 0 && pH <= 0, crossedDown: histogram < 0 && pH >= 0 };
+}
+function analyzeTF(candles) {
+    if (!candles || candles.length < 2) return null;
+    const cur = candles[candles.length - 1];
+    const range = cur.high - cur.low;
+    const bodyPct = range > 0 ? (Math.abs(cur.close - cur.open) / range) * 100 : 0;
+    const closePos = range > 0 ? (cur.close - cur.low) / range : 0.5;
+    const vSlice = candles.slice(-21, -1);
+    const avgVol = vSlice.length > 0 ? vSlice.reduce((a, c) => a + c.vol, 0) / vSlice.length : 1;
+    const volRatio = avgVol > 0 ? cur.vol / avgVol : 1;
+    const closes = candles.map(c => c.close);
+    const rsi = calcRSI(closes);
+    const prevRsi = closes.length > 2 ? calcRSI(closes.slice(0, -1)) : rsi;
+    const macd = calcMACD(closes);
+    const ema21 = calcEMA(closes, 21);
+    const ema50 = closes.length >= 50 ? calcEMA(closes, 50) : ema21;
+    return { isBullish: cur.close > cur.open, bodyPct, closePos, volRatio, rsi, prevRsi, macd,
+        priceAboveEma21: cur.close > ema21, ema21AboveEma50: ema21 > ema50, rsiRising: rsi > prevRsi,
+        close: cur.close, high: cur.high, low: cur.low };
+}
+function calcConfluence(tfDataMap, enabledTFs, method, cfg) {
+    const weights = WEIGHT_METHODS[method];
+    let totalBull = 0, totalBear = 0, alignedTFs = 0;
+    for (const tfId of enabledTFs) {
+        const d = tfDataMap[tfId]; if (!d) continue;
+        let finalW = weights[tfId] || 1;
+        let dir = (d.isBullish ? 0.25 : -0.25) + (d.closePos - 0.5) * 0.5
+                + (d.priceAboveEma21 ? 0.25 : -0.25) + (d.ema21AboveEma50 ? 0.25 : -0.25);
+        let mom = 0;
+        if (cfg.indMod) {
+            if (d.rsi > 60) mom += 0.5; else if (d.rsi < 40) mom -= 0.5; else mom += (d.rsi - 50) / 20;
+            mom += d.rsiRising ? 0.15 : -0.15;
+            mom += d.macd.histogram > 0 ? 0.25 : -0.25;
+            if (d.macd.crossedUp) mom += 0.3; else if (d.macd.crossedDown) mom -= 0.3;
+            mom = Math.max(-1, Math.min(1, mom));
+        }
+        const tfScore = cfg.indMod ? (dir * 0.6 + mom * 0.4) : dir;
+        if (cfg.bodyMod) { if (d.bodyPct >= 70) finalW *= 1.3; else if (d.bodyPct < 40) finalW *= 0.6; }
+        if (cfg.volMod) { if (d.volRatio >= 2.5) finalW *= 1.4; else if (d.volRatio >= 1.5) finalW *= 1.2; else if (d.volRatio <= 0.6) finalW *= 0.7; }
+        const ws = Math.abs(tfScore) * finalW;
+        if (tfScore > 0) totalBull += ws; else totalBear += ws;
+        if (Math.abs(tfScore) > 0.3) alignedTFs++;
+    }
+    const total = totalBull + totalBear;
+    return { pct: total > 0 ? (totalBull / total) * 100 : 50, alignedTFs };
+}
+function getSignal(pct, aligned, cfg) {
+    if (pct >= cfg.sBuy && aligned >= cfg.minAlign) return 'STRONG BUY';
+    if (pct >= cfg.buy) return 'BUY';
+    if (pct <= cfg.sSell && aligned >= cfg.minAlign) return 'STRONG SELL';
+    if (pct <= cfg.sell) return 'SELL';
+    return 'NEUTRAL';
+}
+
+// ============================================
+// DATA
+// ============================================
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function fetchHistorical(symbol, interval, periodMs) {
+    const needed = Math.ceil(periodMs / (TF_MINUTES[interval] * 60000)) + 65;
+    let all = [], endTime = Date.now();
+    while (all.length < needed) {
+        const limit = Math.min(1000, needed - all.length);
+        const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&endTime=${endTime}&limit=${limit}`);
+        if (!res.ok) throw new Error(`API ${res.status} — check "${symbol}"`);
+        const raw = await res.json();
+        if (!raw.length) break;
+        all = [...raw.map(k => ({ time: k[0], open: +k[1], high: +k[2], low: +k[3], close: +k[4], vol: +k[5] })), ...all];
+        endTime = raw[0][0] - 1;
+        if (raw.length < limit) break;
+        await sleep(120);
+    }
+    return all;
+}
+
+// ============================================
+// BACKTEST ENGINE
+// ============================================
+function executeBacktest(tfData, cfg) {
+    const tickTF = cfg.enabledTFs.reduce((a, b) => TF_MINUTES[a] < TF_MINUTES[b] ? a : b);
+    const ticks = tfData[tickTF];
+    if (!ticks || ticks.length < 60) return null;
+
+    const trades = [], curve = [];
+    let equity = cfg.capital, pos = null, sig = 'NEUTRAL', cd = 0;
+    const sigs = {'STRONG BUY':0,'BUY':0,'NEUTRAL':0,'SELL':0,'STRONG SELL':0};
+
+    for (let i = 55; i < ticks.length; i++) {
+        const tc = ticks[i];
+        const snap = {};
+        for (const tf of cfg.enabledTFs) {
+            const c = tfData[tf]; if (!c) continue;
+            let ei = 0;
+            for (let j = c.length - 1; j >= 0; j--) { if (c[j].time <= tc.time) { ei = j + 1; break; } }
+            const sl = c.slice(Math.max(0, ei - 60), ei);
+            if (sl.length >= 2) snap[tf] = analyzeTF(sl);
+        }
+        const conf = calcConfluence(snap, cfg.enabledTFs, cfg.method, cfg);
+        const raw = getSignal(conf.pct, conf.alignedTFs, cfg);
+        sigs[raw]++;
+
+        if (cd > 0) cd--;
+        else if (raw !== sig) {
+            const td = snap[tickTF];
+            if (cfg.minVol > 0 && td && td.volRatio < cfg.minVol) {} 
+            else { sig = raw; cd = cfg.cooldown; }
+        }
+
+        if (pos) {
+            let slP = pos.sl;
+            if (cfg.trailing && tc.high >= pos.entry + (pos.tp - pos.entry) * 0.5)
+                slP = pos.sl = Math.max(slP, pos.entry);
+            if (tc.low <= slP) {
+                doClose(trades, pos, slP, tc.time, 'STOP LOSS', i - pos.idx, cfg);
+                equity += trades[trades.length - 1].pnlD; pos = null;
+            } else if (tc.high >= pos.tp) {
+                doClose(trades, pos, pos.tp, tc.time, 'TAKE PROFIT', i - pos.idx, cfg);
+                equity += trades[trades.length - 1].pnlD; pos = null;
+            } else if (sig === 'SELL' || sig === 'STRONG SELL' || sig === 'NEUTRAL') {
+                doClose(trades, pos, tc.close, tc.time, 'SIG: ' + sig, i - pos.idx, cfg);
+                equity += trades[trades.length - 1].pnlD; pos = null;
+            }
+        }
+        if (!pos && (sig === 'BUY' || sig === 'STRONG BUY')) {
+            pos = { entry: tc.close, time: tc.time, idx: i, sig,
+                sl: tc.close * (1 - cfg.slPct / 100), tp: tc.close * (1 + cfg.tpPct / 100),
+                alloc: equity * cfg.posSize };
+        }
+        curve.push({ time: tc.time, equity, pct: conf.pct });
+    }
+    if (pos) {
+        const last = ticks[ticks.length - 1];
+        doClose(trades, pos, last.close, last.time, 'END', ticks.length - pos.idx, cfg);
+        equity += trades[trades.length - 1].pnlD;
+    }
+    return { trades, curve, equity, sigs, method: cfg.method };
+}
+
+function doClose(trades, pos, exitP, exitT, reason, hold, cfg) {
+    const pnlP = ((exitP / pos.entry) - 1) * 100 - (cfg.feePct * 2);
+    trades.push({ eTime: pos.time, xTime: exitT, entry: pos.entry, exit: exitP,
+        pnlP, pnlD: pos.alloc * (pnlP / 100), reason, sig: pos.sig, hold });
+}
+
+// ============================================
+// RUN BACKTEST
+// ============================================
+async function runBacktest() {
+    const cfg = getConfig();
+    if (cfg.enabledTFs.length < 2) return alert('Enable at least 2 timeframes');
+    const periodMs = PERIOD_MS[document.getElementById('cfgPeriod').value];
+    disableBtn('btnBacktest', true); showProg('bt', true);
+    try {
+        const tfData = {};
+        for (let i = 0; i < cfg.enabledTFs.length; i++) {
+            setStatus('bt', `Fetching ${cfg.symbol} ${cfg.enabledTFs[i]}...`);
+            setProg('bt', ((i + 1) / cfg.enabledTFs.length) * 50);
+            tfData[cfg.enabledTFs[i]] = await fetchHistorical(cfg.symbol, cfg.enabledTFs[i], periodMs);
+        }
+        setStatus('bt', 'Running...'); setProg('bt', 70); await sleep(20);
+        btResult = executeBacktest(tfData, cfg);
+        if (!btResult) { setStatus('bt', '❌ Not enough data'); disableBtn('btnBacktest', false); return; }
+        setProg('bt', 100);
+        displayBTResults(btResult, cfg);
+        show('btResults'); show('btnExportBT');
+        setStatus('bt', `✅ ${btResult.trades.length} trades`);
+    } catch (e) { setStatus('bt', `❌ ${e.message}`); }
+    disableBtn('btnBacktest', false);
+}
+
+// ============================================
+// LIVE PAPER TRADING
+// ============================================
+function startLive() {
+    const cfg = getConfig();
+    if (cfg.enabledTFs.length < 2) return alert('Enable at least 2 timeframes');
+    const tickTF = cfg.enabledTFs.reduce((a, b) => TF_MINUTES[a] < TF_MINUTES[b] ? a : b);
+
+    liveState = { cfg, tickTF, trades: [], equity: cfg.capital, pos: null, sig: 'NEUTRAL',
+        cd: 0, tfCandles: {}, running: true, intervalId: null };
+
+    hide('btnStartLive'); show('btnStopLive'); show('livePanel'); hide('liveResults'); hide('btnExportLive');
+    document.getElementById('liveDot').classList.add('active');
+    document.getElementById('liveLabel').textContent = `Live — ${cfg.symbol} (${tickTF})`;
+    document.getElementById('liveLog').innerHTML = '';
+    liveLog('info', `Started | TFs: ${cfg.enabledTFs.join(',')} | Method: ${cfg.method} | SL:${cfg.slPct}% TP:${cfg.tpPct}%`);
+
+    fetchLiveData();
+    liveState.intervalId = setInterval(fetchLiveData, TF_MINUTES[tickTF] * 60000);
+}
+
+async function fetchLiveData() {
+    if (!liveState?.running) return;
+    try {
+        for (const tf of liveState.cfg.enabledTFs) {
+            const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${liveState.cfg.symbol}&interval=${tf}&limit=60`);
+            liveState.tfCandles[tf] = (await res.json()).map(k => ({
+                time: k[0], open: +k[1], high: +k[2], low: +k[3], close: +k[4], vol: +k[5]
+            }));
+        }
+        processLiveTick();
+    } catch (e) { liveLog('info', `⚠️ ${e.message}`); }
+}
+
+function processLiveTick() {
+    const { cfg, tfCandles, tickTF } = liveState;
+    const snap = {};
+    for (const tf of cfg.enabledTFs) {
+        if (tfCandles[tf]?.length >= 2) snap[tf] = analyzeTF(tfCandles[tf]);
+    }
+    const conf = calcConfluence(snap, cfg.enabledTFs, cfg.method, cfg);
+    const raw = getSignal(conf.pct, conf.alignedTFs, cfg);
+    const price = tfCandles[tickTF]?.[tfCandles[tickTF].length - 1]?.close || 0;
+
+    el('livePrice').textContent = `$${price.toFixed(2)}`;
+    el('liveConf').textContent = `${conf.pct.toFixed(1)}%`;
+    el('liveConf').style.color = conf.pct >= 65 ? 'var(--bull)' : conf.pct <= 35 ? 'var(--bear)' : 'var(--neutral)';
+    el('liveSignal').textContent = raw;
+    el('liveSignal').style.color = raw.includes('BUY') ? 'var(--bull)' : raw.includes('SELL') ? 'var(--bear)' : 'var(--neutral)';
+
+    if (liveState.cd > 0) liveState.cd--;
+    else if (raw !== liveState.sig) {
+        const td = snap[tickTF];
+        if (cfg.minVol > 0 && td && td.volRatio < cfg.minVol) {}
+        else { liveState.sig = raw; liveState.cd = cfg.cooldown; liveLog('info', `Signal → ${raw} (${conf.pct.toFixed(1)}%)`); }
+    }
+
+    // Position mgmt
+    if (liveState.pos) {
+        const p = liveState.pos;
+        const tc = tfCandles[tickTF][tfCandles[tickTF].length - 1];
+        if (cfg.trailing && tc.high >= p.entry + (p.tp - p.entry) * 0.5) p.sl = Math.max(p.sl, p.entry);
+        if (tc.low <= p.sl) { liveClose(p.sl, 'STOP LOSS'); }
+        else if (tc.high >= p.tp) { liveClose(p.tp, 'TAKE PROFIT'); }
+        else if (liveState.sig === 'SELL' || liveState.sig === 'STRONG SELL' || liveState.sig === 'NEUTRAL') {
+            liveClose(price, 'SIG: ' + liveState.sig);
+        } else {
+            const ur = ((price / p.entry) - 1) * 100;
+            el('livePos').textContent = `Long @ ${p.entry.toFixed(2)} (${ur >= 0 ? '+' : ''}${ur.toFixed(2)}%)`;
+            el('livePos').style.color = ur >= 0 ? 'var(--bull)' : 'var(--bear)';
+        }
+    }
+    if (!liveState.pos && (liveState.sig === 'BUY' || liveState.sig === 'STRONG BUY')) {
+        const alloc = liveState.equity * cfg.posSize;
+        liveState.pos = { entry: price, time: Date.now(), sig: liveState.sig,
+            sl: price * (1 - cfg.slPct / 100), tp: price * (1 + cfg.tpPct / 100), alloc };
+        liveLog('buy', `▲ BUY @ $${price.toFixed(2)} | SL: $${liveState.pos.sl.toFixed(2)} | TP: $${liveState.pos.tp.toFixed(2)}`);
+        el('livePos').textContent = `Long @ ${price.toFixed(2)}`;
+        el('livePos').style.color = 'var(--bull)';
+    }
+    updateLiveUI();
+}
+
+function liveClose(exitP, reason) {
+    const p = liveState.pos, cfg = liveState.cfg;
+    const pnlP = ((exitP / p.entry) - 1) * 100 - (cfg.feePct * 2);
+    liveState.equity += p.alloc * (pnlP / 100);
+    liveState.trades.push({ eTime: p.time, xTime: Date.now(), entry: p.entry, exit: exitP, pnlP, pnlD: p.alloc * (pnlP / 100), reason, sig: p.sig, hold: '-' });
+    liveState.pos = null;
+    liveLog(pnlP >= 0 ? 'buy' : 'sell', `▼ EXIT @ $${exitP.toFixed(2)} | ${reason} | ${pnlP >= 0 ? '+' : ''}${pnlP.toFixed(2)}%`);
+    el('livePos').textContent = 'None'; el('livePos').style.color = 'var(--text2)';
+}
+
+function updateLiveUI() {
+    const t = liveState.trades, w = t.filter(x => x.pnlP > 0);
+    el('liveTrades').textContent = t.length;
+    const pnl = liveState.equity - liveState.cfg.capital;
+    el('livePnL').textContent = `${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`;
+    el('livePnL').style.color = pnl >= 0 ? 'var(--bull)' : 'var(--bear)';
+    el('liveWR').textContent = t.length > 0 ? `${(w.length / t.length * 100).toFixed(0)}%` : '—';
+}
+
+function stopLive() {
+    if (!liveState) return;
+    liveState.running = false;
+    if (liveState.intervalId) clearInterval(liveState.intervalId);
+    el('liveDot').classList.remove('active');
+    el('liveLabel').textContent = 'Stopped';
+    show('btnStartLive'); hide('btnStopLive'); show('btnExportLive');
+
+    if (liveState.pos) {
+        const lastP = parseFloat(el('livePrice').textContent.replace('$', ''));
+        if (lastP > 0) liveClose(lastP, 'MANUAL STOP');
+    }
+    if (liveState.trades.length > 0) {
+        displayTradeTable('live', liveState.trades, liveState.equity, liveState.cfg.capital);
+        show('liveResults');
+    }
+    liveLog('info', `Session ended — ${liveState.trades.length} trades`);
+}
+
+function liveLog(type, msg) {
+    el('liveLog').innerHTML = `<div class="log-entry"><span class="log-time">${new Date().toLocaleTimeString()}</span> <span class="log-${type}">${msg}</span></div>` + el('liveLog').innerHTML;
+}
+
+// ============================================
+// ALL COMBINATIONS MATRIX
+// ============================================
+async function runMatrix() {
+    const baseCfg = getConfig();
+    if (baseCfg.enabledTFs.length < 2) return alert('Enable at least 2 timeframes');
+    const periodMs = PERIOD_MS[document.getElementById('cfgMatrixPeriod').value];
+    disableBtn('btnMatrix', true); showProg('matrix', true);
+
+    try {
+        const tfData = {};
+        for (let i = 0; i < baseCfg.enabledTFs.length; i++) {
+            setStatus('matrix', `Fetching ${baseCfg.symbol} ${baseCfg.enabledTFs[i]}...`);
+            setProg('matrix', ((i + 1) / baseCfg.enabledTFs.length) * 30);
+            tfData[baseCfg.enabledTFs[i]] = await fetchHistorical(baseCfg.symbol, baseCfg.enabledTFs[i], periodMs);
+        }
+
+        const methods = ['equal', 'linear', 'exponential', 'tiered'];
+        const mods = [
+            { bodyMod:false, volMod:false, indMod:false, label:'None' },
+            { bodyMod:true,  volMod:false, indMod:false, label:'Body' },
+            { bodyMod:false, volMod:true,  indMod:false, label:'Vol' },
+            { bodyMod:false, volMod:false, indMod:true,  label:'Ind' },
+            { bodyMod:true,  volMod:true,  indMod:false, label:'Body+Vol' },
+            { bodyMod:true,  volMod:false, indMod:true,  label:'Body+Ind' },
+            { bodyMod:false, volMod:true,  indMod:true,  label:'Vol+Ind' },
+            { bodyMod:true,  volMod:true,  indMod:true,  label:'All' },
+        ];
+
+        matrixResult = [];
+        const total = methods.length * mods.length;
+        let done = 0;
+
+        for (const method of methods) {
+            for (const m of mods) {
+                const cfg = { ...baseCfg, method, ...m };
+                const r = executeBacktest(tfData, cfg);
+                if (r) {
+                    const w = r.trades.filter(t => t.pnlP > 0), l = r.trades.filter(t => t.pnlP <= 0);
+                    const wr = r.trades.length > 0 ? w.length / r.trades.length * 100 : 0;
+                    const gp = w.reduce((s, t) => s + t.pnlP, 0);
+                    const gl = Math.abs(l.reduce((s, t) => s + t.pnlP, 0));
+                    matrixResult.push({
+                        method, mods: m.label, trades: r.trades.length, wr,
+                        pf: gl > 0 ? gp / gl : gp > 0 ? 99 : 0,
+                        ret: ((r.equity - baseCfg.capital) / baseCfg.capital * 100),
+                        equity: r.equity
+                    });
+                } else {
+                    matrixResult.push({ method, mods: m.label, trades: 0, wr: 0, pf: 0, ret: 0, equity: baseCfg.capital });
+                }
+                done++;
+                setProg('matrix', 30 + (done / total) * 70);
+                setStatus('matrix', `${method} + ${m.label} (${done}/${total})`);
+                await sleep(5);
+            }
+        }
+
+        displayMatrix(matrixResult, methods, mods);
+        show('btnExportMatrix');
+        setStatus('matrix', `✅ ${total} combinations tested`); setProg('matrix', 100);
+    } catch (e) { setStatus('matrix', `❌ ${e.message}`); }
+    disableBtn('btnMatrix', false);
+}
+
+function displayMatrix(results, methods, mods) {
+    const c = document.getElementById('matrixResults');
+    const rets = results.map(r => r.ret);
+    const minR = Math.min(...rets), maxR = Math.max(...rets);
+    const bestIdx = rets.indexOf(Math.max(...rets));
+
+    function retBg(ret) {
+        if (maxR === minR) return '#2d3044';
+        if (ret > 0) {
+            const t = maxR > 0 ? Math.min(ret / maxR, 1) : 0;
+            return `rgb(${Math.round(255 - t * 221)},${Math.round(255 - t * 58)},${Math.round(255 - t * 161)})`;
+        } else if (ret < 0) {
+            const t = minR < 0 ? Math.min(Math.abs(ret) / Math.abs(minR), 1) : 0;
+            return `rgb(${Math.round(255 - t * 16)},${Math.round(255 - t * 187)},${Math.round(255 - t * 187)})`;
+        }
+        return '#ffffff';
+    }
+    function wrBg(wr) {
+        if (wr >= 55) return `rgba(34,197,94,${Math.min((wr - 50) / 30, 0.6)})`;
+        if (wr >= 45) return `rgba(234,179,8,0.15)`;
+        return `rgba(239,68,68,${Math.min((50 - wr) / 30, 0.6)})`;
+    }
+    function pfBg(pf) {
+        if (pf >= 2) return 'rgba(34,197,94,0.35)';
+        if (pf >= 1.5) return 'rgba(34,197,94,0.2)';
+        if (pf >= 1) return 'rgba(234,179,8,0.15)';
+        return 'rgba(239,68,68,0.2)';
+    }
+
+    function buildTable(title, valFn, bgFn) {
+        let h = `<h3 style="margin:0.6rem 0 0.3rem;font-size:0.8rem;">${title}</h3><div class="matrix-wrap"><table class="matrix"><thead><tr><th></th>`;
+        mods.forEach(m => h += `<th>${m.label}</th>`);
+        h += '</tr></thead><tbody>';
+        let idx = 0;
+        for (const method of methods) {
+            h += `<tr><td class="row-label">${method.charAt(0).toUpperCase() + method.slice(1)}</td>`;
+            for (const m of mods) {
+                const r = results[idx];
+                const val = valFn(r);
+                const bg = bgFn(r);
+                const isBest = idx === bestIdx && title.includes('Return');
+                const fg = bg.startsWith('rgb') ? '#000' : 'var(--text)';
+                h += `<td style="background:${bg};color:${fg};${isBest ? 'outline:2px solid var(--accent);' : ''}" title="Trades:${r.trades} WR:${r.wr.toFixed(0)}% PF:${r.pf.toFixed(2)}">${isBest ? '🏆 ' : ''}${val}</td>`;
+                idx++;
+            }
+            h += '</tr>';
+        }
+        h += '</tbody></table></div>';
+        return h;
+    }
+
+    c.innerHTML =
+        buildTable('Return % — Method × Modifiers', r => `${r.ret >= 0 ? '+' : ''}${r.ret.toFixed(2)}%`, r => retBg(r.ret)) +
+        buildTable('Win Rate % — Method × Modifiers', r => `${r.wr.toFixed(0)}%<br><span style="font-size:0.5rem;opacity:0.6;">${r.trades}t</span>`, r => wrBg(r.wr)) +
+        buildTable('Profit Factor — Method × Modifiers', r => r.pf.toFixed(2), r => pfBg(r.pf));
+}
+
+// ============================================
+// CSV EXPORT
+// ============================================
+function exportCSV(mode) {
+    if (mode === 'matrix' && matrixResult) {
+        const rows = [['Method','Modifiers','Trades','Win Rate %','Profit Factor','Return %','Final Equity']];
+        matrixResult.forEach(r => rows.push([r.method, r.mods, r.trades, r.wr.toFixed(2), r.pf.toFixed(2), r.ret.toFixed(2), r.equity.toFixed(2)]));
+        return dlCSV(rows.map(r => r.join(',')).join('\n'), 'mtfcm_combinations.csv');
+    }
+    let trades, filename;
+    if (mode === 'bt' && btResult) { trades = btResult.trades; filename = 'mtfcm_backtest.csv'; }
+    else if (mode === 'live' && liveState) { trades = liveState.trades; filename = 'mtfcm_paper_trades.csv'; }
+    else return;
+    const rows = [['#','Entry Time','Exit Time','Entry Price','Exit Price','P&L %','P&L $','Signal','Exit Reason','Hold']];
+    trades.forEach((t, i) => rows.push([i + 1, new Date(t.eTime).toISOString(), new Date(t.xTime).toISOString(),
+        t.entry.toFixed(6), t.exit.toFixed(6), t.pnlP.toFixed(4), t.pnlD.toFixed(4), t.sig, t.reason, t.hold]));
+    dlCSV(rows.map(r => r.join(',')).join('\n'), filename);
+}
+
+function dlCSV(content, name) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }));
+    a.download = name; a.click();
+}
+
+// ============================================
+// DISPLAY
+// ============================================
+function displayBTResults(r, cfg) {
+    const { trades, curve, equity, sigs } = r;
+    const w = trades.filter(t => t.pnlP > 0), l = trades.filter(t => t.pnlP <= 0);
+    const wr = trades.length > 0 ? w.length / trades.length * 100 : 0;
+    const avgW = w.length > 0 ? w.reduce((s, t) => s + t.pnlP, 0) / w.length : 0;
+    const avgL = l.length > 0 ? l.reduce((s, t) => s + t.pnlP, 0) / l.length : 0;
+    const gp = w.reduce((s, t) => s + t.pnlP, 0);
+    const gl = Math.abs(l.reduce((s, t) => s + t.pnlP, 0));
+    const pf = gl > 0 ? gp / gl : gp > 0 ? 99 : 0;
+    const ret = ((equity - cfg.capital) / cfg.capital * 100);
+    const rr = avgL !== 0 ? Math.abs(avgW / avgL) : avgW > 0 ? 99 : 0;
+    let peak = cfg.capital, maxDD = 0;
+    curve.forEach(p => { if (p.equity > peak) peak = p.equity; const d = (peak - p.equity) / peak * 100; if (d > maxDD) maxDD = d; });
+    const slE = trades.filter(t => t.reason === 'STOP LOSS').length;
+    const tpE = trades.filter(t => t.reason === 'TAKE PROFIT').length;
+    const sigE = trades.filter(t => t.reason.startsWith('SIG')).length;
+
+    el('btStats').innerHTML = [
+        stat(trades.length, 'Total Trades', 'accent'),
+        stat(`${wr.toFixed(1)}%`, 'Win Rate', wr >= 50 ? 'green' : 'red'),
+        stat(pf.toFixed(2), 'Profit Factor', pf >= 1.5 ? 'green' : pf >= 1 ? 'yellow' : 'red'),
+        stat(`${ret >= 0 ? '+' : ''}${ret.toFixed(2)}%`, 'Total Return', ret >= 0 ? 'green' : 'red'),
+        stat(`+${avgW.toFixed(2)}%`, 'Avg Win', 'green'),
+        stat(`${avgL.toFixed(2)}%`, 'Avg Loss', 'red'),
+        stat(rr.toFixed(2), 'R:R Ratio', rr >= 1.5 ? 'green' : rr >= 1 ? 'yellow' : 'red'),
+        stat(`-${maxDD.toFixed(2)}%`, 'Max Drawdown', 'red'),
+        stat(`${slE}/${tpE}/${sigE}`, 'SL/TP/Sig', ''),
+    ].join('');
+
+    el('btSignalBreakdown').innerHTML = `<div style="display:flex;gap:0.3rem;flex-wrap:wrap;font-size:0.68rem;margin-top:0.3rem;">
+        ${Object.entries(sigs).map(([s, c]) => `<span class="tag tag-${s.includes('BUY') ? 'buy' : s.includes('SELL') ? 'sell' : 'neutral'}">${s}: ${c}</span>`).join('')}</div>`;
+
+    fillTradesTable('btTradesTable', trades);
+    drawEquityChart('btEquityChart', curve, cfg.capital);
+}
+
+function displayTradeTable(prefix, trades, equity, capital) {
+    const w = trades.filter(t => t.pnlP > 0);
+    const wr = trades.length > 0 ? w.length / trades.length * 100 : 0;
+    const ret = ((equity - capital) / capital * 100);
+    const gp = w.reduce((s, t) => s + t.pnlP, 0);
+    const gl = Math.abs(trades.filter(t => t.pnlP <= 0).reduce((s, t) => s + t.pnlP, 0));
+    const pf = gl > 0 ? gp / gl : gp > 0 ? 99 : 0;
+
+    el(`${prefix}StatsGrid`).innerHTML = [
+        stat(trades.length, 'Trades', 'accent'),
+        stat(`${wr.toFixed(1)}%`, 'Win Rate', wr >= 50 ? 'green' : 'red'),
+        stat(pf.toFixed(2), 'Profit Factor', pf >= 1.5 ? 'green' : pf >= 1 ? 'yellow' : 'red'),
+        stat(`${ret >= 0 ? '+' : ''}${ret.toFixed(2)}%`, 'Return', ret >= 0 ? 'green' : 'red'),
+    ].join('');
+    fillTradesTable(`${prefix}TradesTable`, trades);
+}
+
+function fillTradesTable(id, trades) {
+    const t = document.getElementById(id);
+    t.querySelector('thead').innerHTML = '<tr><th>#</th><th>Entry</th><th>Entry $</th><th>Exit $</th><th>P&L</th><th>Signal</th><th>Exit</th><th>Hold</th></tr>';
+    t.querySelector('tbody').innerHTML = trades.map((t, i) => `<tr>
+        <td>${i + 1}</td><td style="font-size:0.6rem;">${new Date(t.eTime).toLocaleString()}</td>
+        <td>${t.entry.toFixed(2)}</td><td>${t.exit.toFixed(2)}</td>
+        <td class="${t.pnlP > 0 ? 'win' : 'loss'}">${t.pnlP > 0 ? '+' : ''}${t.pnlP.toFixed(2)}%</td>
+        <td><span class="tag tag-buy">${t.sig}</span></td>
+        <td><span class="tag ${t.reason.includes('STOP') ? 'tag-sl' : t.reason.includes('PROFIT') ? 'tag-tp' : 'tag-sig'}">${t.reason}</span></td>
+        <td>${t.hold}</td></tr>`).join('');
+}
+
+function stat(val, lbl, cls) {
+    return `<div class="stat-card"><span class="val ${cls}">${val}</span><span class="lbl">${lbl}</span></div>`;
+}
+
+function drawEquityChart(canvasId, curve, capital) {
+    const canvas = document.getElementById(canvasId);
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+    const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+    const w = rect.width, h = rect.height;
+    const pad = { t: 20, r: 50, b: 20, l: 10 }, cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
+    const vals = curve.map(p => p.equity);
+    const minE = Math.min(...vals) * 0.998, maxE = Math.max(...vals) * 1.002, range = maxE - minE || 1;
+
+    ctx.fillStyle = '#1a1d27'; ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = '#2d3044'; ctx.lineWidth = 0.5;
+    for (let i = 0; i <= 4; i++) {
+        const y = pad.t + (ch / 4) * i;
+        ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+        ctx.fillStyle = '#71717a'; ctx.font = '8px monospace'; ctx.textAlign = 'right';
+        ctx.fillText(`$${(maxE - (range / 4) * i).toFixed(0)}`, w - pad.r + 42, y + 3);
+    }
+    const baseY = pad.t + ch - ((capital - minE) / range) * ch;
+    ctx.strokeStyle = '#555'; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(pad.l, baseY); ctx.lineTo(w - pad.r, baseY); ctx.stroke(); ctx.setLineDash([]);
+
+    ctx.beginPath(); ctx.strokeStyle = '#6366f1'; ctx.lineWidth = 1.5;
+    curve.forEach((p, i) => {
+        const x = pad.l + (i / Math.max(curve.length - 1, 1)) * cw;
+        const y = pad.t + ch - ((p.equity - minE) / range) * ch;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.lineTo(pad.l + cw, pad.t + ch); ctx.lineTo(pad.l, pad.t + ch); ctx.closePath();
+    const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + ch);
+    grad.addColorStop(0, 'rgba(99,102,241,0.12)'); grad.addColorStop(1, 'rgba(99,102,241,0)');
+    ctx.fillStyle = grad; ctx.fill();
+
+    const fe = curve[curve.length - 1]?.equity || capital;
+    const rp = ((fe - capital) / capital * 100);
+    ctx.fillStyle = rp >= 0 ? '#22c55e' : '#ef4444'; ctx.font = 'bold 10px Inter,sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(`$${fe.toFixed(2)} (${rp >= 0 ? '+' : ''}${rp.toFixed(2)}%)`, pad.l + 5, 14);
+}
+
+// ============================================
+// UI HELPERS
+// ============================================
+const el = id => document.getElementById(id);
+function show(id) { el(id).style.display = ''; }
+function hide(id) { el(id).style.display = 'none'; }
+function disableBtn(id, v) { el(id).disabled = v; }
+function showProg(p, v) { el(`${p}Progress`).style.display = v ? 'block' : 'none'; }
+function setProg(p, pct) { el(`${p}Fill`).style.width = `${pct}%`; }
+function setStatus(p, msg) { el(`${p}Status`).textContent = msg; }
+
+document.querySelectorAll('.mode-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.mode-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        el(`mode-${tab.dataset.mode}`).classList.add('active');
+    });
+});
+document.addEventListener('click', e => {
+    const tab = e.target.closest('.tab[data-tab]');
+    if (!tab) return;
+    const parent = tab.closest('.mode-content') || tab.closest('.app');
+    parent.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    parent.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    el(`tab-${tab.dataset.tab}`).classList.add('active');
+});
+document.querySelectorAll('.tf-toggle').forEach(e => e.addEventListener('click', () => e.classList.toggle('active')));
+</script>
+</body>
+</html>

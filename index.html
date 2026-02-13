@@ -26,6 +26,7 @@
                     <span class="pulse"></span>
                     <span id="alertCount">0</span>
                 </div>
+                <a href="backtest.html" class="btn btn-icon" title="Strategy Tester" style="text-decoration:none;font-size:0.85rem;">🧪</a>
                 <span class="connection-dot" id="connectionDot" title="API Status">●</span>
                 <button id="themeToggle" class="btn btn-icon btn-theme" title="Toggle Theme (T)">🌙</button>
             </div>
@@ -95,7 +96,7 @@
                     <!-- Confluence Settings (collapsible) -->
                     <div class="card-settings" id="confluenceSettings" style="display: none;">
                         <div class="card-settings-row">
-                            <label for="weightMethod">Weighting</label>
+                            <label for="weightMethod">TF Weight Method</label>
                             <div class="fancy-select">
                                 <select id="weightMethod">
                                     <option value="equal">Equal</option>
@@ -342,7 +343,7 @@
                                 </div>
                             </div>
                             <div class="card-settings-section">
-                                <span class="settings-section-label">🏷️ Badge Alerts</span>
+                                <span class="settings-section-label">📡 Market Signals</span>
                                 <div class="patterns-grid">
                                     <label class="pattern-toggle"><input type="checkbox" id="badgeLowVol" checked><span>LowVol</span></label>
                                     <label class="pattern-toggle"><input type="checkbox" id="badgeHighVol" checked><span>HighVol</span></label>
