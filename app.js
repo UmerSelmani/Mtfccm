@@ -1,9 +1,9 @@
 /**
  * MTFCM - Multi-Timeframe Confluence Monitor
- * Main Application Logic v4.7.3 - Unified dropdowns, unified refresh, full parity
+ * Main Application Logic v4.7.4 - Unified dropdowns, unified refresh, full parity
  */
 
-const APP_VERSION = "4.7.3";
+const APP_VERSION = "4.7.4";
 
 // ============================================
 // STATE MANAGEMENT
@@ -2853,6 +2853,7 @@ function setupChartInteraction(canvasId, tfId, opts = {}) {
 // ============================================
 
 function startTimerLoop() {
+    if (state.intervals.timer) clearInterval(state.intervals.timer);
     state.intervals.timer = setInterval(updateTimers, 1000);
     updateTimers();
 }

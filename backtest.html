@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MTFCM v4.7.3 — Strategy Tester</title>
+<title>MTFCM v4.7.4 — Strategy Tester</title>
 <style>
 :root{--bg:#0f1117;--bg2:#1a1d27;--bg3:#252836;--bg4:#303348;--text:#e4e4e7;--text2:#a1a1aa;--muted:#71717a;--accent:#6366f1;--accent2:#8b5cf6;--bull:#22c55e;--bear:#ef4444;--neutral:#eab308;--border:#2d3044;--radius:8px;}
 *{margin:0;padding:0;box-sizing:border-box;}body{background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,sans-serif;min-height:100vh;}a{color:var(--accent);text-decoration:none;}
@@ -237,13 +237,14 @@ code{background:var(--bg3);padding:0.08rem 0.22rem;border-radius:3px;font-size:0
         <div class="config-card">
             <h3>🎯 Signal Thresholds</h3>
             <div class="signal-cfg">
-                <div class="row"><label>Strong Buy ≥</label><input type="number" id="cfgSBuy" value="80" min="50" max="100" style="width:50px;"></div>
                 <div class="row"><label>Buy ≥</label><input type="number" id="cfgBuy" value="65" min="50" max="100" style="width:50px;"></div>
                 <div class="row"><label>Sell ≤</label><input type="number" id="cfgSell" value="35" min="0" max="50" style="width:50px;"></div>
-                <div class="row"><label>Strong Sell ≤</label><input type="number" id="cfgSSell" value="20" min="0" max="50" style="width:50px;"></div>
             </div>
-            <div class="row"><label>Min aligned TFs (Strong)</label><input type="number" id="cfgMinAlign" value="3" min="1" max="6" style="width:50px;"></div>
-            <div class="row"><label>Cooldown (candles)</label><input type="number" id="cfgCooldown" value="10" min="0" max="100" style="width:50px;"></div>
+            <div class="row-hint">Score 0-100%. Buy threshold and above → BUY. Sell threshold and below → SELL. Between → NEUTRAL.</div>
+            <div class="row"><label>Min aligned TFs</label><input type="number" id="cfgMinAlign" value="3" min="0" max="6" style="width:50px;"></div>
+            <div class="row-hint">How many TFs must individually agree before a BUY/SELL signal fires. 0 = off (score alone decides). Prevents one dominant TF from faking the signal.</div>
+            <div class="row"><label>Cooldown (minutes)</label><input type="number" id="cfgCooldown" value="0" min="0" max="1440" style="width:50px;"></div>
+            <div class="row-hint">After a signal change, ignore new signals for this many minutes. 0 = off (next signal fires immediately).</div>
             <div class="row"><label>Min Volume Ratio</label><input type="number" id="cfgMinVol" value="0" step="0.1" min="0" max="5" style="width:50px;"></div>
         </div>
 
@@ -349,14 +350,14 @@ code{background:var(--bg3);padding:0.08rem 0.22rem;border-radius:3px;font-size:0
                 <b>Candle Patterns (19):</b> Each individually selectable. Singles: Doji, Hammer, Inv Hammer, Hanging Man, Shooting Star, Marubozu, Spinning Top. Doubles: Bull/Bear Engulfing, Bull/Bear Harami, Piercing, Dark Cloud, Tweezer Top/Bot. Triples: Morning/Evening Star, 3 Soldiers, 3 Crows.<br>
                 <b>Market Signals:</b> Vol (spike/high/low), MACD (up/down/cross), RSI (OB/OS), Wick rejections, Body/Indecision</p></div>
             <div class="rule-section"><strong>5. Signal Thresholds</strong>
-                <p>≥80%+aligned→STRONG BUY · ≥65%→BUY · 35-65%→NEUTRAL · ≤35%→SELL · ≤20%+aligned→STRONG SELL<br>
-                Cooldown locks signal N candles. Min Volume requires vol ratio above threshold.</p></div>
+                <p>≥Buy threshold + aligned TFs met → BUY · ≤Sell threshold + aligned TFs met → SELL · Otherwise → NEUTRAL<br>
+                Min aligned TFs requires that many TFs to individually agree before signal fires (0=off). Cooldown locks signal for N minutes (0=off). Min Volume requires vol ratio above threshold.</p></div>
             <div class="rule-section"><strong>6. Trailing Stop Options</strong>
                 <p><b>None:</b> Fixed SL only.<br><b>Breakeven:</b> SL moves to entry when 50% of TP reached.<br>
                 <b>Trailing %:</b> SL follows highest-price-since-entry minus trail%. Always ratchets up.<br>
                 <b>Step:</b> For every X% price rises, SL moves up X%. E.g. step=1%: price +2%→SL moves +2% from entry.</p></div>
             <div class="rule-section"><strong>7. Trade Execution</strong>
-                <p>Entry: BUY/STRONG BUY → open at close. Exits: SL (low≤SL), TP (high≥TP), Signal (SELL/NEUTRAL). Spot only, no shorts. Fees on entry+exit.</p></div>
+                <p>Entry: BUY → open at close. Exits: SL (low≤SL), TP (high≥TP), Signal (SELL/NEUTRAL). Spot only, no shorts. Fees on entry+exit.</p></div>
             <div class="rule-section"><strong>8. All Combinations Matrix</strong>
                 <p><b>Classic mode:</b> 4 methods × 8 modifier combos (None/Body/Vol/Ind/Body+Vol/Body+Ind/Vol+Ind/All) = 32 tests.<br>
                 <b>Modular mode:</b> 4 methods × 6 component groups (Dir/Dir+Mom/Dir+Mom+Confirm/Dir+Mom+Pat/Dir+Mom+Sig/Full) = 24 tests.<br>
@@ -394,7 +395,7 @@ function getConfig(){
         trailType:$('cfgTrailType').value,trailPct:+$('cfgTrailPct').value,trailStep:+$('cfgTrailStep').value,
         feePct:+$('cfgFee').value,capital:+$('cfgCapital').value,posSize:+$('cfgPosSize').value/100,
         cooldown:+$('cfgCooldown').value,minVol:+$('cfgMinVol').value,
-        sBuy:+$('cfgSBuy').value,buy:+$('cfgBuy').value,sell:+$('cfgSell').value,sSell:+$('cfgSSell').value,minAlign:+$('cfgMinAlign').value};
+        buy:+$('cfgBuy').value,sell:+$('cfgSell').value,minAlign:+$('cfgMinAlign').value};
 }
 
 // ============================================
@@ -573,7 +574,7 @@ function modularConfluence(snap,tfs,method,cfg){
     const t=tBull+tBear;return{pct:t>0?(tBull/t)*100:50,alignedTFs:aligned};}
 
 function calcConf(snap,tfs,method,cfg){return cfg.calcMode==='modular'?modularConfluence(snap,tfs,method,cfg):classicConfluence(snap,tfs,method,cfg);}
-function getSignal(pct,al,cfg){if(pct>=cfg.sBuy&&al>=cfg.minAlign)return'STRONG BUY';if(pct>=cfg.buy)return'BUY';if(pct<=cfg.sSell&&al>=cfg.minAlign)return'STRONG SELL';if(pct<=cfg.sell)return'SELL';return'NEUTRAL';}
+function getSignal(pct,al,cfg){const ma=cfg.minAlign||0;if(pct>=cfg.buy&&(ma===0||al>=ma))return'BUY';if(pct<=cfg.sell&&(ma===0||al>=ma))return'SELL';return'NEUTRAL';}
 
 // ============================================
 // DATA
@@ -610,21 +611,22 @@ function updateTrail(pos,candle,cfg){
 function runEngine(tfData,cfg){
     const tickTF=cfg.enabledTFs.reduce((a,b)=>TFM[a]<TFM[b]?a:b);
     const ticks=tfData[tickTF];if(!ticks||ticks.length<60)return null;
-    const trades=[],curve=[];let equity=cfg.capital,pos=null,sig='NEUTRAL',cd=0;
-    const sigs={'STRONG BUY':0,'BUY':0,'NEUTRAL':0,'SELL':0,'STRONG SELL':0};
+    const tickMs=TFM[tickTF]*6e4;const cdMs=cfg.cooldown*6e4;
+    const trades=[],curve=[];let equity=cfg.capital,pos=null,sig='NEUTRAL',cdUntil=0;
+    const sigs={'BUY':0,'NEUTRAL':0,'SELL':0};
     for(let i=55;i<ticks.length;i++){const tc=ticks[i];
         const snap={};for(const tf of cfg.enabledTFs){const c=tfData[tf];if(!c)continue;
             let ei=0;for(let j=c.length-1;j>=0;j--){if(c[j].time<=tc.time){ei=j+1;break;}}
             const sl=c.slice(Math.max(0,ei-60),ei);if(sl.length>=2)snap[tf]=analyzeTF(sl);}
         const conf=calcConf(snap,cfg.enabledTFs,cfg.method,cfg);
         const raw=getSignal(conf.pct,conf.alignedTFs,cfg);sigs[raw]++;
-        if(cd>0)cd--;else if(raw!==sig){const td=snap[tickTF];
-            if(cfg.minVol>0&&td&&td.volRatio<cfg.minVol){}else{sig=raw;cd=cfg.cooldown;}}
+        if(tc.time<cdUntil){}else if(raw!==sig){const td=snap[tickTF];
+            if(cfg.minVol>0&&td&&td.volRatio<cfg.minVol){}else{sig=raw;cdUntil=tc.time+cdMs;}}
         if(pos){const sl=updateTrail(pos,tc,cfg);
             if(tc.low<=sl){doClose(trades,pos,sl,tc.time,'STOP LOSS',i-pos.idx,cfg);equity+=trades[trades.length-1].pnlD;pos=null;}
             else if(tc.high>=pos.tp){doClose(trades,pos,pos.tp,tc.time,'TAKE PROFIT',i-pos.idx,cfg);equity+=trades[trades.length-1].pnlD;pos=null;}
-            else if(sig==='SELL'||sig==='STRONG SELL'||sig==='NEUTRAL'){doClose(trades,pos,tc.close,tc.time,'SIG:'+sig,i-pos.idx,cfg);equity+=trades[trades.length-1].pnlD;pos=null;}}
-        if(!pos&&(sig==='BUY'||sig==='STRONG BUY')){pos={entry:tc.close,time:tc.time,idx:i,sig,
+            else if(sig==='SELL'||sig==='NEUTRAL'){doClose(trades,pos,tc.close,tc.time,'SIG:'+sig,i-pos.idx,cfg);equity+=trades[trades.length-1].pnlD;pos=null;}}
+        if(!pos&&sig==='BUY'){pos={entry:tc.close,time:tc.time,idx:i,sig,
             sl:tc.close*(1-cfg.slPct/100),tp:tc.close*(1+cfg.tpPct/100),alloc:equity*cfg.posSize,peak:tc.close};}
         curve.push({time:tc.time,equity,pct:conf.pct});}
     if(pos){const last=ticks[ticks.length-1];doClose(trades,pos,last.close,last.time,'END',ticks.length-pos.idx,cfg);equity+=trades[trades.length-1].pnlD;}
@@ -637,6 +639,7 @@ function doClose(trades,pos,xp,xt,reason,hold,cfg){const pp=((xp/pos.entry)-1)*1
 // ============================================
 async function runBacktest(){
     const cfg=getConfig();if(cfg.enabledTFs.length<2)return alert('Enable ≥2 TFs');
+    if(cfg.slPct>=cfg.tpPct)return alert('Stop Loss % must be less than Take Profit %');
     const pMs=PM[$('cfgPeriod').value];$('btnBT').disabled=true;showP('bt',true);
     try{const td={};for(let i=0;i<cfg.enabledTFs.length;i++){setS('bt',`Fetching ${cfg.symbol} ${cfg.enabledTFs[i]}...`);
         setP('bt',((i+1)/cfg.enabledTFs.length)*50);td[cfg.enabledTFs[i]]=await fetchHist(cfg.symbol,cfg.enabledTFs[i],pMs);}
@@ -649,8 +652,9 @@ async function runBacktest(){
 // LIVE PAPER TRADING
 // ============================================
 function startLive(){const cfg=getConfig();if(cfg.enabledTFs.length<2)return alert('Enable ≥2 TFs');
+    if(cfg.slPct>=cfg.tpPct)return alert('Stop Loss % must be less than Take Profit %');
     const tickTF=cfg.enabledTFs.reduce((a,b)=>TFM[a]<TFM[b]?a:b);
-    liveState={cfg,tickTF,trades:[],equity:cfg.capital,pos:null,sig:'NEUTRAL',cd:0,tfc:{},running:true,iid:null};
+    liveState={cfg,tickTF,trades:[],equity:cfg.capital,pos:null,sig:'NEUTRAL',cdUntil:0,tfc:{},running:true,iid:null};
     hide('btnLiveStart');show('btnLiveStop');show('livePanel');hide('liveR');hide('btnExpLive');
     $('liveDot').classList.add('active');$('liveLbl').textContent=`Live — ${cfg.symbol} (${tickTF}, ${cfg.calcMode})`;
     $('liveLog').innerHTML='';lLog('info',`Started | ${cfg.enabledTFs.join(',')} | ${cfg.method} | ${cfg.calcMode}`);
@@ -668,16 +672,16 @@ function procLive(){const{cfg,tfc,tickTF}=liveState;const snap={};
     const price=tfc[tickTF]?.[tfc[tickTF].length-1]?.close||0;
     $('lP').textContent='$'+price.toFixed(2);$('lC').textContent=conf.pct.toFixed(1)+'%';
     $('lC').style.color=conf.pct>=65?'var(--bull)':conf.pct<=35?'var(--bear)':'var(--neutral)';
-    $('lSig').textContent=raw;$('lSig').style.color=raw.includes('BUY')?'var(--bull)':raw.includes('SELL')?'var(--bear)':'var(--neutral)';
-    if(liveState.cd>0)liveState.cd--;else if(raw!==liveState.sig){const td=snap[tickTF];
-        if(cfg.minVol>0&&td&&td.volRatio<cfg.minVol){}else{liveState.sig=raw;liveState.cd=cfg.cooldown;lLog('info',`Signal→${raw} (${conf.pct.toFixed(1)}%)`);}}
+    $('lSig').textContent=raw;$('lSig').style.color=raw==='BUY'?'var(--bull)':raw==='SELL'?'var(--bear)':'var(--neutral)';
+    const now=Date.now();if(now<liveState.cdUntil){}else if(raw!==liveState.sig){const td=snap[tickTF];
+        if(cfg.minVol>0&&td&&td.volRatio<cfg.minVol){}else{liveState.sig=raw;liveState.cdUntil=now+cfg.cooldown*6e4;lLog('info',`Signal→${raw} (${conf.pct.toFixed(1)}%)`);}}
     if(liveState.pos){const p=liveState.pos,tc=tfc[tickTF][tfc[tickTF].length-1];
         updateTrail(p,tc,cfg);
         if(tc.low<=p.sl)lClose(p.sl,'STOP LOSS');else if(tc.high>=p.tp)lClose(p.tp,'TAKE PROFIT');
-        else if(liveState.sig==='SELL'||liveState.sig==='STRONG SELL'||liveState.sig==='NEUTRAL')lClose(price,'SIG:'+liveState.sig);
+        else if(liveState.sig==='SELL'||liveState.sig==='NEUTRAL')lClose(price,'SIG:'+liveState.sig);
         else{const ur=((price/p.entry)-1)*100;$('lPos').textContent=`Long@${p.entry.toFixed(2)} (${ur>=0?'+':''}${ur.toFixed(2)}%)`;
             $('lPos').style.color=ur>=0?'var(--bull)':'var(--bear)';}}
-    if(!liveState.pos&&(liveState.sig==='BUY'||liveState.sig==='STRONG BUY')){
+    if(!liveState.pos&&liveState.sig==='BUY'){
         liveState.pos={entry:price,time:Date.now(),sig:liveState.sig,sl:price*(1-cfg.slPct/100),tp:price*(1+cfg.tpPct/100),alloc:liveState.equity*cfg.posSize,peak:price};
         lLog('buy',`▲ BUY @$${price.toFixed(2)} SL:$${liveState.pos.sl.toFixed(2)} TP:$${liveState.pos.tp.toFixed(2)}`);
         $('lPos').textContent=`Long@${price.toFixed(2)}`;$('lPos').style.color='var(--bull)';}
@@ -703,6 +707,7 @@ function lLog(t,m){$('liveLog').innerHTML=`<div class="log-entry"><span class="l
 // ALL COMBINATIONS MATRIX
 // ============================================
 async function runMatrix(){const base=getConfig();if(base.enabledTFs.length<2)return alert('Enable ≥2 TFs');
+    if(base.slPct>=base.tpPct)return alert('Stop Loss % must be less than Take Profit %');
     const pMs=PM[$('cfgMatPeriod').value];const testMode=$('cfgMatMode').value;
     $('btnMat').disabled=true;showP('mat',true);
     try{const td={};for(let i=0;i<base.enabledTFs.length;i++){setS('mat',`Fetching ${base.symbol} ${base.enabledTFs[i]}...`);

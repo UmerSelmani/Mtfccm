@@ -148,5 +148,5 @@ Report inappropriate ads: [Add contact method]
 
 ---
 
-*Last updated: February 2025 - v3.8*
+*Last updated: February 2026 - v4.7.4*
 *This policy follows mainstream Sunni scholarly opinions. Individual users should consult their own scholars for personal guidance.*
