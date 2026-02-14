@@ -1,9 +1,9 @@
 /**
  * MTFCM - Multi-Timeframe Confluence Monitor
- * Main Application Logic v4.5.0 - Unified dropdowns, unified refresh, full parity
+ * Main Application Logic v4.7.3 - Unified dropdowns, unified refresh, full parity
  */
 
-const APP_VERSION = "4.3.0";
+const APP_VERSION = "4.7.3";
 
 // ============================================
 // STATE MANAGEMENT
