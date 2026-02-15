@@ -297,15 +297,11 @@ function loadInlineSettings() {
     // Display Options (from TF Settings)
     const showPriceInfoEl = document.getElementById('showPriceInfo');
     const showTimersEl = document.getElementById('showTimers');
-    const showIndicatorBadgesEl = document.getElementById('showIndicatorBadges');
     const showConfluenceBarEl = document.getElementById('showConfluenceBar');
-    const showPriceScaleEl = document.getElementById('showPriceScale');
     
     if (showPriceInfoEl) showPriceInfoEl.checked = state.settings.showPriceInfo !== false;
     if (showTimersEl) showTimersEl.checked = state.settings.showTimers !== false;
-    if (showIndicatorBadgesEl) showIndicatorBadgesEl.checked = state.settings.showIndicatorBadges !== false;
     if (showConfluenceBarEl) showConfluenceBarEl.checked = state.settings.showConfluenceBar !== false;
-    if (showPriceScaleEl) showPriceScaleEl.checked = !!state.settings.showPriceScale;
 }
 
 function saveSettings() {
@@ -1723,8 +1719,8 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
     canvas.style.height = rect.height + 'px';
     ctx.scale(dpr, dpr);
     
-    const width = rect.width;
-    const height = rect.height;
+    let width = rect.width;
+    let height = rect.height;
     
     const chartState = initChartState(tfId);
     const zoom = chartState.zoom * state.globalZoom;
@@ -1742,16 +1738,31 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
     const showEMA = state.settings.showChartEMA;
     const showVWAP = state.settings.showChartVWAP;
     const showSR = state.settings.showChartSR;
-    const showPriceScale = state.settings.showPriceScale;
     const coinDecimals = opts.decimals || state.currentCoin?.decimals || 2;
     
-    const padding = { top: 20, right: showPriceScale ? 55 : 5, bottom: 5, left: 5 };
-    let mainChartHeight = height - padding.top - padding.bottom;
-    let volumeHeight = 0, rsiHeight = 0, macdHeight = 0;
+    // Fixed sub-panel heights (pixels) — price chart never shrinks
+    const SUB_VOL_H = 45;
+    const SUB_RSI_H = 50;
+    const SUB_MACD_H = 50;
     
-    if (showVolume) { volumeHeight = mainChartHeight * 0.28; mainChartHeight -= volumeHeight; }
-    if (showRSI) { rsiHeight = mainChartHeight * 0.18; mainChartHeight -= rsiHeight; }
-    if (showMACD) { macdHeight = mainChartHeight * 0.18; mainChartHeight -= macdHeight; }
+    const padding = { top: 20, right: 55, bottom: 5, left: 5 };
+    let volumeHeight = showVolume ? SUB_VOL_H : 0;
+    let rsiHeight = showRSI ? SUB_RSI_H : 0;
+    let macdHeight = showMACD ? SUB_MACD_H : 0;
+    const subTotal = volumeHeight + rsiHeight + macdHeight;
+    
+    // Set canvas height dynamically — base price chart stays full, panels add below
+    const baseH = 140;
+    const totalH = baseH + subTotal;
+    canvas.style.height = totalH + 'px';
+    const rect2 = canvas.getBoundingClientRect();
+    canvas.width = rect2.width * dpr;
+    canvas.height = rect2.height * dpr;
+    ctx.scale(dpr, dpr);
+    width = rect2.width;
+    height = rect2.height;
+    
+    let mainChartHeight = height - padding.top - padding.bottom - subTotal;
     
     const chartWidth = width - padding.left - padding.right;
     
@@ -1816,8 +1827,8 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
     ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, width, height);
     
-    // Draw price scale on right side (like Binance)
-    if (showPriceScale) {
+    // Draw price scale on right side (always visible)
+    {
         const decimals = coinDecimals;
         const scaleX = width - padding.right + 3;
         const numTicks = Math.min(6, Math.max(3, Math.floor(mainChartHeight / 30)));
@@ -2100,8 +2111,8 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
             ctx.stroke();
             ctx.setLineDash([]);
             
-            // If price scale is on, show highlighted price on the scale
-            if (showPriceScale) {
+            // Show highlighted price on the scale
+            {
                 const decimals = coinDecimals;
                 const priceText = hCandle.close.toFixed(decimals);
                 const tagW = ctx.measureText(priceText).width + 8;
@@ -2353,8 +2364,31 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
             ctx.font = 'bold 8px JetBrains Mono, monospace';
             ctx.fillStyle = currentRSI >= 70 ? bearColor : currentRSI <= 30 ? bullColor : '#a855f7';
             ctx.textAlign = 'right';
-            ctx.fillText(`RSI: ${currentRSI.toFixed(0)}`, canvas.width - padding.right - 2, rsiTop + 10);
+            ctx.fillText(`RSI ${currentRSI.toFixed(0)}`, width - padding.right - 2, rsiTop + 10);
         }
+        
+        // RSI scale labels on right side (always visible)
+        ctx.strokeStyle = gridColor;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(width - padding.right, rsiTop);
+        ctx.lineTo(width - padding.right, rsiTop + rsiHeight);
+        ctx.stroke();
+        
+        ctx.font = '7px JetBrains Mono, monospace';
+        ctx.fillStyle = textColor;
+        ctx.textAlign = 'left';
+        ctx.globalAlpha = 0.6;
+        const rsiLevels = [70, 50, 30];
+        rsiLevels.forEach(lv => {
+            const ry = rsiTop + rsiHeight - (lv / 100) * rsiHeight;
+            ctx.fillText(lv, width - padding.right + 3, ry + 3);
+            ctx.strokeStyle = gridColor;
+            ctx.setLineDash([2, 2]);
+            ctx.beginPath(); ctx.moveTo(padding.left, ry); ctx.lineTo(width - padding.right, ry); ctx.stroke();
+            ctx.setLineDash([]);
+        });
+        ctx.globalAlpha = 1;
     }
     
     // MACD
@@ -2381,7 +2415,30 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
             ctx.fillStyle = currentMACD.histogram >= 0 ? bullColor : bearColor;
             ctx.textAlign = 'right';
             const macdVal = currentMACD.histogram >= 0 ? '↑' : '↓';
-            ctx.fillText(`MACD${macdVal} ${currentMACD.histogram.toFixed(2)}`, canvas.width - padding.right - 2, macdTop + 10);
+            ctx.fillText(`MACD${macdVal}`, width - padding.right - 2, macdTop + 10);
+            
+            // MACD scale on right side
+            ctx.strokeStyle = gridColor;
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(width - padding.right, macdTop);
+            ctx.lineTo(width - padding.right, macdTop + macdHeight);
+            ctx.stroke();
+            
+            // Zero line + scale labels
+            const zeroY = macdTop + macdHeight / 2;
+            ctx.setLineDash([2, 2]);
+            ctx.beginPath(); ctx.moveTo(padding.left, zeroY); ctx.lineTo(width - padding.right, zeroY); ctx.stroke();
+            ctx.setLineDash([]);
+            
+            ctx.font = '7px JetBrains Mono, monospace';
+            ctx.textAlign = 'left';
+            ctx.fillStyle = textColor;
+            ctx.globalAlpha = 0.6;
+            ctx.fillText('0', width - padding.right + 3, zeroY + 3);
+            ctx.fillText('+', width - padding.right + 3, macdTop + 8);
+            ctx.fillText('−', width - padding.right + 3, macdTop + macdHeight - 2);
+            ctx.globalAlpha = 1;
         }
     }
     
@@ -3086,7 +3143,6 @@ function renderTimeframeRows() {
         // Display Options settings
         const showPriceInfo = state.settings.showPriceInfo !== false;
         const showTimers = state.settings.showTimers !== false;
-        const showIndicatorBadges = state.settings.showIndicatorBadges !== false;
         
         const timerHtml = showTimers ? `<span class="tf-timer ${timerAlert ? 'alert' : ''}" id="tf-timer-${tf.id}">${formatTime(secondsToClose)}</span>` : '';
         
@@ -3103,7 +3159,7 @@ function renderTimeframeRows() {
                     ${showPriceInfo ? `<div class="tf-info-row tf-info-secondary">
                         <span class="tf-price-hl" id="tf-high-${tf.id}">H:$${tfHigh.toFixed(decimals)}</span>
                         <span class="tf-price-hl" id="tf-low-${tf.id}">L:$${tfLow.toFixed(decimals)}</span>
-                        ${showIndicatorBadges ? `<span class="tf-stat-mini">B${data.bodyPct.toFixed(0)}%</span>` : ''}
+                        <span class="tf-stat-mini">B${data.bodyPct.toFixed(0)}%</span>
                     </div>` : ''}
                 </div>
                 <div class="tf-chart-wrapper">
@@ -3634,7 +3690,7 @@ function setupEventListeners() {
     });
     
     // Chart indicator toggles (merged - controls both chart panel and card badges)
-    ['showPriceInfo', 'showTimers', 'showIndicatorBadges', 'showConfluenceBar', 'showPriceScale'].forEach(id => {
+    ['showPriceInfo', 'showTimers', 'showConfluenceBar'].forEach(id => {
         document.getElementById(id)?.addEventListener('change', (e) => {
             state.settings[id] = e.target.checked;
             saveSettings();
@@ -3644,10 +3700,21 @@ function setupEventListeners() {
     });
     
     // Market signal badge toggles - re-render cards when toggled
-    ['badgeLowVol','badgeHighVol','badgeVolSpike','badgeMACDUp','badgeMACDDown','badgeMACDCrossUp','badgeMACDCrossDown','badgeRejHi','badgeRejLo','badgeOB','badgeOS','badgeExtOB','badgeExtOS','badgeIndecision','badgeBigBody','badgeEngulf'].forEach(id => {
+    const badgeIds = ['badgeLowVol','badgeHighVol','badgeVolSpike','badgeMACDUp','badgeMACDDown','badgeMACDCrossUp','badgeMACDCrossDown','badgeRejHi','badgeRejLo','badgeOB','badgeOS','badgeExtOB','badgeExtOS','badgeIndecision','badgeBigBody','badgeEngulf'];
+    badgeIds.forEach(id => {
         document.getElementById(id)?.addEventListener('change', () => {
             renderTimeframeRows();
         });
+    });
+    
+    // Select All / Deselect All for market signals
+    document.getElementById('selectAllSignals')?.addEventListener('click', () => {
+        badgeIds.forEach(id => { const el = document.getElementById(id); if (el) el.checked = true; });
+        renderTimeframeRows();
+    });
+    document.getElementById('deselectAllSignals')?.addEventListener('click', () => {
+        badgeIds.forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
+        renderTimeframeRows();
     });
     
     // Tip Jar modal
@@ -4572,7 +4639,6 @@ function renderAddedCoins() {
                     <div class="display-toggles">
                         <label class="mini-toggle"><input type="checkbox" id="showPriceInfo-${symbol}" checked><span>Price Info</span></label>
                         <label class="mini-toggle"><input type="checkbox" id="showTimers-${symbol}" checked><span>Timers</span></label>
-                        <label class="mini-toggle"><input type="checkbox" id="showIndicatorBadges-${symbol}" checked><span>Indicator Badges</span></label>
                     </div>
                 </div>
                 <div class="card-settings-section">

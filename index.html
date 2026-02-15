@@ -276,7 +276,6 @@
                                         <label class="mini-toggle"><input type="checkbox" id="showChartEMA" checked><span>EMA</span></label>
                                         <label class="mini-toggle"><input type="checkbox" id="showChartVWAP"><span>VWAP</span></label>
                                         <label class="mini-toggle"><input type="checkbox" id="showChartSR"><span>S/R</span></label>
-                                        <label class="mini-toggle"><input type="checkbox" id="showPriceScale"><span>Price Scale</span></label>
                                     </div>
                                 </div>
                                 <div class="card-settings-row">
@@ -289,12 +288,12 @@
                                     </div>
                                 </div>
                                 <div class="card-settings-row">
-                                    <label>MA Lines <span style="color:var(--text-muted);font-size:0.7rem;">(e.g. 20, 50)</span></label>
+                                    <label>MA Lines</label>
                                     <div class="ma-lines-builder" id="maLinesBuilder"></div>
                                     <button class="btn btn-xs ma-add-btn" id="maAddBtn" type="button">+ Add MA</button>
                                 </div>
                                 <div class="card-settings-row">
-                                    <label>EMA Lines <span style="color:var(--text-muted);font-size:0.7rem;">(e.g. 21, 50)</span></label>
+                                    <label>EMA Lines</label>
                                     <div class="ma-lines-builder" id="emaLinesBuilder"></div>
                                     <button class="btn btn-xs ma-add-btn" id="emaAddBtn" type="button">+ Add EMA</button>
                                 </div>
@@ -332,7 +331,6 @@
                                 <div class="display-toggles">
                                     <label class="mini-toggle"><input type="checkbox" id="showPriceInfo" checked><span>Price Info</span></label>
                                     <label class="mini-toggle"><input type="checkbox" id="showTimers" checked><span>Timers</span></label>
-                                    <label class="mini-toggle"><input type="checkbox" id="showIndicatorBadges" checked><span>Indicator Badges</span></label>
                                     <label class="mini-toggle"><input type="checkbox" id="showConfluenceBar" checked><span>Confluence Bar</span></label>
                                 </div>
                             </div>
@@ -355,6 +353,10 @@
                                     <label class="pattern-toggle"><input type="checkbox" id="badgeIndecision" checked><span>Indeci</span></label>
                                     <label class="pattern-toggle"><input type="checkbox" id="badgeBigBody" checked><span>BigBody</span></label>
                                     <label class="pattern-toggle"><input type="checkbox" id="badgeEngulf" checked><span>Engulf</span></label>
+                                </div>
+                                <div class="pattern-actions">
+                                    <button class="btn btn-xs" id="selectAllSignals">Select All</button>
+                                    <button class="btn btn-xs" id="deselectAllSignals">Deselect All</button>
                                 </div>
                             </div>
                         </div>
