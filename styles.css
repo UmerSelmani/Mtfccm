@@ -1393,7 +1393,6 @@ body {
     flex: 1;
     position: relative;
     cursor: grab;
-    overflow: hidden;
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -1403,7 +1402,6 @@ body {
 
 .tf-chart-canvas {
     width: 100%;
-    height: 140px;
 }
 
 .chart-help {
@@ -2397,16 +2395,12 @@ body {
 
 /* Percentage-based chart heights */
 .tf-chart-container {
-    height: 25vh;
     min-height: 100px;
-    max-height: 220px;
 }
 
 @media (max-width: 768px) {
     .tf-chart-container {
-        height: 22vh;
         min-height: 90px;
-        max-height: 180px;
     }
 }
 
@@ -2423,7 +2417,6 @@ body.clear-mode .tf-row {
 }
 
 body.clear-mode .tf-chart-container {
-    height: 18vh;
     min-height: 80px;
 }
 

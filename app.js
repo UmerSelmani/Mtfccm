@@ -1,6 +1,6 @@
 /**
  * MTFCM - Multi-Timeframe Confluence Monitor
- * Main Application Logic v4.7.5 - Merged display toggles, modern MA/EMA builder, signal/confluence fixes
+ * Main Application Logic v4.7.6 - Shared rendering, dynamic chart height, merged settings
  */
 
 const APP_VERSION = "4.7.4";
@@ -1709,18 +1709,7 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
     
     const ctx = canvas.getContext('2d');
     const container = canvas.parentElement;
-    const rect = container.getBoundingClientRect();
-    
-    // HiDPI support for crisp rendering
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    canvas.style.width = rect.width + 'px';
-    canvas.style.height = rect.height + 'px';
-    ctx.scale(dpr, dpr);
-    
-    let width = rect.width;
-    let height = rect.height;
     
     const chartState = initChartState(tfId);
     const zoom = chartState.zoom * state.globalZoom;
@@ -1745,23 +1734,28 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
     const SUB_RSI_H = 50;
     const SUB_MACD_H = 50;
     
-    const padding = { top: 20, right: 55, bottom: 5, left: 5 };
     let volumeHeight = showVolume ? SUB_VOL_H : 0;
     let rsiHeight = showRSI ? SUB_RSI_H : 0;
     let macdHeight = showMACD ? SUB_MACD_H : 0;
     const subTotal = volumeHeight + rsiHeight + macdHeight;
     
-    // Set canvas height dynamically — base price chart stays full, panels add below
+    // Canvas grows: base 140px for price chart + sub-panels added below
     const baseH = 140;
     const totalH = baseH + subTotal;
     canvas.style.height = totalH + 'px';
-    const rect2 = canvas.getBoundingClientRect();
-    canvas.width = rect2.width * dpr;
-    canvas.height = rect2.height * dpr;
-    ctx.scale(dpr, dpr);
-    width = rect2.width;
-    height = rect2.height;
     
+    // HiDPI support — measure after setting height
+    const rect = container.getBoundingClientRect();
+    const canvasW = rect.width || 300;
+    canvas.style.width = canvasW + 'px';
+    canvas.width = canvasW * dpr;
+    canvas.height = totalH * dpr;
+    ctx.scale(dpr, dpr);
+    
+    let width = canvasW;
+    let height = totalH;
+    
+    const padding = { top: 20, right: 55, bottom: 5, left: 5 };
     let mainChartHeight = height - padding.top - padding.bottom - subTotal;
     
     const chartWidth = width - padding.left - padding.right;
@@ -3033,6 +3027,126 @@ function toggleTimeframe(tfId) {
     }
 }
 
+// ============ SHARED TF ROW RENDERING ============
+// Used by both main coin and added coin panels
+
+function buildBadgeAlertsHtml(data, symbol) {
+    if (!data || !data.alerts) return '<span class="alert-group dim">--</span>';
+    
+    const alerts = data.alerts;
+    const activeAlerts = [];
+    
+    // Badge toggle checker — checks per-symbol first, falls back to main
+    const bOn = (key) => {
+        if (symbol) {
+            const perSymEl = document.getElementById(`badge-${symbol}-${key}`);
+            if (perSymEl) return perSymEl.checked;
+        }
+        const mainEl = document.getElementById(`badge${key}`);
+        return mainEl ? mainEl.checked : true;
+    };
+    
+    // RSI group
+    if (alerts.extremeOB && bOn('ExtOB')) activeAlerts.push({ label: 'ExtOB', class: 'rsi-ob', priority: 1 });
+    else if (alerts.overbought && bOn('OB')) activeAlerts.push({ label: 'OB', class: 'rsi-ob', priority: 2 });
+    if (alerts.extremeOS && bOn('ExtOS')) activeAlerts.push({ label: 'ExtOS', class: 'rsi-os', priority: 1 });
+    else if (alerts.oversold && bOn('OS')) activeAlerts.push({ label: 'OS', class: 'rsi-os', priority: 2 });
+    
+    // Volume group
+    if (alerts.volSpike && bOn('VolSpike')) activeAlerts.push({ label: 'VolSpike', class: 'vol-high', priority: 1 });
+    else if (alerts.highVol && bOn('HighVol')) activeAlerts.push({ label: 'HighVol', class: 'vol-high', priority: 3 });
+    if (alerts.lowVol && bOn('LowVol')) activeAlerts.push({ label: 'LowVol', class: 'vol-low', priority: 4 });
+    
+    // MACD group — crosses highest priority
+    if (alerts.macdCrossUp && bOn('MACDCrossUp')) activeAlerts.push({ label: 'MACDx↑', class: 'macd-bull', priority: 1 });
+    else if (alerts.macdBull && bOn('MACDUp')) activeAlerts.push({ label: 'MACD↑', class: 'macd-bull', priority: 3 });
+    if (alerts.macdCrossDown && bOn('MACDCrossDown')) activeAlerts.push({ label: 'MACDx↓', class: 'macd-bear', priority: 1 });
+    else if (alerts.macdBear && bOn('MACDDown')) activeAlerts.push({ label: 'MACD↓', class: 'macd-bear', priority: 3 });
+    
+    // Candle structure
+    if (alerts.bigBody && bOn('BigBody')) activeAlerts.push({ label: 'BigBody', class: data.isBullish ? 'macd-bull' : 'macd-bear', priority: 3 });
+    if (alerts.indecision && bOn('Indecision')) activeAlerts.push({ label: 'Indeci', class: 'neutral', priority: 5 });
+    if (alerts.rejectHigh && bOn('RejHi')) activeAlerts.push({ label: 'RejHi', class: 'rsi-ob', priority: 4 });
+    if (alerts.rejectLow && bOn('RejLo')) activeAlerts.push({ label: 'RejLo', class: 'rsi-os', priority: 4 });
+    
+    // Engulfing patterns
+    if (alerts.bullEngulfing && bOn('Engulf')) activeAlerts.push({ label: 'BullEng', class: 'macd-bull', priority: 1 });
+    if (alerts.bearEngulfing && bOn('Engulf')) activeAlerts.push({ label: 'BearEng', class: 'macd-bear', priority: 1 });
+    
+    // Sort by priority and take top 5
+    activeAlerts.sort((a, b) => a.priority - b.priority);
+    const topAlerts = activeAlerts.slice(0, 5);
+    const moreCount = activeAlerts.length - 5;
+    
+    if (topAlerts.length === 0) return '<span class="alert-group dim">No alerts</span>';
+    
+    return topAlerts.map(a => `<span class="alert-group ${a.class}">${a.label}</span>`).join('') +
+        (moreCount > 0 ? `<span class="alerts-more" title="${activeAlerts.slice(5).map(a => a.label).join(', ')}">+${moreCount}</span>` : '');
+}
+
+function buildTfRowHtml(tfLabel, tfId, data, opts = {}) {
+    const { decimals = 2, symbol = '', currentPrice = null, timerAlert = false } = opts;
+    const showPriceInfo = state.settings.showPriceInfo !== false;
+    const showTimers = state.settings.showTimers !== false;
+    const showConfBar = state.settings.showConfluenceBar !== false;
+    
+    const dirClass = showConfBar ? (data.isBullish ? 'bullish' : 'bearish') : '';
+    const dirEmoji = data.isBullish ? '🟢' : '🔴';
+    
+    const prefix = symbol ? `${symbol}-` : '';
+    const canvasId = `chart-${prefix}${tfId}`;
+    const tabId = `candleInfoTab-${prefix}${tfId}`;
+    const secondsToClose = getSecondsToClose(state.timeframes.find(t => t.id === tfId) || { minutes: 1 });
+    
+    const price = currentPrice || data.current?.close || 0;
+    const tfHigh = data.current?.high || 0;
+    const tfLow = data.current?.low || 0;
+    const changePct = data.changePct || 0;
+    
+    const timerHtml = showTimers ? `<span class="tf-timer ${timerAlert ? 'alert' : ''}" id="tf-timer-${prefix}${tfId}">${formatTime(secondsToClose)}</span>` : '';
+    
+    const alertsHtml = buildBadgeAlertsHtml(data, symbol || null);
+    
+    return `
+        <div class="tf-row ${dirClass}" data-tf="${tfId}">
+            <div class="tf-info">
+                <div class="tf-info-row tf-info-primary">
+                    <span class="tf-name">${tfLabel}</span>
+                    <span class="tf-direction">${dirEmoji}</span>
+                    ${timerHtml}
+                    ${showPriceInfo ? `<span class="tf-price-value" id="tf-price-${prefix}${tfId}">$${price.toFixed(decimals)}</span>
+                    <span class="tf-price-change ${changePct >= 0 ? 'positive' : 'negative'}" id="tf-change-${prefix}${tfId}">${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%</span>` : ''}
+                </div>
+                ${showPriceInfo ? `<div class="tf-info-row tf-info-secondary">
+                    <span class="tf-price-hl" id="tf-high-${prefix}${tfId}">H:$${tfHigh.toFixed(decimals)}</span>
+                    <span class="tf-price-hl" id="tf-low-${prefix}${tfId}">L:$${tfLow.toFixed(decimals)}</span>
+                    <span class="tf-stat-mini">B${data.bodyPct.toFixed(0)}%</span>
+                </div>` : ''}
+            </div>
+            <div class="tf-chart-wrapper">
+                <div class="candle-info-tab" id="${tabId}" style="display:none;">
+                    <div class="candle-info-tf">${tfLabel}</div>
+                    <div class="candle-info-data">
+                        <span class="candle-info-item"><b class="label-open">O:</b> <span id="candleO-${prefix}${tfId}" class="price-open">--</span></span>
+                        <span class="candle-info-item"><b class="label-high">H:</b> <span id="candleH-${prefix}${tfId}" class="price-high">--</span></span>
+                        <span class="candle-info-item"><b class="label-low">L:</b> <span id="candleL-${prefix}${tfId}" class="price-low">--</span></span>
+                        <span class="candle-info-item"><b class="label-close">C:</b> <span id="candleC-${prefix}${tfId}" class="price-close">--</span></span>
+                        <span class="candle-info-item"><b class="label-volume">V:</b> <span id="candleV-${prefix}${tfId}" class="price-volume">--</span></span>
+                        <span class="candle-info-item candle-info-time"><span id="candleTime-${prefix}${tfId}">--</span></span>
+                    </div>
+                </div>
+                <div class="tf-chart-container">
+                    <canvas id="${canvasId}" class="tf-chart-canvas"></canvas>
+                    <span class="chart-help">Drag • Scroll zoom</span>
+                </div>
+            </div>
+            <div class="tf-bottom">
+                <div class="tf-bottom-alerts">${alertsHtml}</div>
+            </div>
+        </div>
+    `;
+}
+
 function renderTimeframeRows() {
     const container = document.getElementById('timeframesList');
     if (!container) return;
@@ -3083,107 +3197,15 @@ function renderTimeframeRows() {
         }
         
         const showConfBar = state.settings.showConfluenceBar !== false;
-        const dirClass = showConfBar ? (data.isBullish ? 'bullish' : 'bearish') : '';
-        const dirEmoji = data.isBullish ? '🟢' : '🔴';
-        const alerts = data.alerts;
-        
-        // Build grouped alerts - only show active ones (respecting toggle settings)
-        const activeAlerts = [];
-        const bOn = (id) => { const el = document.getElementById(id); return el ? el.checked : true; };
-        
-        // RSI group
-        if (alerts.extremeOB && bOn('badgeExtOB')) activeAlerts.push({ label: 'ExtOB', class: 'rsi-ob', priority: 1 });
-        else if (alerts.overbought && bOn('badgeOB')) activeAlerts.push({ label: 'OB', class: 'rsi-ob', priority: 2 });
-        if (alerts.extremeOS && bOn('badgeExtOS')) activeAlerts.push({ label: 'ExtOS', class: 'rsi-os', priority: 1 });
-        else if (alerts.oversold && bOn('badgeOS')) activeAlerts.push({ label: 'OS', class: 'rsi-os', priority: 2 });
-        
-        // Volume group
-        if (alerts.volSpike && bOn('badgeVolSpike')) activeAlerts.push({ label: 'VolSpike', class: 'vol-high', priority: 1 });
-        else if (alerts.highVol && bOn('badgeHighVol')) activeAlerts.push({ label: 'HighVol', class: 'vol-high', priority: 3 });
-        if (alerts.lowVol && bOn('badgeLowVol')) activeAlerts.push({ label: 'LowVol', class: 'vol-low', priority: 4 });
-        
-        // MACD group - crosses are highest priority
-        if (alerts.macdCrossUp && bOn('badgeMACDCrossUp')) activeAlerts.push({ label: 'MACDx↑', class: 'macd-bull', priority: 1 });
-        else if (alerts.macdBull && bOn('badgeMACDUp')) activeAlerts.push({ label: 'MACD↑', class: 'macd-bull', priority: 3 });
-        if (alerts.macdCrossDown && bOn('badgeMACDCrossDown')) activeAlerts.push({ label: 'MACDx↓', class: 'macd-bear', priority: 1 });
-        else if (alerts.macdBear && bOn('badgeMACDDown')) activeAlerts.push({ label: 'MACD↓', class: 'macd-bear', priority: 3 });
-        
-        // Candle structure
-        if (alerts.bigBody && bOn('badgeBigBody')) activeAlerts.push({ label: 'BigBody', class: data.isBullish ? 'macd-bull' : 'macd-bear', priority: 3 });
-        if (alerts.indecision && bOn('badgeIndecision')) activeAlerts.push({ label: 'Indeci', class: 'neutral', priority: 5 });
-        if (alerts.rejectHigh && bOn('badgeRejHi')) activeAlerts.push({ label: 'RejHi', class: 'rsi-ob', priority: 4 });
-        if (alerts.rejectLow && bOn('badgeRejLo')) activeAlerts.push({ label: 'RejLo', class: 'rsi-os', priority: 4 });
-        
-        // Engulfing patterns
-        if (alerts.bullEngulfing && bOn('badgeEngulf')) activeAlerts.push({ label: 'BullEng', class: 'macd-bull', priority: 1 });
-        if (alerts.bearEngulfing && bOn('badgeEngulf')) activeAlerts.push({ label: 'BearEng', class: 'macd-bear', priority: 1 });
-        
-        // Sort by priority and take top 5
-        activeAlerts.sort((a, b) => a.priority - b.priority);
-        const topAlerts = activeAlerts.slice(0, 5);
-        const moreCount = activeAlerts.length - 5;
-        
-        const alertsHtml = topAlerts.length > 0 
-            ? topAlerts.map(a => `<span class="alert-group ${a.class}">${a.label}</span>`).join('') +
-              (moreCount > 0 ? `<span class="alerts-more" title="${activeAlerts.slice(3).map(a => a.label).join(', ')}">+${moreCount}</span>` : '')
-            : '<span class="alert-group dim">No alerts</span>';
-        
-        // Get current price data for this coin (market price)
         const coinData = state.coinData[state.currentCoin?.symbol] || {};
         const currentPrice = coinData.price || data.current?.close || 0;
         const decimals = state.currentCoin?.decimals || 2;
         
-        // Get THIS TIMEFRAME's candle data (not 24h data)
-        const tfOpen = data.current?.open || 0;
-        const tfHigh = data.current?.high || 0;
-        const tfLow = data.current?.low || 0;
-        const tfClose = data.current?.close || 0;
-        const tfChangePct = data.changePct || 0;
-        
-        // Display Options settings
-        const showPriceInfo = state.settings.showPriceInfo !== false;
-        const showTimers = state.settings.showTimers !== false;
-        
-        const timerHtml = showTimers ? `<span class="tf-timer ${timerAlert ? 'alert' : ''}" id="tf-timer-${tf.id}">${formatTime(secondsToClose)}</span>` : '';
-        
-        return `
-            <div class="tf-row ${dirClass}" data-tf="${tf.id}">
-                <div class="tf-info">
-                    <div class="tf-info-row tf-info-primary">
-                        <span class="tf-name">${tf.label}</span>
-                        <span class="tf-direction">${dirEmoji}</span>
-                        ${timerHtml}
-                        ${showPriceInfo ? `<span class="tf-price-value" id="tf-price-${tf.id}">$${currentPrice.toFixed(decimals)}</span>
-                        <span class="tf-price-change ${tfChangePct >= 0 ? 'positive' : 'negative'}" id="tf-change-${tf.id}">${tfChangePct >= 0 ? '+' : ''}${tfChangePct.toFixed(2)}%</span>` : ''}
-                    </div>
-                    ${showPriceInfo ? `<div class="tf-info-row tf-info-secondary">
-                        <span class="tf-price-hl" id="tf-high-${tf.id}">H:$${tfHigh.toFixed(decimals)}</span>
-                        <span class="tf-price-hl" id="tf-low-${tf.id}">L:$${tfLow.toFixed(decimals)}</span>
-                        <span class="tf-stat-mini">B${data.bodyPct.toFixed(0)}%</span>
-                    </div>` : ''}
-                </div>
-                <div class="tf-chart-wrapper">
-                    <div class="candle-info-tab" id="candleInfoTab-${tf.id}" style="display:none;">
-                        <div class="candle-info-tf">${tf.label}</div>
-                        <div class="candle-info-data">
-                            <span class="candle-info-item"><b class="label-open">O:</b> <span id="candleO-${tf.id}" class="price-open">--</span></span>
-                            <span class="candle-info-item"><b class="label-high">H:</b> <span id="candleH-${tf.id}" class="price-high">--</span></span>
-                            <span class="candle-info-item"><b class="label-low">L:</b> <span id="candleL-${tf.id}" class="price-low">--</span></span>
-                            <span class="candle-info-item"><b class="label-close">C:</b> <span id="candleC-${tf.id}" class="price-close">--</span></span>
-                            <span class="candle-info-item"><b class="label-volume">V:</b> <span id="candleV-${tf.id}" class="price-volume">--</span></span>
-                            <span class="candle-info-item candle-info-time"><span id="candleTime-${tf.id}">--</span></span>
-                        </div>
-                    </div>
-                    <div class="tf-chart-container">
-                        <canvas id="${canvasId}" class="tf-chart-canvas"></canvas>
-                        <span class="chart-help">Drag • Scroll zoom</span>
-                    </div>
-                </div>
-                <div class="tf-bottom">
-                    <div class="tf-bottom-alerts">${alertsHtml}</div>
-                </div>
-            </div>
-        `;
+        return buildTfRowHtml(tf.label, tf.id, data, {
+            decimals,
+            currentPrice,
+            timerAlert
+        });
     }).join('');
     
     // Draw charts and setup interactions
@@ -4838,174 +4860,58 @@ function renderAddedCoinTimeframeRow(symbol, coin, tf, candles) {
     const loadingEl = chartsContainer.querySelector('div[style*="Loading"]');
     if (loadingEl) loadingEl.remove();
     
-    // Check if row already exists
-    let row = chartsContainer.querySelector(`[data-tf="${tf.id}"]`);
-    if (!row) {
-        row = document.createElement('div');
-        row.className = 'tf-row';
-        row.dataset.tf = tf.id;
-        chartsContainer.appendChild(row);
-    }
+    // Use analyzeCandles to build same data format as main coin
+    const chartTfId = `${symbol}-${tf.id}`;
+    const analyzedData = analyzeCandles(candles, chartTfId);
+    if (!analyzedData) return;
     
-    // Determine direction
-    const latestCandle = candles[candles.length - 1];
-    const direction = latestCandle.close >= latestCandle.open ? 'bull' : 'bear';
-    const directionIcon = direction === 'bull' ? '🟢' : '🔴';
-    const showConfBarAdded = state.settings.showConfluenceBar !== false;
-    const dirClass = showConfBarAdded ? (direction === 'bull' ? 'bullish' : 'bearish') : '';
-    
-    // Calculate change % from current candle (open to close) - same as main coin
-    const changePct = latestCandle.open !== 0 ? ((latestCandle.close - latestCandle.open) / latestCandle.open) * 100 : 0;
-    
-    // Calculate indicators
-    const rsi = calculateRSI(candles, 14);
-    const bodyPct = calculateBodyPercentage(latestCandle);
-    const volumeRatio = calculateVolumeRatio(candles);
-    const macdData = calculateMACD(candles);
-    
-    // Build alerts
-    const rawAlerts = [];
-    
-    // RSI alerts
-    if (rsi >= 80) rawAlerts.push({ label: 'ExtOB', class: 'rsi-ob', key: 'ExtOB' });
-    else if (rsi >= 70) rawAlerts.push({ label: 'OB', class: 'rsi-ob', key: 'OB' });
-    if (rsi <= 20) rawAlerts.push({ label: 'ExtOS', class: 'rsi-os', key: 'ExtOS' });
-    else if (rsi <= 30) rawAlerts.push({ label: 'OS', class: 'rsi-os', key: 'OS' });
-    
-    // Volume alerts
-    if (volumeRatio >= 3) rawAlerts.push({ label: 'VolSpike', class: 'vol-high', key: 'VolSpike' });
-    else if (volumeRatio >= 2) rawAlerts.push({ label: 'HighVol', class: 'vol-high', key: 'HighVol' });
-    if (volumeRatio <= 0.5) rawAlerts.push({ label: 'LowVol', class: 'vol-low', key: 'LowVol' });
-    
-    // MACD alerts - crosses first
-    if (macdData && macdData.histogram > 0 && macdData.prevHistogram <= 0) {
-        rawAlerts.push({ label: 'MACDx↑', class: 'macd-bull', key: 'MACDCrossUp' });
-    } else if (macdData && macdData.histogram > macdData.prevHistogram) {
-        rawAlerts.push({ label: 'MACD↑', class: 'macd-bull', key: 'MACDUp' });
-    }
-    if (macdData && macdData.histogram < 0 && macdData.prevHistogram >= 0) {
-        rawAlerts.push({ label: 'MACDx↓', class: 'macd-bear', key: 'MACDCrossDown' });
-    } else if (macdData && macdData.histogram < macdData.prevHistogram) {
-        rawAlerts.push({ label: 'MACD↓', class: 'macd-bear', key: 'MACDDown' });
-    }
-    
-    // Rejection alerts (wick analysis)
-    const range = latestCandle.high - latestCandle.low;
-    const upperWick = latestCandle.high - Math.max(latestCandle.open, latestCandle.close);
-    const lowerWick = Math.min(latestCandle.open, latestCandle.close) - latestCandle.low;
-    if (range > 0) {
-        if (upperWick / range > 0.6) rawAlerts.push({ label: 'RejHi', class: 'rsi-ob', key: 'RejHi' });
-        if (lowerWick / range > 0.6) rawAlerts.push({ label: 'RejLo', class: 'rsi-os', key: 'RejLo' });
-    }
-    
-    // Body alerts
-    if (bodyPct >= 80) rawAlerts.push({ label: 'BigBody', class: direction === 'bull' ? 'macd-bull' : 'macd-bear', key: 'BigBody' });
-    if (bodyPct <= 20) rawAlerts.push({ label: 'Indeci', class: 'neutral', key: 'Indecision' });
-    
-    // Engulfing
-    if (candles.length >= 2) {
-        const prev = candles[candles.length - 2];
-        const currBody = Math.abs(latestCandle.close - latestCandle.open);
-        const prevBody = Math.abs(prev.close - prev.open);
-        const currBull = latestCandle.close >= latestCandle.open;
-        const prevBull = prev.close >= prev.open;
-        if (currBull && !prevBull && currBody > prevBody && latestCandle.close > prev.open && latestCandle.open < prev.close) {
-            rawAlerts.push({ label: 'BullEng', class: 'macd-bull', key: 'Engulf' });
-        }
-        if (!currBull && prevBull && currBody > prevBody && latestCandle.open > prev.close && latestCandle.close < prev.open) {
-            rawAlerts.push({ label: 'BearEng', class: 'macd-bear', key: 'Engulf' });
-        }
-    }
-    
-    // Filter through per-symbol badge toggles (fall back to main badge toggles)
-    const alerts = rawAlerts.filter(a => {
-        const perSymEl = document.getElementById(`badge-${symbol}-${a.key}`);
-        if (perSymEl) return perSymEl.checked;
-        const mainEl = document.getElementById(`badge${a.key}`);
-        return mainEl ? mainEl.checked : true;
-    });
-    
-    const alertsHtml = alerts.length > 0
-        ? alerts.slice(0, 5).map(a => `<span class="alert-group ${a.class}">${a.label}</span>`).join('') +
-          (alerts.length > 5 ? `<span class="alerts-more" title="${alerts.slice(5).map(a => a.label).join(', ')}">+${alerts.length - 5}</span>` : '')
-        : '<span class="alert-group dim">--</span>';
-    
-    // Get timer
-    const secondsToClose = getSecondsToClose(tf);
-    
-    const canvasId = `chart-${symbol}-${tf.id}`;
-    const tabId = `candleInfoTab-${symbol}-${tf.id}`;
-    
-    row.className = `tf-row ${dirClass}`;
-    row.innerHTML = `
-        <div class="tf-info">
-            <div class="tf-info-row tf-info-primary">
-                <span class="tf-name">${tf.label}</span>
-                <span class="tf-direction">${directionIcon}</span>
-                <span class="tf-timer">${formatTime(secondsToClose)}</span>
-                <span class="tf-price-value">$${latestCandle.close.toFixed(coin.decimals)}</span>
-                <span class="tf-price-change ${changePct >= 0 ? 'positive' : 'negative'}">${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%</span>
-            </div>
-            <div class="tf-info-row tf-info-secondary">
-                <span class="tf-price-hl">H:$${latestCandle.high.toFixed(coin.decimals)}</span>
-                <span class="tf-price-hl">L:$${latestCandle.low.toFixed(coin.decimals)}</span>
-                <span class="tf-stat-mini">B${bodyPct.toFixed(0)}%</span>
-                <span class="tf-stat-mini">V${volumeRatio.toFixed(1)}x</span>
-                <span class="tf-stat-mini">RSI${rsi.toFixed(0)}</span>
-            </div>
-        </div>
-        <div class="tf-chart-wrapper">
-            <div class="candle-info-tab" id="${tabId}" style="display:none;">
-                <div class="candle-info-tf">${tf.label}</div>
-                <div class="candle-info-data">
-                    <span class="candle-info-item"><b class="label-open">O:</b> <span id="candleO-${symbol}-${tf.id}" class="price-open">--</span></span>
-                    <span class="candle-info-item"><b class="label-high">H:</b> <span id="candleH-${symbol}-${tf.id}" class="price-high">--</span></span>
-                    <span class="candle-info-item"><b class="label-low">L:</b> <span id="candleL-${symbol}-${tf.id}" class="price-low">--</span></span>
-                    <span class="candle-info-item"><b class="label-close">C:</b> <span id="candleC-${symbol}-${tf.id}" class="price-close">--</span></span>
-                    <span class="candle-info-item"><b class="label-volume">V:</b> <span id="candleV-${symbol}-${tf.id}" class="price-volume">--</span></span>
-                    <span class="candle-info-item candle-info-time"><span id="candleTime-${symbol}-${tf.id}">--</span></span>
-                </div>
-            </div>
-            <div class="tf-chart-container">
-                <canvas class="tf-chart-canvas" id="${canvasId}"></canvas>
-                <span class="chart-help">Drag • Scroll zoom</span>
-            </div>
-        </div>
-        <div class="tf-bottom">
-            <div class="tf-bottom-alerts">${alertsHtml}</div>
-        </div>
-    `;
+    // Store in state.data so drawInteractiveChart can use it
+    state.data[chartTfId] = analyzedData;
+    state.patterns[chartTfId] = detectAllPatterns(candles);
     
     // Store candles for interaction
     if (!state.addedCoinCandles) state.addedCoinCandles = {};
     state.addedCoinCandles[`${symbol}-${tf.id}`] = { candles, coin };
     
-    // Use analyzeCandles to build same data format as main coin
-    const chartTfId = `${symbol}-${tf.id}`;
-    const analyzedData = analyzeCandles(candles, chartTfId);
-    if (analyzedData) {
-        // Store in state.data so drawInteractiveChart can use it
-        state.data[chartTfId] = analyzedData;
-        // Detect patterns for added coins too
-        state.patterns[chartTfId] = detectAllPatterns(candles);
+    // Build row using shared function — same look as main coin
+    const rowHtml = buildTfRowHtml(tf.label, tf.id, analyzedData, {
+        decimals: coin.decimals || 2,
+        symbol: symbol,
+        currentPrice: analyzedData.current?.close || 0
+    });
+    
+    // Check if row already exists
+    let row = chartsContainer.querySelector(`[data-tf="${tf.id}"]`);
+    if (!row) {
+        row = document.createElement('div');
+        row.dataset.tf = tf.id;
+        chartsContainer.appendChild(row);
     }
     
+    // Parse the HTML from buildTfRowHtml — it returns a wrapper div, extract inner content
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = rowHtml.trim();
+    const builtRow = tempDiv.firstElementChild;
+    
+    // Transfer attributes and content
+    row.className = builtRow.className;
+    row.innerHTML = builtRow.innerHTML;
+    
     // Draw chart using the SAME function as main coin (with retry for layout timing)
+    const canvasId = `chart-${symbol}-${tf.id}`;
     const chartOpts = { decimals: coin.decimals || 2 };
     const drawChart = (attempt = 0) => {
         const canvas = document.getElementById(canvasId);
         if (!canvas) return;
         
         const rect = canvas.getBoundingClientRect();
-        if ((rect.width < 10 || rect.height < 10) && attempt < 10) {
+        if ((rect.width < 10) && attempt < 10) {
             requestAnimationFrame(() => setTimeout(() => drawChart(attempt + 1), 50 * (attempt + 1)));
             return;
         }
         
-        if (analyzedData) {
-            drawInteractiveChart(canvasId, analyzedData, chartTfId, chartOpts);
-            setupChartInteraction(canvasId, chartTfId, { data: analyzedData, decimals: coin.decimals || 2 });
-        }
+        drawInteractiveChart(canvasId, analyzedData, chartTfId, chartOpts);
+        setupChartInteraction(canvasId, chartTfId, { data: analyzedData, decimals: coin.decimals || 2 });
     };
     requestAnimationFrame(() => setTimeout(drawChart, 50));
 }
