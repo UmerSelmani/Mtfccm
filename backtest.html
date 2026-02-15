@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MTFCM v4.7.6 — Strategy Tester</title>
+<title>MTFCM v4.7.7 — Strategy Tester</title>
 <style>
 :root{--bg:#0f1117;--bg2:#1a1d27;--bg3:#252836;--bg4:#303348;--text:#e4e4e7;--text2:#a1a1aa;--muted:#71717a;--accent:#6366f1;--accent2:#8b5cf6;--bull:#22c55e;--bear:#ef4444;--neutral:#eab308;--border:#2d3044;--radius:8px;}
 *{margin:0;padding:0;box-sizing:border-box;}body{background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,sans-serif;min-height:100vh;}a{color:var(--accent);text-decoration:none;}
@@ -91,6 +91,13 @@ code{background:var(--bg3);padding:0.08rem 0.22rem;border-radius:3px;font-size:0
 .pat-grid{display:flex;flex-wrap:wrap;gap:0.2rem;max-height:140px;overflow-y:auto;padding-right:0.2rem;}
 .pat-grid::-webkit-scrollbar{width:3px;}.pat-grid::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 .comp-toggle.bull-pat{border-left:2px solid var(--bull);}.comp-toggle.bear-pat{border-left:2px solid var(--bear);}.comp-toggle.neut-pat{border-left:2px solid var(--neutral);}
+.side-tabs{display:flex;gap:0;margin-bottom:0.4rem;border-bottom:2px solid var(--border);}.side-tab{flex:1;padding:0.35rem 0.5rem;font-size:0.68rem;font-weight:700;text-align:center;cursor:pointer;border:none;background:none;color:var(--text2);font-family:inherit;transition:all 0.12s;border-bottom:2px solid transparent;margin-bottom:-2px;}
+.side-tab.active{border-bottom-color:var(--accent);color:var(--text);}.side-tab:hover:not(.active){color:var(--text);background:rgba(99,102,241,0.04);}
+.side-tab.buy-tab.active{border-bottom-color:var(--bull);color:var(--bull);}.side-tab.sell-tab.active{border-bottom-color:var(--bear);color:var(--bear);}
+.side-panel{display:none;}.side-panel.active{display:block;}
+.side-label{font-size:0.55rem;font-weight:600;padding:0.15rem 0.4rem;border-radius:3px;margin-bottom:0.3rem;display:inline-block;}
+.side-label.buy{background:rgba(34,197,94,0.12);color:var(--bull);}.side-label.sell{background:rgba(239,68,68,0.12);color:var(--bear);}
+.side-count{font-size:0.55rem;color:var(--muted);margin-left:0.3rem;font-weight:400;}
 @media(max-width:768px){.config-grid{grid-template-columns:1fr;}.stats-grid{grid-template-columns:repeat(3,1fr);}.signal-cfg{grid-template-columns:1fr;}[data-tip]::after{max-width:200px;font-size:0.55rem;}}
 </style>
 </head>
@@ -143,93 +150,13 @@ code{background:var(--bg3);padding:0.08rem 0.22rem;border-radius:3px;font-size:0
 
             <!-- MODULAR MODE -->
             <div class="mode-panel" id="panelModular">
-                <div class="row-hint" style="margin-top:0.2rem;">Select individual components. Each scores ±1 per TF. Hover any button for explanation.</div>
-
-                <div class="comp-group"><div class="comp-group-title">📐 Direction <span style="font-weight:400;color:var(--muted);font-size:0.55rem;margin-left:0.3rem;">— Where is price heading?</span></div>
-
-                <div class="pat-sub-header">🕯️ Candle</div>
-                <div class="comp-grid">
-                    <label class="comp-toggle active" data-tip="Is the candle bullish or bearish? Close > Open → +1 (bullish), Close < Open → −1 (bearish)"><input type="checkbox" checked data-comp="candleDir"><span>Candle Dir</span></label>
-                    <label class="comp-toggle active" data-tip="Where did price close within the candle range? Close near high → +1, close near low → −1, middle → 0"><input type="checkbox" checked data-comp="closePos"><span>Close Pos</span></label>
+                <div class="row-hint" style="margin-top:0.2rem;">Configure separate Buy and Sell setups. Each side scores independently. Nothing selected by default.</div>
+                <div class="side-tabs">
+                    <button class="side-tab buy-tab active" onclick="setSide('buy')">🟢 Buy Setup <span class="side-count" id="buyCount">(0)</span></button>
+                    <button class="side-tab sell-tab" onclick="setSide('sell')">🔴 Sell Setup <span class="side-count" id="sellCount">(0)</span></button>
                 </div>
-
-                <div class="pat-sub-header">📊 Moving Averages</div>
-                <div style="display:flex;align-items:center;gap:0.3rem;margin-bottom:0.2rem;flex-wrap:wrap;">
-                    <span style="font-size:0.55rem;color:var(--muted);font-weight:600;">Type:</span>
-                    <label class="comp-toggle active ma-type-toggle" data-tip="Exponential Moving Average — gives more weight to recent prices. Reacts faster to price changes"><input type="checkbox" checked data-matype="ema"><span>EMA</span></label>
-                    <label class="comp-toggle ma-type-toggle" data-tip="Simple Moving Average — equal weight to all prices in the period. Smoother, slower to react"><input type="checkbox" data-matype="sma"><span>SMA</span></label>
-                    <label class="comp-toggle ma-type-toggle" data-tip="Volume Weighted Average Price — factors in volume. Higher volume candles have more impact. Single value, no period needed"><input type="checkbox" data-matype="vwap"><span>VWAP</span></label>
-                </div>
-                <div style="display:flex;align-items:center;gap:0.3rem;margin-bottom:0.25rem;flex-wrap:wrap;">
-                    <span style="font-size:0.55rem;color:var(--muted);font-weight:600;">Periods:</span>
-                    <span class="tf-toggle ma-period-toggle" data-period="7">7</span>
-                    <span class="tf-toggle ma-period-toggle" data-period="9">9</span>
-                    <span class="tf-toggle ma-period-toggle" data-period="12">12</span>
-                    <span class="tf-toggle ma-period-toggle active" data-period="21">21</span>
-                    <span class="tf-toggle ma-period-toggle active" data-period="50">50</span>
-                    <span class="tf-toggle ma-period-toggle" data-period="100">100</span>
-                    <span class="tf-toggle ma-period-toggle" data-period="200">200</span>
-                </div>
-                <div class="comp-grid">
-                    <label class="comp-toggle active" data-tip="Is price above each selected MA? Checks every selected Type × Period combo. All above → +1 (strong uptrend), all below → −1, mixed → proportional score. E.g. with EMA 21+50: price above both → +1, above one → 0, below both → −1"><input type="checkbox" checked data-comp="priceAboveMA"><span>Price ≥ MA</span></label>
-                    <label class="comp-toggle active" data-tip="Are MAs stacked in trend order? For bull: shorter period MA should be above longer (e.g. MA7 > MA12 > MA21 > MA50). Perfect bull stack → +1, perfect bear stack → −1, mixed → proportional. Needs 2+ periods selected"><input type="checkbox" checked data-comp="maAlignment"><span>MA Alignment</span></label>
-                </div>
-                <div class="row-hint">Select MA types and periods above. Price ≥ MA checks price vs each MA. Alignment checks if MAs are stacked in trend order.</div>
-                </div>
-
-                <div class="comp-group"><div class="comp-group-title">📈 Momentum <span style="font-weight:400;color:var(--muted);font-size:0.55rem;margin-left:0.3rem;">— How strong is the move?</span></div><div class="comp-grid" id="compMom">
-                    <label class="comp-toggle active" data-tip="RSI strength zones. RSI > 60 → bullish momentum (up to +1). RSI < 40 → bearish (down to −1). 40-60 → weak/neutral"><input type="checkbox" checked data-comp="rsiZone"><span>RSI Zone</span></label>
-                    <label class="comp-toggle active" data-tip="Is RSI rising or falling compared to last candle? Rising → +0.7 (momentum building), Falling → −0.7 (momentum fading)"><input type="checkbox" checked data-comp="rsiDir"><span>RSI Dir</span></label>
-                    <label class="comp-toggle active" data-tip="MACD histogram value. Positive histogram → +1 (bullish pressure), Negative → −1 (bearish pressure)"><input type="checkbox" checked data-comp="macdHist"><span>MACD Hist</span></label>
-                    <label class="comp-toggle active" data-tip="Did MACD line just cross the signal line? Crossed up → +1 (buy signal), Crossed down → −1 (sell signal), No cross → 0"><input type="checkbox" checked data-comp="macdCross"><span>MACD Cross</span></label>
-                </div></div>
-
-                <div class="comp-group"><div class="comp-group-title">⚡ Confirmation <span style="font-weight:400;color:var(--muted);font-size:0.55rem;margin-left:0.3rem;">— Does volume/body confirm the direction?</span></div><div class="comp-grid" id="compMods">
-                    <label class="comp-toggle active" data-tip="Candle body size vs total range. Big body (>70%) → confirms the candle direction (±1). Small body (<40%) → weak/no conviction (0). Scores WITH the candle direction, not independently"><input type="checkbox" checked data-comp="bodyStr"><span>Body Size</span></label>
-                    <label class="comp-toggle active" data-tip="Current volume vs 20-period average. High vol (2.5x+) → strongly confirms direction (±1). Medium (1.5x) → moderate (±0.6). Low vol (<0.6x) → caution signal (−0.5). Scores WITH the candle direction"><input type="checkbox" checked data-comp="volRatio"><span>Volume Ratio</span></label>
-                </div></div>
-
-                <div class="comp-group"><div class="comp-group-title" style="display:flex;align-items:center;">🕯️ Candle Patterns <span style="font-weight:400;color:var(--muted);font-size:0.55rem;margin-left:0.3rem;">— Recognized candlestick formations</span>
-                    <div class="pat-group-actions"><span onclick="togglePatterns(true)">All</span><span onclick="togglePatterns(false)">None</span></div>
-                </div>
-                <div class="pat-sub-header">Single Candle</div>
-                <div class="comp-grid" id="compPat1">
-                    <label class="comp-toggle active" data-tip="Very small body, open ≈ close. Signals indecision — neither bulls nor bears won. Score: 0 (neutral)"><input type="checkbox" checked data-comp="pat_doji"><span>✚ Doji</span></label>
-                    <label class="comp-toggle active" data-tip="Small body at top, long lower wick. Found in downtrends → bullish reversal signal. Score: +1"><input type="checkbox" checked data-comp="pat_hammer"><span>🔨 Hammer</span></label>
-                    <label class="comp-toggle active" data-tip="Small body at bottom, long upper wick. Found in downtrends → potential bullish reversal. Score: +1"><input type="checkbox" checked data-comp="pat_invHammer"><span>⚒️ Inv Hammer</span></label>
-                    <label class="comp-toggle active" data-tip="Same shape as Hammer but found in uptrends → bearish reversal warning. Score: −1"><input type="checkbox" checked data-comp="pat_hangingMan"><span>🧍 Hanging Man</span></label>
-                    <label class="comp-toggle active" data-tip="Small body at bottom, long upper wick. Found in uptrends → strong bearish reversal signal. Score: −1"><input type="checkbox" checked data-comp="pat_shootStar"><span>💫 Shoot Star</span></label>
-                    <label class="comp-toggle active" data-tip="Very large body, almost no wicks. Full conviction candle. Score: +1 if bullish, −1 if bearish"><input type="checkbox" checked data-comp="pat_marubozu"><span>▮ Marubozu</span></label>
-                    <label class="comp-toggle active" data-tip="Small body with equal upper and lower wicks. Indecision, weaker than Doji. Score: 0 (neutral)"><input type="checkbox" checked data-comp="pat_spinTop"><span>🔄 Spin Top</span></label>
-                </div>
-                <div class="pat-sub-header">Two Candle</div>
-                <div class="comp-grid" id="compPat2">
-                    <label class="comp-toggle active" data-tip="Bullish candle completely engulfs previous bearish candle. Strong reversal signal. Score: +1"><input type="checkbox" checked data-comp="pat_bullEngulf"><span>🟢⬆ Bull Engulf</span></label>
-                    <label class="comp-toggle active" data-tip="Bearish candle completely engulfs previous bullish candle. Strong reversal signal. Score: −1"><input type="checkbox" checked data-comp="pat_bearEngulf"><span>🔴⬇ Bear Engulf</span></label>
-                    <label class="comp-toggle active" data-tip="Small bullish candle inside previous large bearish candle. Potential reversal, needs confirmation. Score: +1"><input type="checkbox" checked data-comp="pat_bullHarami"><span>🟢 Bull Harami</span></label>
-                    <label class="comp-toggle active" data-tip="Small bearish candle inside previous large bullish candle. Potential reversal, needs confirmation. Score: −1"><input type="checkbox" checked data-comp="pat_bearHarami"><span>🔴 Bear Harami</span></label>
-                    <label class="comp-toggle active" data-tip="Bullish candle opens below prev low, closes above prev midpoint. Pierces through resistance. Score: +1"><input type="checkbox" checked data-comp="pat_piercing"><span>🗡️ Piercing</span></label>
-                    <label class="comp-toggle active" data-tip="Bearish candle opens above prev high, closes below prev midpoint. Dark cloud over bulls. Score: −1"><input type="checkbox" checked data-comp="pat_darkCloud"><span>☁️ Dark Cloud</span></label>
-                    <label class="comp-toggle active" data-tip="Two candles with matching highs, second is bearish. Double top rejection. Score: −1"><input type="checkbox" checked data-comp="pat_twzTop"><span>🔝 Tweez Top</span></label>
-                    <label class="comp-toggle active" data-tip="Two candles with matching lows, second is bullish. Double bottom support. Score: +1"><input type="checkbox" checked data-comp="pat_twzBot"><span>🔻 Tweez Bot</span></label>
-                </div>
-                <div class="pat-sub-header">Three Candle</div>
-                <div class="comp-grid" id="compPat3">
-                    <label class="comp-toggle active" data-tip="Bearish → small body → bullish. The 'morning star' rises after darkness. Strong bullish reversal. Score: +1"><input type="checkbox" checked data-comp="pat_mornStar"><span>🌅 Morning Star</span></label>
-                    <label class="comp-toggle active" data-tip="Bullish → small body → bearish. The 'evening star' appears before night falls. Strong bearish reversal. Score: −1"><input type="checkbox" checked data-comp="pat_eveStar"><span>🌆 Evening Star</span></label>
-                    <label class="comp-toggle active" data-tip="Three consecutive strong bullish candles, each closing higher. Army marching up. Very bullish. Score: +1"><input type="checkbox" checked data-comp="pat_3soldiers"><span>💂 3 Soldiers</span></label>
-                    <label class="comp-toggle active" data-tip="Three consecutive strong bearish candles, each closing lower. Flock descending. Very bearish. Score: −1"><input type="checkbox" checked data-comp="pat_3crows"><span>🐦‍⬛ 3 Crows</span></label>
-                </div>
-                <div class="row-hint">Each detected pattern scores based on its type: Bullish → +1, Bearish → −1, Neutral → 0</div>
-                </div>
-
-                <div class="comp-group"><div class="comp-group-title">📡 Market Signals <span style="font-weight:400;color:var(--muted);font-size:0.55rem;margin-left:0.3rem;">— Real-time alert conditions</span></div><div class="comp-grid" id="compSig">
-                    <label class="comp-toggle active" data-tip="Volume vs average: Spike (2.5x+) → strong direction confirm (±0.8). High (1.5x) → moderate (±0.4). Low (<0.6x) → caution (−0.3)"><input type="checkbox" checked data-comp="sigVol"><span>Vol Signals</span></label>
-                    <label class="comp-toggle active" data-tip="MACD crossover events. Line crossed up → +1 (buy). Crossed down → −1 (sell). Histogram positive → +0.5, negative → −0.5"><input type="checkbox" checked data-comp="sigMacd"><span>MACD Signals</span></label>
-                    <label class="comp-toggle active" data-tip="RSI extreme zones. Extreme oversold (RSI≤20) → +0.8 (reversal likely). Oversold (≤30) → +0.5. Overbought (≥70) → −0.5. Extreme OB (≥80) → −0.8"><input type="checkbox" checked data-comp="sigRsi"><span>RSI Signals</span></label>
-                    <label class="comp-toggle active" data-tip="Long wick detection. Upper wick >50% of range → rejection from highs (−0.7). Lower wick >50% → rejection from lows (+0.7)"><input type="checkbox" checked data-comp="sigWick"><span>Wick Reject</span></label>
-                    <label class="comp-toggle active" data-tip="Candle body signals. Bullish engulfing → +1. Bearish engulfing → −1. Big body → direction ×0.5. Indecision → 0"><input type="checkbox" checked data-comp="sigCandle"><span>Candle Signals</span></label>
-                </div></div>
+                <div class="side-panel active" id="sideBuy"></div>
+                <div class="side-panel" id="sideSell"></div>
             </div>
         </div>
 
@@ -317,7 +244,7 @@ code{background:var(--bg3);padding:0.08rem 0.22rem;border-radius:3px;font-size:0
     <div class="mode-content" id="mode-matrix">
         <p style="font-size:0.7rem;color:var(--text2);margin-bottom:0.4rem;">
             Tests every combination. <span style="color:var(--bull);">Green</span>=profit · <span style="color:var(--bear);">Red</span>=loss · 🏆=best.
-            Classic tests 4 methods × 8 modifier combos. Modular tests 4 methods × 6 component groups.</p>
+            Classic tests 4 methods × 8 modifier combos. Modular tests 4 methods × 6 component groups (applied to both Buy & Sell sides).</p>
         <div class="row" style="margin-bottom:0.3rem;"><label>Period</label>
             <select id="cfgMatPeriod"><option value="24h">24h</option><option value="3d" selected>3 Days</option><option value="7d">7 Days</option><option value="14d">14 Days</option></select></div>
         <div class="row" style="margin-bottom:0.4rem;"><label>Test Mode</label>
@@ -335,7 +262,7 @@ code{background:var(--bg3);padding:0.08rem 0.22rem;border-radius:3px;font-size:0
         <div class="rules-card"><h3>📋 Complete Rules & Methodology</h3>
             <div class="rule-section"><strong>1. Two Calculation Modes</strong>
                 <p><b>Classic:</b> Each TF scored via Direction (60%) + Momentum (40%). Modifiers (Body/Vol) adjust TF weight.<br>
-                <b>Modular:</b> You pick individual components and configure MA types/periods. Each enabled component returns ±1 per TF. Average of all enabled component scores = TF score. Then TF weight method applies. More granular control.</p></div>
+                <b>Modular:</b> Separate Buy & Sell setups. Pick components for each side independently. Each enabled component returns ±1 per TF. Average of enabled component scores = TF score. Then TF weight method applies. Buy side scores bullish confluence, Sell side scores bearish confluence.</p></div>
             <div class="rule-section"><strong>2. Classic — Direction [-1 to +1]</strong>
                 <p><code>Candle dir</code> ±0.25 · <code>Close position</code> ±0.25 · <code>Price/EMA21</code> ±0.25 · <code>EMA21/EMA50</code> ±0.25</p></div>
             <div class="rule-section"><strong>3. Classic — Momentum [-1 to +1]</strong>
@@ -360,7 +287,7 @@ code{background:var(--bg3);padding:0.08rem 0.22rem;border-radius:3px;font-size:0
                 <p>Entry: BUY → open at close. Exits: SL (low≤SL), TP (high≥TP), Signal (SELL/NEUTRAL). Spot only, no shorts. Fees on entry+exit.</p></div>
             <div class="rule-section"><strong>8. All Combinations Matrix</strong>
                 <p><b>Classic mode:</b> 4 methods × 8 modifier combos (None/Body/Vol/Ind/Body+Vol/Body+Ind/Vol+Ind/All) = 32 tests.<br>
-                <b>Modular mode:</b> 4 methods × 6 component groups (Dir/Dir+Mom/Dir+Mom+Confirm/Dir+Mom+Pat/Dir+Mom+Sig/Full) = 24 tests.<br>
+                <b>Modular mode:</b> 4 methods × 6 component groups applied to both Buy & Sell sides = 24 tests.<br>
                 Finds which setup works best for the selected coin & period.</p></div>
             <div class="rule-section"><strong>9. Limitations</strong>
                 <p>Uses close prices; real execution differs. SL/TP on candle high/low. Historical ≠ future. Educational only.</p></div>
@@ -375,7 +302,131 @@ code{background:var(--bg3);padding:0.08rem 0.22rem;border-radius:3px;font-size:0
 const WM={"equal":{"1m":1,"5m":1,"15m":1,"30m":1,"1h":1,"4h":1},"linear":{"1m":1,"5m":2,"15m":3,"30m":4,"1h":5,"4h":6},"exponential":{"1m":1,"5m":2,"15m":4,"30m":8,"1h":16,"4h":32},"tiered":{"1m":1,"5m":3,"15m":3,"30m":7,"1h":7,"4h":15}};
 const TFM={"1m":1,"5m":5,"15m":15,"30m":30,"1h":60,"4h":240};
 const PM={'24h':864e5,'3d':2592e5,'7d':6048e5,'14d':12096e5,'30d':25920e5};
-let btResult=null,liveState=null,matResult=null,calcMode='classic';
+let btResult=null,liveState=null,matResult=null,calcMode='classic',activeSide='buy';
+
+// ============================================
+// MODULAR BUY/SELL PANEL BUILDER
+// ============================================
+const COMP_DEFS=[
+    {group:'📐 Direction',sub:'— Where is price heading?',items:[
+        {section:'🕯️ Candle'},
+        {id:'candleDir',label:'Candle Dir',tip:'Is the candle bullish or bearish? Close > Open → +1 (bullish), Close < Open → −1 (bearish)'},
+        {id:'closePos',label:'Close Pos',tip:'Where did price close within the candle range? Close near high → +1, close near low → −1, middle → 0'},
+        {section:'📊 Moving Averages'},
+        {maRow:true},
+        {id:'priceAboveMA',label:'Price ≥ MA',tip:'Is price above each selected MA? All above → +1, all below → −1, mixed → proportional'},
+        {id:'maAlignment',label:'MA Alignment',tip:'Are MAs stacked in trend order? Perfect bull stack → +1, reversed → −1. Needs 2+ periods'},
+    ]},
+    {group:'📈 Momentum',sub:'— How strong is the move?',items:[
+        {id:'rsiZone',label:'RSI Zone',tip:'RSI > 60 → bullish momentum (+1). RSI < 40 → bearish (−1). 40-60 → neutral'},
+        {id:'rsiDir',label:'RSI Dir',tip:'RSI rising → +0.7 (momentum building), Falling → −0.7'},
+        {id:'macdHist',label:'MACD Hist',tip:'Positive histogram → +1 (bullish), Negative → −1 (bearish)'},
+        {id:'macdCross',label:'MACD Cross',tip:'Crossed up → +1, Crossed down → −1, No cross → 0'},
+    ]},
+    {group:'⚡ Confirmation',sub:'— Does volume/body confirm?',items:[
+        {id:'bodyStr',label:'Body Size',tip:'Big body (>70%) → confirms direction (±1). Small (<40%) → no conviction (0)'},
+        {id:'volRatio',label:'Volume Ratio',tip:'High vol (2.5x+) → confirms direction (±1). Low vol (<0.6x) → caution (−0.5)'},
+    ]},
+    {group:'🕯️ Candle Patterns',sub:'— Candlestick formations',patActions:true,items:[
+        {section:'Single Candle'},
+        {id:'pat_doji',label:'✚ Doji',tip:'Indecision. Score: 0'},
+        {id:'pat_hammer',label:'🔨 Hammer',tip:'Bullish reversal. Score: +1'},
+        {id:'pat_invHammer',label:'⚒️ Inv Hammer',tip:'Potential bullish reversal. Score: +1'},
+        {id:'pat_hangingMan',label:'🧍 Hanging Man',tip:'Bearish warning. Score: −1'},
+        {id:'pat_shootStar',label:'💫 Shoot Star',tip:'Bearish reversal. Score: −1'},
+        {id:'pat_marubozu',label:'▮ Marubozu',tip:'Full conviction. Score: ±1 with direction'},
+        {id:'pat_spinTop',label:'🔄 Spin Top',tip:'Weak indecision. Score: 0'},
+        {section:'Two Candle'},
+        {id:'pat_bullEngulf',label:'🟢⬆ Bull Engulf',tip:'Strong bullish reversal. Score: +1'},
+        {id:'pat_bearEngulf',label:'🔴⬇ Bear Engulf',tip:'Strong bearish reversal. Score: −1'},
+        {id:'pat_bullHarami',label:'🟢 Bull Harami',tip:'Potential reversal. Score: +1'},
+        {id:'pat_bearHarami',label:'🔴 Bear Harami',tip:'Potential reversal. Score: −1'},
+        {id:'pat_piercing',label:'🗡️ Piercing',tip:'Bullish piercing. Score: +1'},
+        {id:'pat_darkCloud',label:'☁️ Dark Cloud',tip:'Bearish dark cloud. Score: −1'},
+        {id:'pat_twzTop',label:'🔝 Tweez Top',tip:'Double top rejection. Score: −1'},
+        {id:'pat_twzBot',label:'🔻 Tweez Bot',tip:'Double bottom support. Score: +1'},
+        {section:'Three Candle'},
+        {id:'pat_mornStar',label:'🌅 Morning Star',tip:'Strong bullish reversal. Score: +1'},
+        {id:'pat_eveStar',label:'🌆 Evening Star',tip:'Strong bearish reversal. Score: −1'},
+        {id:'pat_3soldiers',label:'💂 3 Soldiers',tip:'Very bullish. Score: +1'},
+        {id:'pat_3crows',label:'🐦‍⬛ 3 Crows',tip:'Very bearish. Score: −1'},
+    ]},
+    {group:'📡 Market Signals',sub:'— Real-time alert conditions',items:[
+        {id:'sigVol',label:'Vol Signals',tip:'Volume spike/high/low detection'},
+        {id:'sigMacd',label:'MACD Signals',tip:'MACD crossover events'},
+        {id:'sigRsi',label:'RSI Signals',tip:'RSI extreme zone alerts'},
+        {id:'sigWick',label:'Wick Reject',tip:'Long wick rejection signals'},
+        {id:'sigCandle',label:'Candle Signals',tip:'Engulfing/body/indecision signals'},
+    ]},
+];
+
+function buildSidePanel(side){
+    const container=document.getElementById(side==='buy'?'sideBuy':'sideSell');
+    const prefix=side;
+    let html=`<span class="side-label ${side}">${side==='buy'?'🟢 BUY':'🔴 SELL'} Components</span>`;
+    for(const g of COMP_DEFS){
+        html+=`<div class="comp-group"><div class="comp-group-title" style="display:flex;align-items:center;">${g.group} <span style="font-weight:400;color:var(--muted);font-size:0.55rem;margin-left:0.3rem;">${g.sub}</span>`;
+        if(g.patActions)html+=`<div class="pat-group-actions"><span onclick="toggleSidePatterns('${side}',true)">All</span><span onclick="toggleSidePatterns('${side}',false)">None</span></div>`;
+        html+=`</div>`;
+        let inGrid=false;
+        for(const item of g.items){
+            if(item.section){
+                if(inGrid){html+=`</div>`;inGrid=false;}
+                html+=`<div class="pat-sub-header">${item.section}</div>`;
+            }else if(item.maRow){
+                if(inGrid){html+=`</div>`;inGrid=false;}
+                html+=`<div style="display:flex;align-items:center;gap:0.3rem;margin-bottom:0.2rem;flex-wrap:wrap;">`;
+                html+=`<span style="font-size:0.55rem;color:var(--muted);font-weight:600;">Type:</span>`;
+                html+=`<label class="comp-toggle ma-type-toggle" data-tip="EMA — more weight to recent prices"><input type="checkbox" data-matype="${prefix}_ema"><span>EMA</span></label>`;
+                html+=`<label class="comp-toggle ma-type-toggle" data-tip="SMA — equal weight to all prices"><input type="checkbox" data-matype="${prefix}_sma"><span>SMA</span></label>`;
+                html+=`<label class="comp-toggle ma-type-toggle" data-tip="VWAP — volume weighted average"><input type="checkbox" data-matype="${prefix}_vwap"><span>VWAP</span></label>`;
+                html+=`</div>`;
+                html+=`<div style="display:flex;align-items:center;gap:0.3rem;margin-bottom:0.25rem;flex-wrap:wrap;">`;
+                html+=`<span style="font-size:0.55rem;color:var(--muted);font-weight:600;">Periods:</span>`;
+                for(const p of [7,9,12,21,50,100,200])html+=`<span class="tf-toggle ma-period-toggle ${prefix}-period" data-period="${p}">${p}</span>`;
+                html+=`</div>`;
+            }else{
+                if(!inGrid){html+=`<div class="comp-grid">`;inGrid=true;}
+                html+=`<label class="comp-toggle" data-tip="${item.tip}"><input type="checkbox" data-comp="${prefix}_${item.id}"><span>${item.label}</span></label>`;
+            }
+        }
+        if(inGrid)html+=`</div>`;
+        html+=`</div>`;
+    }
+    container.innerHTML=html;
+    // Wire up toggle clicks
+    container.querySelectorAll('.comp-toggle:not(.ma-type-toggle)').forEach(e=>e.addEventListener('click',()=>{const cb=e.querySelector('input');cb.checked=!cb.checked;e.classList.toggle('active',cb.checked);updateSideCount(side);}));
+    container.querySelectorAll('.ma-type-toggle').forEach(e=>e.addEventListener('click',()=>{const cb=e.querySelector('input');cb.checked=!cb.checked;e.classList.toggle('active',cb.checked);}));
+    container.querySelectorAll('.ma-period-toggle').forEach(e=>e.addEventListener('click',()=>e.classList.toggle('active')));
+}
+
+function setSide(side){
+    activeSide=side;
+    document.querySelectorAll('.side-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelector(`.side-tab.${side}-tab`).classList.add('active');
+    document.querySelectorAll('.side-panel').forEach(p=>p.classList.remove('active'));
+    document.getElementById(side==='buy'?'sideBuy':'sideSell').classList.add('active');
+}
+
+function updateSideCount(side){
+    const container=document.getElementById(side==='buy'?'sideBuy':'sideSell');
+    const count=container.querySelectorAll('.comp-toggle:not(.ma-type-toggle) input:checked').length;
+    document.getElementById(side+'Count').textContent=`(${count})`;
+}
+
+function toggleSidePatterns(side,on){
+    const container=document.getElementById(side==='buy'?'sideBuy':'sideSell');
+    container.querySelectorAll('[data-comp^="'+side+'_pat_"]').forEach(cb=>{cb.checked=on;cb.closest('.comp-toggle').classList.toggle('active',on);});
+    updateSideCount(side);
+}
+
+function readSideComps(side){
+    const container=document.getElementById(side==='buy'?'sideBuy':'sideSell');
+    const comps=[];container.querySelectorAll('.comp-toggle:not(.ma-type-toggle) input:checked').forEach(e=>{if(e.dataset.comp)comps.push(e.dataset.comp.replace(side+'_',''));});
+    const maTypes=[];container.querySelectorAll('.ma-type-toggle input:checked').forEach(e=>{if(e.dataset.matype)maTypes.push(e.dataset.matype.replace(side+'_',''));});
+    const maPeriods=[];container.querySelectorAll('.ma-period-toggle.active').forEach(e=>maPeriods.push(+e.dataset.period));
+    return{comps,maTypes:maTypes.length>0?maTypes:['ema'],maPeriods:maPeriods.length>0?maPeriods:[21,50]};
+}
 
 function setCalcMode(m){calcMode=m;document.querySelectorAll('.mode-sel-btn').forEach(b=>b.classList.toggle('active',b.dataset.calcmode===m));
 document.getElementById('panelClassic').classList.toggle('active',m==='classic');document.getElementById('panelModular').classList.toggle('active',m==='modular');}
@@ -384,13 +435,19 @@ document.getElementById('trailPctRow').style.display=v==='trailing'?'block':'non
 document.getElementById('trailStepRow').style.display=v==='step'?'block':'none';}
 
 function getConfig(){
-    const tfs=[];document.querySelectorAll('.tf-toggle.active:not(.ma-period-toggle)').forEach(e=>tfs.push(e.dataset.tf));
-    const comps=[];document.querySelectorAll('.comp-toggle input:checked').forEach(e=>{if(e.dataset.comp)comps.push(e.dataset.comp);});
-    const maTypes=[];document.querySelectorAll('.ma-type-toggle input:checked').forEach(e=>maTypes.push(e.dataset.matype));
-    const maPeriods=[];document.querySelectorAll('.ma-period-toggle.active').forEach(e=>maPeriods.push(+e.dataset.period));
+    const tfs=[];document.querySelectorAll('.tf-toggle.active:not(.ma-period-toggle):not(.buy-period):not(.sell-period)').forEach(e=>{if(e.dataset.tf)tfs.push(e.dataset.tf);});
+    // Read buy and sell sides separately for modular mode
+    const buySide=readSideComps('buy');
+    const sellSide=readSideComps('sell');
     return{symbol:document.getElementById('cfgSymbol').value.toUpperCase().trim(),enabledTFs:tfs,method:$('cfgMethod').value,
         bodyMod:$('cfgBodyMod').checked,volMod:$('cfgVolMod').checked,indMod:$('cfgIndMod').checked,
-        calcMode,comps,maTypes:maTypes.length>0?maTypes:['ema'],maPeriods:maPeriods.length>0?maPeriods:[21,50],
+        calcMode,
+        buyComps:buySide.comps,buyMaTypes:buySide.maTypes,buyMaPeriods:buySide.maPeriods,
+        sellComps:sellSide.comps,sellMaTypes:sellSide.maTypes,sellMaPeriods:sellSide.maPeriods,
+        // Legacy compat — merge for old code paths
+        comps:[...new Set([...buySide.comps,...sellSide.comps])],
+        maTypes:[...new Set([...buySide.maTypes,...sellSide.maTypes])],
+        maPeriods:[...new Set([...buySide.maPeriods,...sellSide.maPeriods])].sort((a,b)=>a-b),
         slPct:+$('cfgSL').value,tpPct:+$('cfgTP').value,
         trailType:$('cfgTrailType').value,trailPct:+$('cfgTrailPct').value,trailStep:+$('cfgTrailStep').value,
         feePct:+$('cfgFee').value,capital:+$('cfgCapital').value,posSize:+$('cfgPosSize').value/100,
@@ -513,21 +570,17 @@ function classicConfluence(snap,tfs,method,cfg){
 // ============================================
 function modularConfluence(snap,tfs,method,cfg){
     const weights=WM[method];let tBull=0,tBear=0,aligned=0;
-    const C=cfg.comps;
     const PAT_MAP={'Doji':'pat_doji','Hammer':'pat_hammer','InvHammer':'pat_invHammer','HangingMan':'pat_hangingMan',
         'ShootStar':'pat_shootStar','Marubozu':'pat_marubozu','SpinTop':'pat_spinTop','BullEngulf':'pat_bullEngulf',
         'BearEngulf':'pat_bearEngulf','BullHarami':'pat_bullHarami','BearHarami':'pat_bearHarami','Piercing':'pat_piercing',
         'DarkCloud':'pat_darkCloud','TweezerTop':'pat_twzTop','TweezerBot':'pat_twzBot','MorningStar':'pat_mornStar',
         'EveningStar':'pat_eveStar','3Soldiers':'pat_3soldiers','3Crows':'pat_3crows'};
-    const anyPat=C.some(c=>c.startsWith('pat_'));
-    const maTypes=cfg.maTypes||['ema'];
-    const maPeriods=(cfg.maPeriods||[21,50]).slice().sort((a,b)=>a-b);
-    for(const tf of tfs){const d=snap[tf];if(!d)continue;
+
+    function scoreComps(d,C,maTypes,maPeriods){
+        if(!C||C.length===0)return null;
         const scores=[];const dir=d.isBullish?1:-1;
-        // Candle
         if(C.includes('candleDir'))scores.push(dir);
         if(C.includes('closePos'))scores.push((d.closePos-0.5)*2);
-        // Price ≥ MA (flexible)
         if(C.includes('priceAboveMA')&&d.mas){
             let above=0,total=0;
             for(const t of maTypes){
@@ -536,30 +589,22 @@ function modularConfluence(snap,tfs,method,cfg){
             }
             if(total>0)scores.push((above/total)*2-1);
         }
-        // MA Alignment (flexible)
         if(C.includes('maAlignment')&&d.mas&&maPeriods.length>=2){
-            let correctPairs=0,totalPairs=0;
-            const types=maTypes.filter(t=>t!=='vwap');
-            for(const t of types){
-                for(let i=0;i<maPeriods.length-1;i++){
-                    const fast=d.mas[t+maPeriods[i]],slow=d.mas[t+maPeriods[i+1]];
-                    if(fast!==undefined&&slow!==undefined){totalPairs++;if(fast>slow)correctPairs++;}
-                }
-            }
+            let correctPairs=0,totalPairs=0;const types=maTypes.filter(t=>t!=='vwap');
+            for(const t of types){for(let i=0;i<maPeriods.length-1;i++){
+                const fast=d.mas[t+maPeriods[i]],slow=d.mas[t+maPeriods[i+1]];
+                if(fast!==undefined&&slow!==undefined){totalPairs++;if(fast>slow)correctPairs++;}}}
             if(totalPairs>0)scores.push((correctPairs/totalPairs)*2-1);
         }
-        // Momentum
         if(C.includes('rsiZone')){if(d.rsi>60)scores.push(Math.min((d.rsi-50)/30,1));else if(d.rsi<40)scores.push(Math.max((d.rsi-50)/30,-1));else scores.push((d.rsi-50)/50);}
         if(C.includes('rsiDir'))scores.push(d.rsiRising?0.7:-0.7);
         if(C.includes('macdHist'))scores.push(d.macd.histogram>0?1:-1);
         if(C.includes('macdCross'))scores.push(d.macd.crossedUp?1:d.macd.crossedDown?-1:0);
-        // Confirmation (direction-dependent)
         if(C.includes('bodyStr'))scores.push(d.bodyPct>=70?dir:d.bodyPct<40?0:dir*0.3);
         if(C.includes('volRatio'))scores.push(d.volRatio>=2.5?dir:d.volRatio>=1.5?dir*0.6:d.volRatio<=0.6?-0.5:0);
-        // Individual Candle Patterns
+        const anyPat=C.some(c=>c.startsWith('pat_'));
         if(anyPat&&d.pattern){const pKey=PAT_MAP[d.pattern.name];
             if(pKey&&C.includes(pKey)){scores.push(d.pattern.type==='bullish'?1:d.pattern.type==='bearish'?-1:0);}}
-        // Market Signals
         if(d.signals){const s=d.signals;
             if(C.includes('sigVol')){if(s.volSpike)scores.push(dir*0.8);else if(s.highVol)scores.push(dir*0.4);else if(s.lowVol)scores.push(-0.3);}
             if(C.includes('sigMacd')){if(s.macdCrossUp)scores.push(1);else if(s.macdCrossDown)scores.push(-1);else if(s.macdUp)scores.push(0.5);else if(s.macdDown)scores.push(-0.5);}
@@ -567,10 +612,25 @@ function modularConfluence(snap,tfs,method,cfg){
             if(C.includes('sigWick')){if(s.rejHi)scores.push(-0.7);if(s.rejLo)scores.push(0.7);}
             if(C.includes('sigCandle')){if(s.bullEng)scores.push(1);else if(s.bearEng)scores.push(-1);else if(s.bigBody)scores.push(dir*0.5);else if(s.indecision)scores.push(0);}
         }
-        if(scores.length===0)continue;
-        const avg=scores.reduce((a,b)=>a+b,0)/scores.length;
-        const fw=weights[tf]||1;const ws=Math.abs(avg)*fw;
-        avg>0?tBull+=ws:tBear+=ws;if(Math.abs(avg)>0.3)aligned++;}
+        if(scores.length===0)return null;
+        return scores.reduce((a,b)=>a+b,0)/scores.length;
+    }
+
+    const buyC=cfg.buyComps||cfg.comps||[];
+    const sellC=cfg.sellComps||cfg.comps||[];
+    const buyMT=cfg.buyMaTypes||cfg.maTypes||['ema'];
+    const sellMT=cfg.sellMaTypes||cfg.maTypes||['ema'];
+    const buyMP=(cfg.buyMaPeriods||cfg.maPeriods||[21,50]).slice().sort((a,b)=>a-b);
+    const sellMP=(cfg.sellMaPeriods||cfg.maPeriods||[21,50]).slice().sort((a,b)=>a-b);
+
+    for(const tf of tfs){const d=snap[tf];if(!d)continue;
+        const fw=weights[tf]||1;
+        const buyAvg=scoreComps(d,buyC,buyMT,buyMP);
+        if(buyAvg!==null&&buyAvg>0)tBull+=Math.abs(buyAvg)*fw;
+        const sellAvg=scoreComps(d,sellC,sellMT,sellMP);
+        if(sellAvg!==null&&sellAvg<0)tBear+=Math.abs(sellAvg)*fw;
+        if((buyAvg!==null&&Math.abs(buyAvg)>0.3)||(sellAvg!==null&&Math.abs(sellAvg)>0.3))aligned++;
+    }
     const t=tBull+tBear;return{pct:t>0?(tBull/t)*100:50,alignedTFs:aligned};}
 
 function calcConf(snap,tfs,method,cfg){return cfg.calcMode==='modular'?modularConfluence(snap,tfs,method,cfg):classicConfluence(snap,tfs,method,cfg);}
@@ -738,7 +798,7 @@ async function runMatrix(){const base=getConfig();if(base.enabledTFs.length<2)re
             {comps:[...DIR,...MOM,...SIGS],label:'Dir+Mom+Sig',...defMA},
             {comps:[...DIR,...MOM,...MODS,...ALL_PAT,...SIGS],label:'Full',...defMA}];
         const total=methods.length*groups.length;let done=0;
-        for(const m of methods)for(const g of groups){const cfg={...base,method:m,comps:g.comps,calcMode:'modular',maTypes:g.maTypes||base.maTypes,maPeriods:g.maPeriods||base.maPeriods};
+        for(const m of methods)for(const g of groups){const cfg={...base,method:m,buyComps:g.comps,sellComps:g.comps,calcMode:'modular',buyMaTypes:g.maTypes||['ema'],sellMaTypes:g.maTypes||['ema'],buyMaPeriods:g.maPeriods||[21,50],sellMaPeriods:g.maPeriods||[21,50]};
             const r=runEngine(td,cfg);matResult.push(summarize(r,base.capital,m,g.label));
             done++;setP('mat',30+(done/total)*70);setS('mat',`${m}+${g.label} (${done}/${total})`);await sleep(5);}
         displayMat(matResult,methods,groups.map(g=>g.label));}
@@ -841,11 +901,10 @@ document.querySelectorAll('.mode-tab').forEach(t=>t.addEventListener('click',()=
 document.addEventListener('click',e=>{const t=e.target.closest('.tab[data-tab]');if(!t)return;
     const pr=t.closest('.mode-content')||t.closest('.app');pr.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
     pr.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active'));t.classList.add('active');$(`tab-${t.dataset.tab}`).classList.add('active');});
-document.querySelectorAll('.tf-toggle').forEach(e=>e.addEventListener('click',()=>e.classList.toggle('active')));
-document.querySelectorAll('.comp-toggle:not(.ma-type-toggle)').forEach(e=>e.addEventListener('click',()=>{const cb=e.querySelector('input');cb.checked=!cb.checked;e.classList.toggle('active',cb.checked);}));
-document.querySelectorAll('.ma-type-toggle').forEach(e=>e.addEventListener('click',()=>{const cb=e.querySelector('input');cb.checked=!cb.checked;e.classList.toggle('active',cb.checked);}));
-document.querySelectorAll('.ma-period-toggle').forEach(e=>e.addEventListener('click',()=>e.classList.toggle('active')));
-function togglePatterns(on){document.querySelectorAll('[data-comp^="pat_"]').forEach(cb=>{cb.checked=on;cb.closest('.comp-toggle').classList.toggle('active',on);});}
+document.querySelectorAll('.tf-toggle:not(.buy-period):not(.sell-period)').forEach(e=>e.addEventListener('click',()=>e.classList.toggle('active')));
+// Build buy/sell side panels dynamically
+buildSidePanel('buy');
+buildSidePanel('sell');
 </script>
 </body>
 </html>
