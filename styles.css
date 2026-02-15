@@ -3913,6 +3913,65 @@ body.no-ads .ad-container {
     width: 100px;
 }
 
+/* MA/EMA Lines Builder */
+.ma-lines-builder {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin: 0.3rem 0;
+}
+.ma-line-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+.ma-line-row input[type="number"] {
+    width: 55px;
+    padding: 0.25rem 0.35rem;
+    font-size: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg2);
+    color: var(--text);
+    text-align: center;
+}
+.ma-line-row input[type="color"] {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0;
+    cursor: pointer;
+    background: none;
+}
+.ma-line-row input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+.ma-line-row input[type="color"]::-webkit-color-swatch { border: none; border-radius: 2px; }
+.ma-line-remove {
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 4px;
+    background: var(--bear);
+    color: #fff;
+    font-size: 0.7rem;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+    line-height: 1;
+    padding: 0;
+}
+.ma-line-remove:hover { opacity: 1; }
+.ma-add-btn {
+    margin-top: 0.2rem;
+    font-size: 0.7rem !important;
+    padding: 0.2rem 0.5rem !important;
+    opacity: 0.8;
+}
+.ma-add-btn:hover { opacity: 1; }
+
 /* ===== MOBILE RESPONSIVE FOR TF BLOCKS ===== */
 @media (max-width: 768px) {
     .tf-blocks-area {

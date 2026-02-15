@@ -107,11 +107,11 @@
                             </div>
                         </div>
                         <div class="card-settings-row">
-                            <label>Modifiers</label>
+                            <label>Modifiers <span style="color:var(--text-muted);font-size:0.65rem;">(boost/reduce signal)</span></label>
                             <div class="modifier-toggles">
-                                <label class="mini-toggle"><input type="checkbox" id="useStrengthMod" checked><span>Body</span></label>
-                                <label class="mini-toggle"><input type="checkbox" id="useVolumeMod" checked><span>Vol</span></label>
-                                <label class="mini-toggle"><input type="checkbox" id="useIndicatorMod" checked><span>Ind</span></label>
+                                <label class="mini-toggle" title="Candle body strength — strong bodies boost signal"><input type="checkbox" id="useStrengthMod" checked><span>Body Strength</span></label>
+                                <label class="mini-toggle" title="Volume confirmation — high volume boosts, low volume dampens"><input type="checkbox" id="useVolumeMod" checked><span>Volume</span></label>
+                                <label class="mini-toggle" title="RSI/MACD alignment — adds conviction when indicators agree"><input type="checkbox" id="useIndicatorMod" checked><span>RSI/MACD</span></label>
                             </div>
                         </div>
                     </div>
@@ -263,19 +263,11 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div class="card-settings-row">
-                                    <label>Show in cards</label>
-                                    <div class="modifier-toggles">
-                                        <label class="mini-toggle"><input type="checkbox" id="showRSI" checked><span>RSI</span></label>
-                                        <label class="mini-toggle"><input type="checkbox" id="showMACD" checked><span>MACD</span></label>
-                                        <label class="mini-toggle"><input type="checkbox" id="showVolume" checked><span>Vol</span></label>
-                                    </div>
-                                </div>
                             </div>
                             <div class="card-settings-section">
                                 <span class="settings-section-label">📊 Chart Indicators</span>
                                 <div class="card-settings-row">
-                                    <label>Show on chart</label>
+                                    <label>Overlays & Panels</label>
                                     <div class="modifier-toggles">
                                         <label class="mini-toggle"><input type="checkbox" id="showChartVolume" checked><span>Vol</span></label>
                                         <label class="mini-toggle"><input type="checkbox" id="showChartRSI"><span>RSI</span></label>
@@ -297,12 +289,14 @@
                                     </div>
                                 </div>
                                 <div class="card-settings-row">
-                                    <label for="maLinesInputTF">MA Periods</label>
-                                    <input type="text" id="maLinesInputTF" placeholder="20" value="20" class="input-sm">
+                                    <label>MA Lines <span style="color:var(--text-muted);font-size:0.7rem;">(e.g. 20, 50)</span></label>
+                                    <div class="ma-lines-builder" id="maLinesBuilder"></div>
+                                    <button class="btn btn-xs ma-add-btn" id="maAddBtn" type="button">+ Add MA</button>
                                 </div>
                                 <div class="card-settings-row">
-                                    <label for="emaLinesInputTF">EMA Periods</label>
-                                    <input type="text" id="emaLinesInputTF" placeholder="21" value="21" class="input-sm">
+                                    <label>EMA Lines <span style="color:var(--text-muted);font-size:0.7rem;">(e.g. 21, 50)</span></label>
+                                    <div class="ma-lines-builder" id="emaLinesBuilder"></div>
+                                    <button class="btn btn-xs ma-add-btn" id="emaAddBtn" type="button">+ Add EMA</button>
                                 </div>
                             </div>
                             <div class="card-settings-section">
@@ -416,7 +410,7 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>MTFCM v4.7.4 | Binance Data | ☪️ Halal - Spot Only | Feb 2026</p>
+            <p>MTFCM v4.7.5 | Binance Data | ☪️ Halal - Spot Only | Feb 2026</p>
             <div class="footer-support">
                 <span>Support this project:</span>
                 <a href="#" id="tipJarBtn" class="tip-link">☕ Buy me a coffee</a>
