@@ -361,9 +361,16 @@ const TIMEFRAMES_CONFIG = [
  * DEFAULT SETTINGS
  */
 const DEFAULT_SETTINGS = {
+    theme: "dark",
+    viewMode: "advanced",
+    candlePopupType: "hover-tab",
+    lastCoin: null,
     alertSeconds: 30,
     minConfluence: 2,
     enableSound: true,
+    enableSignalSound: true,
+    enableSignalPopup: true,
+    signalCooldownMs: 60000,
     weightMethod: "linear",
     useStrengthMod: true,
     useVolumeMod: true,
@@ -372,35 +379,31 @@ const DEFAULT_SETTINGS = {
     showMACD: true,
     showVolume: true,
     showWarnings: true,
-    theme: "dark",
+    showPatterns: true,
+    showPriceInfo: true,
+    showTimers: true,
+    showIndicatorBadges: true,
+    showConfluenceBar: true,
     advancedMode: true,
-    viewMode: "advanced", // 'clear' or 'advanced' - v3.8
-    candlePopupType: "hover-tab", // 'hover-tab' or 'click-popup' - v3.8
     chartHeight: 120,
     chartCandles: 15,
     showChartRSI: false,
     showChartMACD: false,
     showChartVolume: true,
-    volumeType: "buysell", // 'buysell' or 'regular' - v3.8.2
-    showChartPatterns: true,
-    showChartMarkers: true,
     showChartMA: false,
     showChartEMA: true,
     showChartVWAP: false,
+    showChartSR: false,
+    showChartMarkers: true,
+    showChartPatterns: true,
     showPriceScale: false,
-    // Display Options - v3.9.2
-    showPriceInfo: true,
-    showTimers: true,
-    showIndicatorBadges: true,
-    showConfluenceBar: true,
-    // Multiple MA lines (periods)
+    volumeType: "buysell",
     maLines: [20],
-    // Multiple EMA lines (periods)
+    maColors: ["#3b82f6"],
     emaLines: [21],
-    // Multiple RSI lines (periods)
+    emaColors: ["#f59e0b"],
     rsiLines: [14],
     vwapEnabled: true,
-    // Pattern toggles - v3.9
     patterns: {
         doji: true,
         hammer: true,
@@ -422,7 +425,6 @@ const DEFAULT_SETTINGS = {
         threeSoldiers: true,
         threeCrows: true
     },
-    // Comparison coins
     comparisonCoins: []
 };
 

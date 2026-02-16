@@ -1,6 +1,6 @@
 /**
  * MTFCM - Multi-Timeframe Confluence Monitor
- * Main Application Logic v4.8.1 - Per-coin confluence + pattern side filtering
+ * Main Application Logic v4.8.2 - Per-coin confluence + pattern side filtering
  */
 
 const APP_VERSION = "4.7.4";
@@ -31,44 +31,7 @@ function safeParse(str, fallback) {
 // STATE MANAGEMENT
 // ============================================
 
-const DEFAULT_SETTINGS = {
-    theme: 'dark',
-    viewMode: 'advanced',
-    candlePopupType: 'hover-tab',
-    lastCoin: null,
-    alertSeconds: 30,
-    minConfluence: 2,
-    enableSound: true,
-    enableSignalSound: true,
-    enableSignalPopup: true,
-    signalCooldownMs: 60000,
-    weightMethod: 'linear',
-    useStrengthMod: true,
-    useVolumeMod: true,
-    useIndicatorMod: true,
-    showPatterns: true,
-    showPriceInfo: true,
-    showTimers: true,
-    showConfluenceBar: true,
-    showWarnings: true,
-    showChartVolume: true,
-    showChartMA: false,
-    showChartEMA: true,
-    showChartVWAP: false,
-    showChartRSI: false,
-    showChartMACD: false,
-    showChartSR: false,
-    showChartMarkers: true,
-    showChartPatterns: true,
-    volumeType: 'colored',
-    maLines: [20],
-    maColors: ['#3b82f6'],
-    emaLines: [21],
-    emaColors: ['#f59e0b'],
-    rsiLines: [14],
-    patterns: {},
-    comparisonCoins: []
-};
+// DEFAULT_SETTINGS is defined in coins.js (loaded first)
 
 const state = {
     currentCoin: null,
