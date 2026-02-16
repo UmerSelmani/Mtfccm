@@ -1,6 +1,6 @@
 /**
  * MTFCM - Multi-Timeframe Confluence Monitor
- * Main Application Logic v4.8.4 - Per-coin confluence + pattern side filtering
+ * Main Application Logic v4.9.0 - Per-coin confluence + pattern side filtering
  */
 
 const APP_VERSION = "4.7.4";
@@ -445,6 +445,7 @@ function loadChartOptions() {
     const emaEl = document.getElementById('showChartEMA');
     const vwapEl = document.getElementById('showChartVWAP');
     const srEl = document.getElementById('showChartSR');
+    const divEl = document.getElementById('showRSIDivergence');
     
     if (rsiEl) rsiEl.checked = state.settings.showChartRSI || false;
     if (macdEl) macdEl.checked = state.settings.showChartMACD || false;
@@ -454,6 +455,7 @@ function loadChartOptions() {
     if (emaEl) emaEl.checked = state.settings.showChartEMA !== false;
     if (vwapEl) vwapEl.checked = state.settings.showChartVWAP || false;
     if (srEl) srEl.checked = state.settings.showChartSR || false;
+    if (divEl) divEl.checked = state.settings.showRSIDivergence !== false;
 }
 
 // ============================================
@@ -1304,6 +1306,76 @@ function calculateRSIArray(candles, period = 14) {
         result.push(avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss)));
     }
     return result;
+}
+
+// RSI Divergence Detection
+// Finds pivot highs/lows in both price and RSI, compares slopes
+function detectRSIDivergence(candles, rsiData) {
+    const divergences = [];
+    if (!candles || !rsiData || candles.length < 10 || rsiData.length < 10) return divergences;
+    
+    const len = Math.min(candles.length, rsiData.length);
+    const lookback = 5; // candles each side for pivot
+    
+    // Find pivot lows and highs
+    const pivotLows = [];
+    const pivotHighs = [];
+    
+    for (let i = lookback; i < len - lookback; i++) {
+        // Pivot low: lowest low in window
+        let isLow = true, isHigh = true;
+        for (let j = i - lookback; j <= i + lookback; j++) {
+            if (j === i) continue;
+            if (candles[j].low < candles[i].low) isLow = false;
+            if (candles[j].high > candles[i].high) isHigh = false;
+        }
+        if (isLow) pivotLows.push(i);
+        if (isHigh) pivotHighs.push(i);
+    }
+    
+    // Check last 3 pivot lows for bullish divergence
+    for (let p = 1; p < pivotLows.length && p < 4; p++) {
+        const i1 = pivotLows[p - 1];
+        const i2 = pivotLows[p];
+        if (i2 - i1 < 4) continue; // too close
+        
+        const priceLower = candles[i2].low < candles[i1].low;
+        const rsiHigher = rsiData[i2] > rsiData[i1];
+        const priceHigher = candles[i2].low > candles[i1].low;
+        const rsiLower = rsiData[i2] < rsiData[i1];
+        
+        // Regular bullish: price lower low, RSI higher low
+        if (priceLower && rsiHigher) {
+            divergences.push({ type: 'bullish', hidden: false, i1, i2, price1: candles[i1].low, price2: candles[i2].low, rsi1: rsiData[i1], rsi2: rsiData[i2] });
+        }
+        // Hidden bullish: price higher low, RSI lower low
+        if (priceHigher && rsiLower) {
+            divergences.push({ type: 'bullish', hidden: true, i1, i2, price1: candles[i1].low, price2: candles[i2].low, rsi1: rsiData[i1], rsi2: rsiData[i2] });
+        }
+    }
+    
+    // Check last 3 pivot highs for bearish divergence
+    for (let p = 1; p < pivotHighs.length && p < 4; p++) {
+        const i1 = pivotHighs[p - 1];
+        const i2 = pivotHighs[p];
+        if (i2 - i1 < 4) continue;
+        
+        const priceHigher = candles[i2].high > candles[i1].high;
+        const rsiLower = rsiData[i2] < rsiData[i1];
+        const priceLower = candles[i2].high < candles[i1].high;
+        const rsiHigher = rsiData[i2] > rsiData[i1];
+        
+        // Regular bearish: price higher high, RSI lower high
+        if (priceHigher && rsiLower) {
+            divergences.push({ type: 'bearish', hidden: false, i1, i2, price1: candles[i1].high, price2: candles[i2].high, rsi1: rsiData[i1], rsi2: rsiData[i2] });
+        }
+        // Hidden bearish: price lower high, RSI higher high
+        if (priceLower && rsiHigher) {
+            divergences.push({ type: 'bearish', hidden: true, i1, i2, price1: candles[i1].high, price2: candles[i2].high, rsi1: rsiData[i1], rsi2: rsiData[i2] });
+        }
+    }
+    
+    return divergences;
 }
 
 function calculateMACD(candles) {
@@ -2393,12 +2465,77 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
             });
             ctx.stroke();
             
-            // RSI value label
+            // RSI info panel (top-left of RSI area)
             const currentRSI = rsiData[rsiData.length - 1];
+            const prevRSI = rsiData.length >= 2 ? rsiData[rsiData.length - 2] : currentRSI;
+            const rsiZone = currentRSI >= 70 ? 'OB' : currentRSI <= 30 ? 'OS' : currentRSI >= 60 ? 'Bull' : currentRSI <= 40 ? 'Bear' : 'Neutral';
+            const rsiDir = currentRSI > prevRSI ? '↑' : currentRSI < prevRSI ? '↓' : '→';
+            const rsiZoneColor = currentRSI >= 70 ? bearColor : currentRSI <= 30 ? bullColor : '#a855f7';
+            
             ctx.font = 'bold 8px JetBrains Mono, monospace';
-            ctx.fillStyle = currentRSI >= 70 ? bearColor : currentRSI <= 30 ? bullColor : '#a855f7';
+            ctx.textAlign = 'left';
+            ctx.fillStyle = rsiZoneColor;
+            ctx.fillText(`RSI ${currentRSI.toFixed(1)} ${rsiDir} ${rsiZone}`, padding.left + 3, rsiTop + 9);
+            
+            // RSI value label on right
             ctx.textAlign = 'right';
-            ctx.fillText(`RSI ${currentRSI.toFixed(0)}`, width - padding.right - 2, rsiTop + 10);
+            ctx.fillStyle = rsiZoneColor;
+            ctx.fillText(`${currentRSI.toFixed(0)}`, width - padding.right - 2, rsiTop + 10);
+            
+            // RSI Divergence detection & drawing
+            const showDiv = state.settings.showRSIDivergence !== false;
+            if (showDiv && rsiData.length >= 10 && displayCandles.length >= 10) {
+                const divs = detectRSIDivergence(displayCandles, rsiData);
+                divs.forEach(div => {
+                    const x1_price = padding.left + (div.i1 / (displayCandles.length - 1)) * chartWidth;
+                    const x2_price = padding.left + (div.i2 / (displayCandles.length - 1)) * chartWidth;
+                    const x1_rsi = padding.left + (div.i1 / (rsiData.length - 1)) * chartWidth;
+                    const x2_rsi = padding.left + (div.i2 / (rsiData.length - 1)) * chartWidth;
+                    
+                    const divColor = div.type === 'bullish' ? bullColor : bearColor;
+                    const dashPattern = div.hidden ? [4, 3] : [];
+                    
+                    // Draw on RSI panel
+                    const y1_rsi = rsiTop + rsiHeight - (div.rsi1 / 100) * rsiHeight;
+                    const y2_rsi = rsiTop + rsiHeight - (div.rsi2 / 100) * rsiHeight;
+                    ctx.save();
+                    ctx.strokeStyle = divColor;
+                    ctx.lineWidth = 1.5;
+                    ctx.setLineDash(dashPattern);
+                    ctx.beginPath();
+                    ctx.moveTo(x1_rsi, y1_rsi);
+                    ctx.lineTo(x2_rsi, y2_rsi);
+                    ctx.stroke();
+                    // Small dot at endpoints
+                    ctx.fillStyle = divColor;
+                    ctx.beginPath(); ctx.arc(x1_rsi, y1_rsi, 2, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(x2_rsi, y2_rsi, 2, 0, Math.PI*2); ctx.fill();
+                    ctx.restore();
+                    
+                    // Draw on price chart
+                    const y1_p = scaleY(div.price1);
+                    const y2_p = scaleY(div.price2);
+                    ctx.save();
+                    ctx.strokeStyle = divColor;
+                    ctx.lineWidth = 1.5;
+                    ctx.setLineDash(dashPattern);
+                    ctx.globalAlpha = 0.7;
+                    ctx.beginPath();
+                    ctx.moveTo(x1_price, y1_p);
+                    ctx.lineTo(x2_price, y2_p);
+                    ctx.stroke();
+                    ctx.fillStyle = divColor;
+                    ctx.beginPath(); ctx.arc(x1_price, y1_p, 2, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(x2_price, y2_p, 2, 0, Math.PI*2); ctx.fill();
+                    // Label
+                    ctx.globalAlpha = 1;
+                    ctx.font = 'bold 7px Inter, sans-serif';
+                    ctx.textAlign = 'center';
+                    const label = div.type === 'bullish' ? (div.hidden ? 'HD+' : 'D+') : (div.hidden ? 'HD−' : 'D−');
+                    ctx.fillText(label, x2_price, div.type === 'bullish' ? y2_p + 10 : y2_p - 6);
+                    ctx.restore();
+                });
+            }
         }
         
         // RSI scale labels on right side (always visible)
@@ -2443,13 +2580,21 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
                 else ctx.fillRect(x, y, chartWidth / macdData.length * 0.6, barHeight);
             });
             
-            // MACD value label
+            // MACD value label with info
             const currentMACD = macdData[macdData.length - 1];
+            const prevMACD = macdData.length >= 2 ? macdData[macdData.length - 2] : currentMACD;
+            const histDir = currentMACD.histogram > prevMACD.histogram ? '↑' : currentMACD.histogram < prevMACD.histogram ? '↓' : '→';
+            const crossStatus = currentMACD.histogram >= 0 && prevMACD.histogram < 0 ? ' X↑' : currentMACD.histogram < 0 && prevMACD.histogram >= 0 ? ' X↓' : '';
+            const macdColor = currentMACD.histogram >= 0 ? bullColor : bearColor;
+            
             ctx.font = 'bold 8px JetBrains Mono, monospace';
-            ctx.fillStyle = currentMACD.histogram >= 0 ? bullColor : bearColor;
+            ctx.textAlign = 'left';
+            ctx.fillStyle = macdColor;
+            ctx.fillText(`MACD ${currentMACD.histogram >= 0 ? '+' : ''}${currentMACD.histogram.toFixed(4)} ${histDir}${crossStatus}`, padding.left + 3, macdTop + 9);
+            
             ctx.textAlign = 'right';
-            const macdVal = currentMACD.histogram >= 0 ? '↑' : '↓';
-            ctx.fillText(`MACD${macdVal}`, width - padding.right - 2, macdTop + 10);
+            ctx.fillStyle = macdColor;
+            ctx.fillText(`H${histDir}`, width - padding.right - 2, macdTop + 10);
             
             // MACD scale on right side
             ctx.strokeStyle = gridColor;
@@ -3525,7 +3670,7 @@ function setupEventListeners() {
     }
     
     // Chart options - indicator toggles in TF settings
-    ['showChartVolume', 'showChartMA', 'showChartEMA', 'showChartVWAP', 'showChartRSI', 'showChartMACD', 'showChartSR'].forEach(id => {
+    ['showChartVolume', 'showChartMA', 'showChartEMA', 'showChartVWAP', 'showChartRSI', 'showChartMACD', 'showChartSR', 'showRSIDivergence'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('change', (e) => {
             state.settings[id] = e.target.checked;

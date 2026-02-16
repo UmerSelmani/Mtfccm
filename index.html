@@ -81,14 +81,6 @@
 
             <!-- Main Content Area (Single Coin View) -->
             <main class="main-content" id="singleCoinView">
-                <!-- Top Ad Banner (Halal-Filtered) - scrolls with content -->
-                <div class="ad-container ad-banner-top" id="adBannerTop">
-                    <div class="ad-placeholder">
-                        <div class="ad-slot" id="adSlotTop">
-                            <!-- AdSense auto ad or manual ad unit -->
-                        </div>
-                    </div>
-                </div>
 
                 <!-- Confluence Row (Main + Added side by side) -->
                 <div class="confluence-row" id="confluenceRow">
@@ -180,6 +172,15 @@
                 <!-- Added Coin Confluences (rendered dynamically as columns) -->
                 <div class="added-confluences" id="addedConfluences"></div>
                 </div><!-- /confluence-row -->
+
+                <!-- Ad Banner (Halal-Filtered) - after confluence -->
+                <div class="ad-container ad-banner-top" id="adBannerTop">
+                    <div class="ad-placeholder">
+                        <div class="ad-slot" id="adSlotTop">
+                            <!-- AdSense auto ad or manual ad unit -->
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Coin TF Blocks Area (Main + Added + Add Button) -->
                 <div class="tf-blocks-area" id="tfBlocksArea">
@@ -284,6 +285,7 @@
                                     <div class="modifier-toggles">
                                         <label class="mini-toggle"><input type="checkbox" id="showChartVolume" checked><span>Vol</span></label>
                                         <label class="mini-toggle"><input type="checkbox" id="showChartRSI"><span>RSI</span></label>
+                                        <label class="mini-toggle"><input type="checkbox" id="showRSIDivergence" checked><span>Div</span></label>
                                         <label class="mini-toggle"><input type="checkbox" id="showChartMACD"><span>MACD</span></label>
                                         <label class="mini-toggle"><input type="checkbox" id="showChartMA"><span>MA</span></label>
                                         <label class="mini-toggle"><input type="checkbox" id="showChartEMA" checked><span>EMA</span></label>
@@ -417,7 +419,7 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>MTFCM v4.8.4 | Binance Data | ☪️ Halal - Spot Only | Feb 2026</p>
+            <p>MTFCM v4.9.0 | Binance Data | ☪️ Halal - Spot Only | Feb 2026</p>
             <div class="footer-support">
                 <span>Support this project:</span>
                 <a href="#" id="tipJarBtn" class="tip-link">☕ Buy me a coffee</a>

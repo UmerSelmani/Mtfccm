@@ -658,26 +658,26 @@ body {
 
 .confluence-stats {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.3rem;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.25rem;
     margin-bottom: 0.4rem;
 }
 
 .stat {
     text-align: center;
-    padding: 0.25rem;
+    padding: 0.2rem 0.15rem;
     background: var(--bg-tertiary);
     border-radius: var(--radius-sm);
 }
 
 .stat-value {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     font-weight: 700;
     display: block;
 }
 
 .stat-label {
-    font-size: 0.55rem;
+    font-size: 0.5rem;
     color: var(--text-muted);
 }
 
@@ -1862,11 +1862,12 @@ body {
     .btn-icon { padding: 0.3rem; font-size: 0.9rem; }
     
     .confluence-stats {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0.15rem;
     }
     
-    .stat-value { font-size: 0.75rem; }
-    .stat-label { font-size: 0.5rem; }
+    .stat-value { font-size: 0.65rem; }
+    .stat-label { font-size: 0.45rem; }
     
     .tf-toggle-btn {
         min-width: 42px;

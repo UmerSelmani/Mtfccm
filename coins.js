@@ -388,6 +388,7 @@ const DEFAULT_SETTINGS = {
     chartHeight: 120,
     chartCandles: 15,
     showChartRSI: false,
+    showRSIDivergence: true,
     showChartMACD: false,
     showChartVolume: true,
     showChartMA: false,
