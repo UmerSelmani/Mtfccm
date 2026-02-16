@@ -4020,35 +4020,33 @@ body.no-ads .ad-container {
     }
 }
 
-/* ===== Added Coin Confluence Cards ===== */
-.added-confluences {
+/* ===== Confluence Row — side by side ===== */
+.confluence-row {
     display: flex;
-    flex-direction: column;
     gap: 0.5rem;
+    align-items: flex-start;
+}
+.confluence-row > .confluence-card {
+    flex: 1;
+    min-width: 0;
+}
+.confluence-row > .added-confluences {
+    display: contents;
 }
 .confluence-card-added {
-    border: 1px solid var(--border-color);
+    flex: 1;
+    min-width: 0;
 }
-.confluence-card-added .card-header h2 {
-    font-size: 0.8rem;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
+.conf-coin-icon {
+    vertical-align: middle;
+    margin-right: 0.2rem;
+    border-radius: 50%;
 }
-.confluence-card-added .confluence-content {
-    padding: 0.4rem 0.5rem;
-}
-.confluence-card-added .confluence-stats {
-    gap: 0.3rem;
-}
-.confluence-card-added .stat {
-    padding: 0.25rem 0.3rem;
-}
-.confluence-card-added .stat-value {
-    font-size: 0.8rem;
-}
-.confluence-card-added .stat-label {
-    font-size: 0.55rem;
+/* Stack on small screens */
+@media (max-width: 600px) {
+    .confluence-row {
+        flex-direction: column;
+    }
 }
 .confluence-mini-weights {
     font-size: 0.55rem;

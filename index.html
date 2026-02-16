@@ -90,10 +90,11 @@
                     </div>
                 </div>
 
-                <!-- Confluence Section (Price moved to header) -->
-                <section class="card confluence-card">
+                <!-- Confluence Row (Main + Added side by side) -->
+                <div class="confluence-row" id="confluenceRow">
+                <section class="card confluence-card" id="mainConfluenceCard">
                     <div class="card-header">
-                        <h2>📊 Confluence</h2>
+                        <h2><img class="conf-coin-icon" id="mainConfIcon" src="" alt="" width="20" height="20" style="display:none"> 📊 <span id="mainConfLabel">Confluence</span></h2>
                         <button class="btn btn-sm btn-card-settings" id="confluenceSettingsBtn" title="Confluence Settings">⚙️</button>
                     </div>
                     <!-- Confluence Settings (collapsible) -->
@@ -176,8 +177,9 @@
                     </div>
                 </section>
 
-                <!-- Added Coin Confluences (rendered dynamically) -->
+                <!-- Added Coin Confluences (rendered dynamically as columns) -->
                 <div class="added-confluences" id="addedConfluences"></div>
+                </div><!-- /confluence-row -->
 
                 <!-- Coin TF Blocks Area (Main + Added + Add Button) -->
                 <div class="tf-blocks-area" id="tfBlocksArea">
@@ -415,7 +417,7 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>MTFCM v4.8.3 | Binance Data | ☪️ Halal - Spot Only | Feb 2026</p>
+            <p>MTFCM v4.8.4 | Binance Data | ☪️ Halal - Spot Only | Feb 2026</p>
             <div class="footer-support">
                 <span>Support this project:</span>
                 <a href="#" id="tipJarBtn" class="tip-link">☕ Buy me a coffee</a>

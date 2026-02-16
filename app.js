@@ -1,6 +1,6 @@
 /**
  * MTFCM - Multi-Timeframe Confluence Monitor
- * Main Application Logic v4.8.3 - Per-coin confluence + pattern side filtering
+ * Main Application Logic v4.8.4 - Per-coin confluence + pattern side filtering
  */
 
 const APP_VERSION = "4.7.4";
@@ -632,6 +632,12 @@ function selectCoin(symbol) {
         
         // Sync custom coin dropdown trigger
         updateDropdownTrigger(document.getElementById('mainCoinDropdown'), state.currentCoin);
+        
+        // Update main confluence header with coin icon and name
+        const confIcon = document.getElementById('mainConfIcon');
+        const confLabel = document.getElementById('mainConfLabel');
+        if (confIcon) { confIcon.src = state.currentCoin.icon || ''; confIcon.style.display = state.currentCoin.icon ? '' : 'none'; }
+        if (confLabel) confLabel.textContent = symbol.replace('USDT','');
         
         // Re-populate dropdown to update active/disabled/star states
         populateMainCoinSwap();
@@ -3848,6 +3854,14 @@ function setupEventListeners() {
         historySection?.classList.toggle('collapsed');
     });
     
+    // Compare All Methods toggle
+    document.getElementById('methodsCompareToggle')?.addEventListener('click', () => {
+        const body = document.getElementById('methodsCompareBody');
+        if (body) body.style.display = body.style.display === 'none' ? 'block' : 'none';
+        const icon = document.querySelector('#methodsCompareToggle .methods-compare-icon');
+        if (icon) icon.textContent = body?.style.display === 'none' ? '▼' : '▲';
+    });
+    
     // Card settings button toggle visual state
     document.getElementById('tfSettingsBtn')?.addEventListener('click', function() {
         this.classList.toggle('active');
@@ -4530,6 +4544,7 @@ function removeAddedCoin(symbol) {
         });
     }
     if (state.addedCoinConfluence) delete state.addedCoinConfluence[symbol];
+    if (state.addedCoinHistory) delete state.addedCoinHistory[symbol];
     // Clean up chart state/data/patterns for added coin TF keys
     Object.keys(state.data).forEach(key => { if (key.startsWith(symbol + '-')) delete state.data[key]; });
     Object.keys(state.patterns).forEach(key => { if (key.startsWith(symbol + '-')) delete state.patterns[key]; });
@@ -4814,14 +4829,26 @@ function renderAddedConfluenceCards() {
         return;
     }
     
+    const method = state.settings.weightMethod || 'linear';
+    const methodLabel = method.charAt(0).toUpperCase() + method.slice(1);
+    const methodData = WEIGHT_METHODS[method];
+    let formula = methodData?.description || '';
+    const mods = [];
+    if (state.settings.useStrengthMod) mods.push('Body(×0.6-1.3)');
+    if (state.settings.useVolumeMod) mods.push('Vol(×0.7-1.4)');
+    if (state.settings.useIndicatorMod) mods.push('RSI+MACD momentum');
+    formula += '\nTrend: EMA21/50 alignment + candle + close position';
+    if (mods.length > 0) formula += `\nModifiers: ${mods.join(', ')}`;
+    
     container.innerHTML = state.addedCoins.map(symbol => {
         const coin = state.coins.find(c => c.symbol === symbol);
         const base = symbol.replace('USDT', '');
         const iconUrl = coin?.icon || '';
+        const iconHtml = iconUrl ? `<img class="conf-coin-icon" src="${iconUrl}" width="20" height="20" alt="">` : '';
         return `
         <section class="card confluence-card confluence-card-added" data-symbol="${symbol}">
             <div class="card-header">
-                <h2>${iconUrl ? `<img src="${iconUrl}" width="18" height="18" style="vertical-align:middle;margin-right:0.3rem;" alt="">` : ''}📊 ${base}</h2>
+                <h2>${iconHtml} 📊 <span>${base}</span></h2>
             </div>
             <div class="confluence-content">
                 <div class="confluence-meter">
@@ -4829,31 +4856,52 @@ function renderAddedConfluenceCards() {
                     <div class="meter-labels"><span>🔴</span><span>🟡</span><span>🟢</span></div>
                 </div>
                 <div class="confluence-stats">
-                    <div class="stat" id="confScoreWrap-${symbol}">
-                        <span class="stat-value" id="confScore-${symbol}">50%</span>
-                        <span class="stat-label">Score</span>
-                    </div>
-                    <div class="stat" id="confBullWrap-${symbol}">
-                        <span class="stat-value text-bull" id="confBull-${symbol}">0</span>
-                        <span class="stat-label">Bull</span>
-                    </div>
-                    <div class="stat" id="confBearWrap-${symbol}">
-                        <span class="stat-value text-bear" id="confBear-${symbol}">0</span>
-                        <span class="stat-label">Bear</span>
-                    </div>
-                    <div class="stat" id="confBiasWrap-${symbol}">
-                        <span class="stat-value" id="confBias-${symbol}">—</span>
-                        <span class="stat-label">Bias</span>
-                    </div>
-                    <div class="stat" id="confSignalWrap-${symbol}">
-                        <span class="stat-value signal-value" id="confSignal-${symbol}">—</span>
-                        <span class="stat-label">Signal</span>
+                    <div class="stat"><span class="stat-value" id="confScore-${symbol}">50%</span><span class="stat-label">Score</span></div>
+                    <div class="stat"><span class="stat-value text-bull" id="confBull-${symbol}">0</span><span class="stat-label">Bull</span></div>
+                    <div class="stat"><span class="stat-value text-bear" id="confBear-${symbol}">0</span><span class="stat-label">Bear</span></div>
+                    <div class="stat"><span class="stat-value" id="confBias-${symbol}">—</span><span class="stat-label">Bias</span></div>
+                    <div class="stat"><span class="stat-value signal-value" id="confSignal-${symbol}">—</span><span class="stat-label">Signal</span></div>
+                </div>
+                <div class="confluence-method">
+                    <div class="method-title">Method: <span>${methodLabel}</span></div>
+                    <div class="method-formula">${formula}</div>
+                    <div class="method-weights" id="confMethodWeights-${symbol}"></div>
+                    <div class="methods-comparison">
+                        <div class="methods-compare-header" data-target="confCompareBody-${symbol}">
+                            <span>📐 Compare All Methods</span>
+                            <span class="methods-compare-icon">▼</span>
+                        </div>
+                        <div class="methods-compare-body" id="confCompareBody-${symbol}" style="display:none;"></div>
                     </div>
                 </div>
-                <div class="confluence-mini-weights" id="confWeights-${symbol}"></div>
+                <div class="confluence-history">
+                    <div class="history-header" data-target="confHistoryList-${symbol}">
+                        <span>📜 Recent High Confluence</span>
+                        <span class="history-toggle-icon">▼</span>
+                    </div>
+                    <div class="history-list" id="confHistoryList-${symbol}">
+                        <div class="history-empty">No high confluence moments recorded yet</div>
+                    </div>
+                </div>
             </div>
         </section>`;
     }).join('');
+    
+    // Wire up toggle listeners for added coin cards
+    container.querySelectorAll('.methods-compare-header[data-target]').forEach(header => {
+        header.addEventListener('click', () => {
+            const body = document.getElementById(header.dataset.target);
+            if (body) body.style.display = body.style.display === 'none' ? 'block' : 'none';
+            header.querySelector('.methods-compare-icon').textContent = body?.style.display === 'none' ? '▼' : '▲';
+        });
+    });
+    container.querySelectorAll('.history-header[data-target]').forEach(header => {
+        header.addEventListener('click', () => {
+            const list = document.getElementById(header.dataset.target);
+            if (list) list.style.display = list.style.display === 'none' ? 'block' : 'none';
+            header.querySelector('.history-toggle-icon').textContent = list?.style.display === 'none' ? '▼' : '▲';
+        });
+    });
 }
 
 // ============================================
@@ -4904,14 +4952,15 @@ function calculateAddedCoinConfluence(symbol) {
         const tfScore = hasInd ? (directionScore * 0.6 + momentumScore * 0.4) : directionScore;
         
         // Modifiers
+        const modifiers = [];
         if (state.settings.useStrengthMod) {
-            if (data.bodyPct >= 70) finalWeight *= 1.3;
-            else if (data.bodyPct < 40) finalWeight *= 0.6;
+            if (data.bodyPct >= 70) { finalWeight *= 1.3; modifiers.push('STR↑'); }
+            else if (data.bodyPct < 40) { finalWeight *= 0.6; modifiers.push('STR↓'); }
         }
         if (state.settings.useVolumeMod) {
-            if (data.volumeRatio >= 2.5) finalWeight *= 1.4;
-            else if (data.volumeRatio >= 1.5) finalWeight *= 1.2;
-            else if (data.volumeRatio <= 0.6) finalWeight *= 0.7;
+            if (data.volumeRatio >= 2.5) { finalWeight *= 1.4; modifiers.push('VOL↑↑'); }
+            else if (data.volumeRatio >= 1.5) { finalWeight *= 1.2; modifiers.push('VOL↑'); }
+            else if (data.volumeRatio <= 0.6) { finalWeight *= 0.7; modifiers.push('VOL↓'); }
         }
         
         const isBullTF = tfScore > 0;
@@ -4920,7 +4969,7 @@ function calculateAddedCoinConfluence(symbol) {
         else { totalBearWeight += ws; bearCount++; }
         if (Math.abs(tfScore) > 0.3) alignedTFs++;
         
-        tfDetails.push({ tf: tf.label, dir: isBullTF ? '🟢' : '🔴', score: tfScore.toFixed(2), wt: finalWeight.toFixed(1) });
+        tfDetails.push({ tf: tf.label, base: baseWeight, final: finalWeight.toFixed(2), mods: modifiers.join(' '), dir: isBullTF ? '🟢' : '🔴', score: tfScore.toFixed(2) });
     });
     
     const total = totalBullWeight + totalBearWeight;
@@ -4941,7 +4990,7 @@ function updateAddedCoinConfluenceDisplay(symbol, pct, bullCount, bearCount, tfD
     const bearEl = document.getElementById(`confBear-${symbol}`);
     const biasEl = document.getElementById(`confBias-${symbol}`);
     const signalEl = document.getElementById(`confSignal-${symbol}`);
-    const weightsEl = document.getElementById(`confWeights-${symbol}`);
+    const methodWeights = document.getElementById(`confMethodWeights-${symbol}`);
     
     if (fill) fill.style.left = `${pct}%`;
     
@@ -4972,9 +5021,51 @@ function updateAddedCoinConfluenceDisplay(symbol, pct, bullCount, bearCount, tfD
         signalEl.className = `stat-value signal-value ${cls}`;
     }
     
-    if (weightsEl && tfDetails.length > 0) {
-        weightsEl.textContent = tfDetails.map(d => `${d.tf}${d.dir}${d.score}(×${d.wt})`).join(' · ');
-        weightsEl.classList.add('show');
+    // Method weights — same format as main
+    if (methodWeights && tfDetails.length > 0) {
+        methodWeights.innerHTML = tfDetails.map(w => 
+            `<div>${w.dir} ${w.tf}: ${w.base}→${w.final} [${w.score}] ${w.mods ? `(${w.mods})` : ''}</div>`
+        ).join('');
+    }
+    
+    // Track history for added coin
+    trackAddedCoinHistory(symbol, pct);
+}
+
+function trackAddedCoinHistory(symbol, pct) {
+    if (pct < 70 && pct > 30) return;
+    
+    const now = new Date();
+    const key = `mtfcm_confHistory_${symbol}`;
+    
+    if (!state.addedCoinHistory) state.addedCoinHistory = {};
+    if (!state.addedCoinHistory[symbol]) {
+        try { state.addedCoinHistory[symbol] = JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { state.addedCoinHistory[symbol] = []; }
+    }
+    
+    const hist = state.addedCoinHistory[symbol];
+    const last = hist[0];
+    if (last && (now - new Date(last.time)) < 60000) return;
+    
+    const bias = pct >= 70 ? 'BULL' : 'BEAR';
+    hist.unshift({ time: now.toISOString(), score: pct.toFixed(1), bias });
+    if (hist.length > 10) hist.length = 10;
+    
+    try { localStorage.setItem(key, JSON.stringify(hist)); } catch(e) {}
+    
+    // Update history list in UI
+    const listEl = document.getElementById(`confHistoryList-${symbol}`);
+    if (listEl) {
+        if (hist.length === 0) {
+            listEl.innerHTML = '<div class="history-empty">No high confluence moments recorded yet</div>';
+        } else {
+            listEl.innerHTML = hist.map(r => {
+                const d = new Date(r.time);
+                const timeStr = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                const dateStr = d.toLocaleDateString([], {month:'short', day:'numeric'});
+                return `<div class="history-item"><span class="history-time">${dateStr} ${timeStr}</span><span class="history-score ${r.bias === 'BULL' ? 'text-bull' : 'text-bear'}">${r.score}% ${r.bias === 'BULL' ? '🟢' : '🔴'}</span></div>`;
+            }).join('');
+        }
     }
 }
 
