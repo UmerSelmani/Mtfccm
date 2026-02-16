@@ -1,6 +1,6 @@
 /**
  * MTFCM - Multi-Timeframe Confluence Monitor
- * Main Application Logic v4.7.9 - Per-coin confluence for added coins
+ * Main Application Logic v4.8.0 - Per-coin confluence + pattern side filtering
  */
 
 const APP_VERSION = "4.7.4";

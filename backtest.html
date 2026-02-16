@@ -6,7 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src https://api.binance.com https://api1.binance.com https://api2.binance.com https://api3.binance.com;">
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
-<title>MTFCM v4.7.9 — Strategy Tester</title>
+<title>MTFCM v4.8.0 — Strategy Tester</title>
 <style>
 :root{--bg:#0f1117;--bg2:#1a1d27;--bg3:#252836;--bg4:#303348;--text:#e4e4e7;--text2:#a1a1aa;--muted:#71717a;--accent:#6366f1;--accent2:#8b5cf6;--bull:#22c55e;--bear:#ef4444;--neutral:#eab308;--border:#2d3044;--radius:8px;}
 *{margin:0;padding:0;box-sizing:border-box;}body{background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,sans-serif;min-height:100vh;}a{color:var(--accent);text-decoration:none;}
@@ -337,26 +337,26 @@ const COMP_DEFS=[
     {group:'🕯️ Candle Patterns',sub:'— Candlestick formations',patActions:true,items:[
         {section:'Single Candle'},
         {id:'pat_doji',label:'✚ Doji',tip:'Indecision. Score: 0'},
-        {id:'pat_hammer',label:'🔨 Hammer',tip:'Bullish reversal. Score: +1'},
-        {id:'pat_invHammer',label:'⚒️ Inv Hammer',tip:'Potential bullish reversal. Score: +1'},
-        {id:'pat_hangingMan',label:'🧍 Hanging Man',tip:'Bearish warning. Score: −1'},
-        {id:'pat_shootStar',label:'💫 Shoot Star',tip:'Bearish reversal. Score: −1'},
+        {id:'pat_hammer',label:'🔨 Hammer',tip:'Bullish reversal. Score: +1',side:'buy'},
+        {id:'pat_invHammer',label:'⚒️ Inv Hammer',tip:'Potential bullish reversal. Score: +1',side:'buy'},
+        {id:'pat_hangingMan',label:'🧍 Hanging Man',tip:'Bearish warning. Score: −1',side:'sell'},
+        {id:'pat_shootStar',label:'💫 Shoot Star',tip:'Bearish reversal. Score: −1',side:'sell'},
         {id:'pat_marubozu',label:'▮ Marubozu',tip:'Full conviction. Score: ±1 with direction'},
         {id:'pat_spinTop',label:'🔄 Spin Top',tip:'Weak indecision. Score: 0'},
         {section:'Two Candle'},
-        {id:'pat_bullEngulf',label:'🟢⬆ Bull Engulf',tip:'Strong bullish reversal. Score: +1'},
-        {id:'pat_bearEngulf',label:'🔴⬇ Bear Engulf',tip:'Strong bearish reversal. Score: −1'},
-        {id:'pat_bullHarami',label:'🟢 Bull Harami',tip:'Potential reversal. Score: +1'},
-        {id:'pat_bearHarami',label:'🔴 Bear Harami',tip:'Potential reversal. Score: −1'},
-        {id:'pat_piercing',label:'🗡️ Piercing',tip:'Bullish piercing. Score: +1'},
-        {id:'pat_darkCloud',label:'☁️ Dark Cloud',tip:'Bearish dark cloud. Score: −1'},
-        {id:'pat_twzTop',label:'🔝 Tweez Top',tip:'Double top rejection. Score: −1'},
-        {id:'pat_twzBot',label:'🔻 Tweez Bot',tip:'Double bottom support. Score: +1'},
+        {id:'pat_bullEngulf',label:'🟢⬆ Bull Engulf',tip:'Strong bullish reversal. Score: +1',side:'buy'},
+        {id:'pat_bearEngulf',label:'🔴⬇ Bear Engulf',tip:'Strong bearish reversal. Score: −1',side:'sell'},
+        {id:'pat_bullHarami',label:'🟢 Bull Harami',tip:'Potential reversal. Score: +1',side:'buy'},
+        {id:'pat_bearHarami',label:'🔴 Bear Harami',tip:'Potential reversal. Score: −1',side:'sell'},
+        {id:'pat_piercing',label:'🗡️ Piercing',tip:'Bullish piercing. Score: +1',side:'buy'},
+        {id:'pat_darkCloud',label:'☁️ Dark Cloud',tip:'Bearish dark cloud. Score: −1',side:'sell'},
+        {id:'pat_twzTop',label:'🔝 Tweez Top',tip:'Double top rejection. Score: −1',side:'sell'},
+        {id:'pat_twzBot',label:'🔻 Tweez Bot',tip:'Double bottom support. Score: +1',side:'buy'},
         {section:'Three Candle'},
-        {id:'pat_mornStar',label:'🌅 Morning Star',tip:'Strong bullish reversal. Score: +1'},
-        {id:'pat_eveStar',label:'🌆 Evening Star',tip:'Strong bearish reversal. Score: −1'},
-        {id:'pat_3soldiers',label:'💂 3 Soldiers',tip:'Very bullish. Score: +1'},
-        {id:'pat_3crows',label:'🐦‍⬛ 3 Crows',tip:'Very bearish. Score: −1'},
+        {id:'pat_mornStar',label:'🌅 Morning Star',tip:'Strong bullish reversal. Score: +1',side:'buy'},
+        {id:'pat_eveStar',label:'🌆 Evening Star',tip:'Strong bearish reversal. Score: −1',side:'sell'},
+        {id:'pat_3soldiers',label:'💂 3 Soldiers',tip:'Very bullish. Score: +1',side:'buy'},
+        {id:'pat_3crows',label:'🐦‍⬛ 3 Crows',tip:'Very bearish. Score: −1',side:'sell'},
     ]},
     {group:'📡 Market Signals',sub:'— Real-time alert conditions',items:[
         {id:'sigVol',label:'Vol Signals',tip:'Volume spike/high/low detection'},
@@ -377,6 +377,7 @@ function buildSidePanel(side){
         html+=`</div>`;
         let inGrid=false;
         for(const item of g.items){
+            if(item.side && item.side !== side) continue;
             if(item.section){
                 if(inGrid){html+=`</div>`;inGrid=false;}
                 html+=`<div class="pat-sub-header">${item.section}</div>`;
