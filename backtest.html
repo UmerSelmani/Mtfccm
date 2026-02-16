@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MTFCM v4.7.7 — Strategy Tester</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src https://api.binance.com https://api1.binance.com https://api2.binance.com https://api3.binance.com;">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<title>MTFCM v4.7.8 — Strategy Tester</title>
 <style>
 :root{--bg:#0f1117;--bg2:#1a1d27;--bg3:#252836;--bg4:#303348;--text:#e4e4e7;--text2:#a1a1aa;--muted:#71717a;--accent:#6366f1;--accent2:#8b5cf6;--bull:#22c55e;--bear:#ef4444;--neutral:#eab308;--border:#2d3044;--radius:8px;}
 *{margin:0;padding:0;box-sizing:border-box;}body{background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,sans-serif;min-height:100vh;}a{color:var(--accent);text-decoration:none;}
@@ -267,8 +270,12 @@ code{background:var(--bg3);padding:0.08rem 0.22rem;border-radius:3px;font-size:0
                 <p><code>Candle dir</code> ±0.25 · <code>Close position</code> ±0.25 · <code>Price/EMA21</code> ±0.25 · <code>EMA21/EMA50</code> ±0.25</p></div>
             <div class="rule-section"><strong>3. Classic — Momentum [-1 to +1]</strong>
                 <p><code>RSI zone</code> ±0.5 · <code>RSI dir</code> ±0.15 · <code>MACD hist</code> ±0.25 · <code>MACD cross</code> ±0.3 (clamped ±1)</p></div>
-            <div class="rule-section"><strong>4. Modular Components</strong>
-                <p><b>Candle:</b> Candle Dir (bull+1/bear−1), Close Pos (maps 0-1→−1 to +1)<br>
+            <div class="rule-section"><strong>4. Modular Components — Buy/Sell Split</strong>
+                <p><b>Separate setups:</b> Configure different components for Buy (entry) and Sell (exit) independently. Example: Use RSI oversold + Hammer for entries, MACD cross down + Shooting Star for exits.<br>
+                <b>How it works:</b> Buy components score bullish confluence (positive scores count). Sell components score bearish confluence (negative scores count). Each side has its own MA types and periods.<br>
+                <b>Classic mode note:</b> Classic uses a fixed symmetric formula (Direction + Momentum), so buy/sell split doesn't apply — the formula naturally scores both directions. Use Modular mode for per-side control.<br>
+                <b>All Combinations:</b> When testing, each component group is applied to both sides simultaneously for consistent comparison.<br>
+                <b>Candle:</b> Candle Dir (bull+1/bear−1), Close Pos (maps 0-1→−1 to +1)<br>
                 <b>Moving Averages:</b> Choose MA types (EMA, SMA, VWAP) and periods (7, 9, 12, 21, 50, 100, 200).<br>
                 &nbsp;&nbsp;• <i>Price ≥ MA:</i> Checks price vs each selected Type×Period combo. All above → +1, all below → −1, mixed → proportional.<br>
                 &nbsp;&nbsp;• <i>MA Alignment:</i> Checks if MAs stack in trend order (MA7 > MA12 > MA21 for bull). Perfect stack → +1, reversed → −1. Needs 2+ periods.<br>
@@ -439,7 +446,7 @@ function getConfig(){
     // Read buy and sell sides separately for modular mode
     const buySide=readSideComps('buy');
     const sellSide=readSideComps('sell');
-    return{symbol:document.getElementById('cfgSymbol').value.toUpperCase().trim(),enabledTFs:tfs,method:$('cfgMethod').value,
+    return{symbol:document.getElementById('cfgSymbol').value.toUpperCase().trim().replace(/[^A-Z0-9]/g,''),enabledTFs:tfs,method:$('cfgMethod').value,
         bodyMod:$('cfgBodyMod').checked,volMod:$('cfgVolMod').checked,indMod:$('cfgIndMod').checked,
         calcMode,
         buyComps:buySide.comps,buyMaTypes:buySide.maTypes,buyMaPeriods:buySide.maPeriods,
