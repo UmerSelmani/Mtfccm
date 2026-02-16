@@ -1,6 +1,6 @@
 /**
  * MTFCM - Multi-Timeframe Confluence Monitor
- * Main Application Logic v4.8.0 - Per-coin confluence + pattern side filtering
+ * Main Application Logic v4.8.1 - Per-coin confluence + pattern side filtering
  */
 
 const APP_VERSION = "4.7.4";
@@ -169,6 +169,9 @@ function initApp() {
     setupSortListener();
     initFancySelects();
     startTimerLoop();
+    
+    // Update confluence formula display immediately (before data loads)
+    updateMethodFormulaDisplay();
     
     // Refresh coin data periodically
     setInterval(fetchAllCoinsData, 30000);
@@ -3315,6 +3318,27 @@ function updatePriceDisplay(data) {
             const priceEl = document.getElementById(`tf-price-${tf.id}`);
             if (priceEl) priceEl.textContent = `$${price.toFixed(decimals)}`;
         });
+    }
+}
+
+function updateMethodFormulaDisplay() {
+    const method = state.settings.weightMethod || 'linear';
+    const methodData = WEIGHT_METHODS[method];
+    const methodNameEl = document.getElementById('methodName');
+    const methodFormulaEl = document.getElementById('methodFormula');
+    
+    if (methodNameEl && methodData) {
+        methodNameEl.textContent = method.charAt(0).toUpperCase() + method.slice(1);
+    }
+    if (methodFormulaEl && methodData) {
+        let formula = methodData.description || '';
+        const mods = [];
+        if (state.settings.useStrengthMod) mods.push('Body(×0.6-1.3)');
+        if (state.settings.useVolumeMod) mods.push('Vol(×0.7-1.4)');
+        if (state.settings.useIndicatorMod) mods.push('RSI+MACD momentum');
+        formula += '\nTrend: EMA21/50 alignment + candle + close position';
+        if (mods.length > 0) formula += `\nModifiers: ${mods.join(', ')}`;
+        methodFormulaEl.textContent = formula;
     }
 }
 
