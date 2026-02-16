@@ -26,6 +26,7 @@
                     <span class="pulse"></span>
                     <span id="alertCount">0</span>
                 </div>
+                <a href="backtest.html" class="btn btn-icon" title="Strategy Tester" style="text-decoration:none;font-size:0.85rem;">🧪</a>
                 <span class="connection-dot" id="connectionDot" title="API Status">●</span>
                 <button id="themeToggle" class="btn btn-icon btn-theme" title="Toggle Theme (T)">🌙</button>
             </div>
@@ -95,7 +96,7 @@
                     <!-- Confluence Settings (collapsible) -->
                     <div class="card-settings" id="confluenceSettings" style="display: none;">
                         <div class="card-settings-row">
-                            <label for="weightMethod">Weighting</label>
+                            <label for="weightMethod">TF Weight Method</label>
                             <div class="fancy-select">
                                 <select id="weightMethod">
                                     <option value="equal">Equal</option>
@@ -106,11 +107,11 @@
                             </div>
                         </div>
                         <div class="card-settings-row">
-                            <label>Modifiers</label>
+                            <label>Modifiers <span style="color:var(--text-muted);font-size:0.65rem;">(boost/reduce signal)</span></label>
                             <div class="modifier-toggles">
-                                <label class="mini-toggle"><input type="checkbox" id="useStrengthMod" checked><span>Body</span></label>
-                                <label class="mini-toggle"><input type="checkbox" id="useVolumeMod" checked><span>Vol</span></label>
-                                <label class="mini-toggle"><input type="checkbox" id="useIndicatorMod" checked><span>Ind</span></label>
+                                <label class="mini-toggle" title="Candle body strength — strong bodies boost signal"><input type="checkbox" id="useStrengthMod" checked><span>Body Strength</span></label>
+                                <label class="mini-toggle" title="Volume confirmation — high volume boosts, low volume dampens"><input type="checkbox" id="useVolumeMod" checked><span>Volume</span></label>
+                                <label class="mini-toggle" title="RSI/MACD alignment — adds conviction when indicators agree"><input type="checkbox" id="useIndicatorMod" checked><span>RSI/MACD</span></label>
                             </div>
                         </div>
                     </div>
@@ -262,19 +263,16 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div class="card-settings-row">
-                                    <label>Show in cards</label>
-                                    <div class="modifier-toggles">
-                                        <label class="mini-toggle"><input type="checkbox" id="showRSI" checked><span>RSI</span></label>
-                                        <label class="mini-toggle"><input type="checkbox" id="showMACD" checked><span>MACD</span></label>
-                                        <label class="mini-toggle"><input type="checkbox" id="showVolume" checked><span>Vol</span></label>
-                                    </div>
+                                <div class="display-toggles">
+                                    <label class="mini-toggle"><input type="checkbox" id="showPriceInfo" checked><span>Price Info</span></label>
+                                    <label class="mini-toggle"><input type="checkbox" id="showTimers" checked><span>Timers</span></label>
+                                    <label class="mini-toggle"><input type="checkbox" id="showConfluenceBar" checked><span>Confluence Bar</span></label>
                                 </div>
                             </div>
                             <div class="card-settings-section">
                                 <span class="settings-section-label">📊 Chart Indicators</span>
                                 <div class="card-settings-row">
-                                    <label>Show on chart</label>
+                                    <label>Overlays & Panels</label>
                                     <div class="modifier-toggles">
                                         <label class="mini-toggle"><input type="checkbox" id="showChartVolume" checked><span>Vol</span></label>
                                         <label class="mini-toggle"><input type="checkbox" id="showChartRSI"><span>RSI</span></label>
@@ -283,7 +281,6 @@
                                         <label class="mini-toggle"><input type="checkbox" id="showChartEMA" checked><span>EMA</span></label>
                                         <label class="mini-toggle"><input type="checkbox" id="showChartVWAP"><span>VWAP</span></label>
                                         <label class="mini-toggle"><input type="checkbox" id="showChartSR"><span>S/R</span></label>
-                                        <label class="mini-toggle"><input type="checkbox" id="showPriceScale"><span>Price Scale</span></label>
                                     </div>
                                 </div>
                                 <div class="card-settings-row">
@@ -296,12 +293,14 @@
                                     </div>
                                 </div>
                                 <div class="card-settings-row">
-                                    <label for="maLinesInputTF">MA Periods</label>
-                                    <input type="text" id="maLinesInputTF" placeholder="20" value="20" class="input-sm">
+                                    <label>MA Lines</label>
+                                    <div class="ma-lines-builder" id="maLinesBuilder"></div>
+                                    <button class="btn btn-xs ma-add-btn" id="maAddBtn" type="button">+ Add MA</button>
                                 </div>
                                 <div class="card-settings-row">
-                                    <label for="emaLinesInputTF">EMA Periods</label>
-                                    <input type="text" id="emaLinesInputTF" placeholder="21" value="21" class="input-sm">
+                                    <label>EMA Lines</label>
+                                    <div class="ma-lines-builder" id="emaLinesBuilder"></div>
+                                    <button class="btn btn-xs ma-add-btn" id="emaAddBtn" type="button">+ Add EMA</button>
                                 </div>
                             </div>
                             <div class="card-settings-section">
@@ -333,16 +332,7 @@
                                 </div>
                             </div>
                             <div class="card-settings-section">
-                                <span class="settings-section-label">👁️ Display Options</span>
-                                <div class="display-toggles">
-                                    <label class="mini-toggle"><input type="checkbox" id="showPriceInfo" checked><span>Price Info</span></label>
-                                    <label class="mini-toggle"><input type="checkbox" id="showTimers" checked><span>Timers</span></label>
-                                    <label class="mini-toggle"><input type="checkbox" id="showIndicatorBadges" checked><span>Indicator Badges</span></label>
-                                    <label class="mini-toggle"><input type="checkbox" id="showConfluenceBar" checked><span>Confluence Bar</span></label>
-                                </div>
-                            </div>
-                            <div class="card-settings-section">
-                                <span class="settings-section-label">🏷️ Badge Alerts</span>
+                                <span class="settings-section-label">📡 Market Signals</span>
                                 <div class="patterns-grid">
                                     <label class="pattern-toggle"><input type="checkbox" id="badgeLowVol" checked><span>LowVol</span></label>
                                     <label class="pattern-toggle"><input type="checkbox" id="badgeHighVol" checked><span>HighVol</span></label>
@@ -360,6 +350,10 @@
                                     <label class="pattern-toggle"><input type="checkbox" id="badgeIndecision" checked><span>Indeci</span></label>
                                     <label class="pattern-toggle"><input type="checkbox" id="badgeBigBody" checked><span>BigBody</span></label>
                                     <label class="pattern-toggle"><input type="checkbox" id="badgeEngulf" checked><span>Engulf</span></label>
+                                </div>
+                                <div class="pattern-actions">
+                                    <button class="btn btn-xs" id="selectAllSignals">Select All</button>
+                                    <button class="btn btn-xs" id="deselectAllSignals">Deselect All</button>
                                 </div>
                             </div>
                         </div>
@@ -415,7 +409,7 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>MTFCM v4.4.0 | Binance Data | ☪️ Halal - Spot Only | Feb 2026</p>
+            <p>MTFCM v4.7.6 | Binance Data | ☪️ Halal - Spot Only | Feb 2026</p>
             <div class="footer-support">
                 <span>Support this project:</span>
                 <a href="#" id="tipJarBtn" class="tip-link">☕ Buy me a coffee</a>

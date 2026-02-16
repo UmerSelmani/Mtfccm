@@ -1,9 +1,9 @@
 /**
  * MTFCM - Multi-Timeframe Confluence Monitor
- * Main Application Logic v4.5.0 - Unified dropdowns, unified refresh, full parity
+ * Main Application Logic v4.7.6 - Shared rendering, dynamic chart height, merged settings
  */
 
-const APP_VERSION = "4.3.0";
+const APP_VERSION = "4.7.4";
 
 // ============================================
 // STATE MANAGEMENT
@@ -289,29 +289,19 @@ function loadInlineSettings() {
     const themeSelectEl = document.getElementById('themeSelect');
     const viewModeSelectEl = document.getElementById('viewModeSelect');
     const candlePopupTypeEl = document.getElementById('candlePopupType');
-    const showRSIEl = document.getElementById('showRSI');
-    const showMACDEl = document.getElementById('showMACD');
-    const showVolumeEl = document.getElementById('showVolume');
     
     if (themeSelectEl) themeSelectEl.value = state.settings.theme || 'dark';
     if (viewModeSelectEl) viewModeSelectEl.value = state.settings.viewMode || 'advanced';
     if (candlePopupTypeEl) candlePopupTypeEl.value = state.settings.candlePopupType || 'hover-tab';
-    if (showRSIEl) showRSIEl.checked = state.settings.showRSI !== false;
-    if (showMACDEl) showMACDEl.checked = state.settings.showMACD !== false;
-    if (showVolumeEl) showVolumeEl.checked = state.settings.showVolume !== false;
     
     // Display Options (from TF Settings)
     const showPriceInfoEl = document.getElementById('showPriceInfo');
     const showTimersEl = document.getElementById('showTimers');
-    const showIndicatorBadgesEl = document.getElementById('showIndicatorBadges');
     const showConfluenceBarEl = document.getElementById('showConfluenceBar');
-    const showPriceScaleEl = document.getElementById('showPriceScale');
     
     if (showPriceInfoEl) showPriceInfoEl.checked = state.settings.showPriceInfo !== false;
     if (showTimersEl) showTimersEl.checked = state.settings.showTimers !== false;
-    if (showIndicatorBadgesEl) showIndicatorBadgesEl.checked = state.settings.showIndicatorBadges !== false;
     if (showConfluenceBarEl) showConfluenceBarEl.checked = state.settings.showConfluenceBar !== false;
-    if (showPriceScaleEl) showPriceScaleEl.checked = !!state.settings.showPriceScale;
 }
 
 function saveSettings() {
@@ -1459,15 +1449,16 @@ function calculateConfluence() {
         // 2. Close position in range: maps [0,1] to [-0.25, +0.25]
         const closePos = data.buyPct / 100; // 0-1
         directionScore += (closePos - 0.5) * 0.5; // -0.25 to +0.25
+        dirComponents.push(closePos >= 0.5 ? `Close${(closePos*100).toFixed(0)}%↑` : `Close${(closePos*100).toFixed(0)}%↓`);
         
         // 3. Price vs EMA21: +0.25 or -0.25
         if (data.trend) {
             directionScore += data.trend.priceAboveEma21 ? 0.25 : -0.25;
-            dirComponents.push(data.trend.priceAboveEma21 ? '>EMA21' : '<EMA21');
+            dirComponents.push(data.trend.priceAboveEma21 ? 'Price>EMA21' : 'Price<EMA21');
             
             // 4. EMA21 vs EMA50 (trend alignment): +0.25 or -0.25
             directionScore += data.trend.ema21AboveEma50 ? 0.25 : -0.25;
-            dirComponents.push(data.trend.ema21AboveEma50 ? 'EMA↑' : 'EMA↓');
+            dirComponents.push(data.trend.ema21AboveEma50 ? 'EMA21>50' : 'EMA21<50');
         }
         
         // ── MOMENTUM SCORE ──
@@ -1505,23 +1496,23 @@ function calculateConfluence() {
         if (state.settings.useStrengthMod) {
             if (data.bodyPct >= BODY_CONFIG.strongThreshold) {
                 finalWeight *= 1.3;
-                modifiers.push('Body×1.3');
+                modifiers.push('StrongBody ×1.3');
             } else if (data.bodyPct < BODY_CONFIG.weakThreshold) {
                 finalWeight *= 0.6;
-                modifiers.push('Body×0.6');
+                modifiers.push('WeakBody ×0.6');
             }
         }
         
         if (state.settings.useVolumeMod) {
             if (data.volumeRatio >= VOLUME_CONFIG.spikeThreshold) {
                 finalWeight *= 1.4;
-                modifiers.push('Vol×1.4');
+                modifiers.push('VolSpike ×1.4');
             } else if (data.volumeRatio >= VOLUME_CONFIG.highThreshold) {
                 finalWeight *= 1.2;
-                modifiers.push('Vol×1.2');
+                modifiers.push('HighVol ×1.2');
             } else if (data.volumeRatio <= VOLUME_CONFIG.lowThreshold) {
                 finalWeight *= 0.7;
-                modifiers.push('Vol×0.7');
+                modifiers.push('LowVol ×0.7');
             }
         }
         
@@ -1718,18 +1709,7 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
     
     const ctx = canvas.getContext('2d');
     const container = canvas.parentElement;
-    const rect = container.getBoundingClientRect();
-    
-    // HiDPI support for crisp rendering
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    canvas.style.width = rect.width + 'px';
-    canvas.style.height = rect.height + 'px';
-    ctx.scale(dpr, dpr);
-    
-    const width = rect.width;
-    const height = rect.height;
     
     const chartState = initChartState(tfId);
     const zoom = chartState.zoom * state.globalZoom;
@@ -1747,16 +1727,36 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
     const showEMA = state.settings.showChartEMA;
     const showVWAP = state.settings.showChartVWAP;
     const showSR = state.settings.showChartSR;
-    const showPriceScale = state.settings.showPriceScale;
     const coinDecimals = opts.decimals || state.currentCoin?.decimals || 2;
     
-    const padding = { top: 20, right: showPriceScale ? 55 : 5, bottom: 5, left: 5 };
-    let mainChartHeight = height - padding.top - padding.bottom;
-    let volumeHeight = 0, rsiHeight = 0, macdHeight = 0;
+    // Fixed sub-panel heights (pixels) — price chart never shrinks
+    const SUB_VOL_H = 45;
+    const SUB_RSI_H = 50;
+    const SUB_MACD_H = 50;
     
-    if (showVolume) { volumeHeight = mainChartHeight * 0.23; mainChartHeight -= volumeHeight; }
-    if (showRSI) { rsiHeight = mainChartHeight * 0.15; mainChartHeight -= rsiHeight; }
-    if (showMACD) { macdHeight = mainChartHeight * 0.15; mainChartHeight -= macdHeight; }
+    let volumeHeight = showVolume ? SUB_VOL_H : 0;
+    let rsiHeight = showRSI ? SUB_RSI_H : 0;
+    let macdHeight = showMACD ? SUB_MACD_H : 0;
+    const subTotal = volumeHeight + rsiHeight + macdHeight;
+    
+    // Canvas grows: base 140px for price chart + sub-panels added below
+    const baseH = 140;
+    const totalH = baseH + subTotal;
+    canvas.style.height = totalH + 'px';
+    
+    // HiDPI support — measure after setting height
+    const rect = container.getBoundingClientRect();
+    const canvasW = rect.width || 300;
+    canvas.style.width = canvasW + 'px';
+    canvas.width = canvasW * dpr;
+    canvas.height = totalH * dpr;
+    ctx.scale(dpr, dpr);
+    
+    let width = canvasW;
+    let height = totalH;
+    
+    const padding = { top: 20, right: 55, bottom: 5, left: 5 };
+    let mainChartHeight = height - padding.top - padding.bottom - subTotal;
     
     const chartWidth = width - padding.left - padding.right;
     
@@ -1821,8 +1821,8 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
     ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, width, height);
     
-    // Draw price scale on right side (like Binance)
-    if (showPriceScale) {
+    // Draw price scale on right side (always visible)
+    {
         const decimals = coinDecimals;
         const scaleX = width - padding.right + 3;
         const numTicks = Math.min(6, Math.max(3, Math.floor(mainChartHeight / 30)));
@@ -1940,10 +1940,12 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
     const maLines = state.settings.maLines || [20];
     const emaLines = state.settings.emaLines || [21];
     
-    // MA colors for multiple lines
-    const maColors = ['#3b82f6', '#06b6d4', '#0ea5e9', '#14b8a6'];
-    // EMA colors for multiple lines  
-    const emaColors = ['#f59e0b', '#f97316', '#ef4444', '#ec4899'];
+    // MA colors from settings (user-customizable)
+    const defaultMaColorsPalette = ['#3b82f6', '#06b6d4', '#0ea5e9', '#14b8a6'];
+    const maColors = state.settings.maColors || defaultMaColorsPalette;
+    // EMA colors from settings (user-customizable)
+    const defaultEmaColorsPalette = ['#f59e0b', '#f97316', '#ef4444', '#ec4899'];
+    const emaColors = state.settings.emaColors || defaultEmaColorsPalette;
     
     // Calculate and draw MA lines
     if (showMA && data.candles.length > 0) {
@@ -2103,8 +2105,8 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
             ctx.stroke();
             ctx.setLineDash([]);
             
-            // If price scale is on, show highlighted price on the scale
-            if (showPriceScale) {
+            // Show highlighted price on the scale
+            {
                 const decimals = coinDecimals;
                 const priceText = hCandle.close.toFixed(decimals);
                 const tagW = ctx.measureText(priceText).width + 8;
@@ -2319,11 +2321,13 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
         ctx.lineTo(width - padding.right, volTop);
         ctx.stroke();
         
-        // Volume label
-        ctx.font = '7px JetBrains Mono, monospace';
+        // Volume label with current value
+        const lastCandle = displayCandles[displayCandles.length - 1];
+        const volRatio = data.volumeRatio || 0;
+        ctx.font = '8px JetBrains Mono, monospace';
         ctx.fillStyle = textColor;
         ctx.textAlign = 'right';
-        ctx.fillText('VOL', width - padding.right - 2, volTop + 8);
+        ctx.fillText(`VOL ${volRatio.toFixed(1)}x`, width - padding.right - 2, volTop + 9);
     }
     
     // RSI
@@ -2354,8 +2358,31 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
             ctx.font = 'bold 8px JetBrains Mono, monospace';
             ctx.fillStyle = currentRSI >= 70 ? bearColor : currentRSI <= 30 ? bullColor : '#a855f7';
             ctx.textAlign = 'right';
-            ctx.fillText(`RSI: ${currentRSI.toFixed(0)}`, canvas.width - padding.right - 2, rsiTop + 10);
+            ctx.fillText(`RSI ${currentRSI.toFixed(0)}`, width - padding.right - 2, rsiTop + 10);
         }
+        
+        // RSI scale labels on right side (always visible)
+        ctx.strokeStyle = gridColor;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(width - padding.right, rsiTop);
+        ctx.lineTo(width - padding.right, rsiTop + rsiHeight);
+        ctx.stroke();
+        
+        ctx.font = '7px JetBrains Mono, monospace';
+        ctx.fillStyle = textColor;
+        ctx.textAlign = 'left';
+        ctx.globalAlpha = 0.6;
+        const rsiLevels = [70, 50, 30];
+        rsiLevels.forEach(lv => {
+            const ry = rsiTop + rsiHeight - (lv / 100) * rsiHeight;
+            ctx.fillText(lv, width - padding.right + 3, ry + 3);
+            ctx.strokeStyle = gridColor;
+            ctx.setLineDash([2, 2]);
+            ctx.beginPath(); ctx.moveTo(padding.left, ry); ctx.lineTo(width - padding.right, ry); ctx.stroke();
+            ctx.setLineDash([]);
+        });
+        ctx.globalAlpha = 1;
     }
     
     // MACD
@@ -2381,8 +2408,31 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
             ctx.font = 'bold 8px JetBrains Mono, monospace';
             ctx.fillStyle = currentMACD.histogram >= 0 ? bullColor : bearColor;
             ctx.textAlign = 'right';
-            const macdLabel = currentMACD.histogram >= 0 ? 'MACD↑' : 'MACD↓';
-            ctx.fillText(macdLabel, canvas.width - padding.right - 2, macdTop + 10);
+            const macdVal = currentMACD.histogram >= 0 ? '↑' : '↓';
+            ctx.fillText(`MACD${macdVal}`, width - padding.right - 2, macdTop + 10);
+            
+            // MACD scale on right side
+            ctx.strokeStyle = gridColor;
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(width - padding.right, macdTop);
+            ctx.lineTo(width - padding.right, macdTop + macdHeight);
+            ctx.stroke();
+            
+            // Zero line + scale labels
+            const zeroY = macdTop + macdHeight / 2;
+            ctx.setLineDash([2, 2]);
+            ctx.beginPath(); ctx.moveTo(padding.left, zeroY); ctx.lineTo(width - padding.right, zeroY); ctx.stroke();
+            ctx.setLineDash([]);
+            
+            ctx.font = '7px JetBrains Mono, monospace';
+            ctx.textAlign = 'left';
+            ctx.fillStyle = textColor;
+            ctx.globalAlpha = 0.6;
+            ctx.fillText('0', width - padding.right + 3, zeroY + 3);
+            ctx.fillText('+', width - padding.right + 3, macdTop + 8);
+            ctx.fillText('−', width - padding.right + 3, macdTop + macdHeight - 2);
+            ctx.globalAlpha = 1;
         }
     }
     
@@ -2853,6 +2903,7 @@ function setupChartInteraction(canvasId, tfId, opts = {}) {
 // ============================================
 
 function startTimerLoop() {
+    if (state.intervals.timer) clearInterval(state.intervals.timer);
     state.intervals.timer = setInterval(updateTimers, 1000);
     updateTimers();
 }
@@ -2976,6 +3027,126 @@ function toggleTimeframe(tfId) {
     }
 }
 
+// ============ SHARED TF ROW RENDERING ============
+// Used by both main coin and added coin panels
+
+function buildBadgeAlertsHtml(data, symbol) {
+    if (!data || !data.alerts) return '<span class="alert-group dim">--</span>';
+    
+    const alerts = data.alerts;
+    const activeAlerts = [];
+    
+    // Badge toggle checker — checks per-symbol first, falls back to main
+    const bOn = (key) => {
+        if (symbol) {
+            const perSymEl = document.getElementById(`badge-${symbol}-${key}`);
+            if (perSymEl) return perSymEl.checked;
+        }
+        const mainEl = document.getElementById(`badge${key}`);
+        return mainEl ? mainEl.checked : true;
+    };
+    
+    // RSI group
+    if (alerts.extremeOB && bOn('ExtOB')) activeAlerts.push({ label: 'ExtOB', class: 'rsi-ob', priority: 1 });
+    else if (alerts.overbought && bOn('OB')) activeAlerts.push({ label: 'OB', class: 'rsi-ob', priority: 2 });
+    if (alerts.extremeOS && bOn('ExtOS')) activeAlerts.push({ label: 'ExtOS', class: 'rsi-os', priority: 1 });
+    else if (alerts.oversold && bOn('OS')) activeAlerts.push({ label: 'OS', class: 'rsi-os', priority: 2 });
+    
+    // Volume group
+    if (alerts.volSpike && bOn('VolSpike')) activeAlerts.push({ label: 'VolSpike', class: 'vol-high', priority: 1 });
+    else if (alerts.highVol && bOn('HighVol')) activeAlerts.push({ label: 'HighVol', class: 'vol-high', priority: 3 });
+    if (alerts.lowVol && bOn('LowVol')) activeAlerts.push({ label: 'LowVol', class: 'vol-low', priority: 4 });
+    
+    // MACD group — crosses highest priority
+    if (alerts.macdCrossUp && bOn('MACDCrossUp')) activeAlerts.push({ label: 'MACDx↑', class: 'macd-bull', priority: 1 });
+    else if (alerts.macdBull && bOn('MACDUp')) activeAlerts.push({ label: 'MACD↑', class: 'macd-bull', priority: 3 });
+    if (alerts.macdCrossDown && bOn('MACDCrossDown')) activeAlerts.push({ label: 'MACDx↓', class: 'macd-bear', priority: 1 });
+    else if (alerts.macdBear && bOn('MACDDown')) activeAlerts.push({ label: 'MACD↓', class: 'macd-bear', priority: 3 });
+    
+    // Candle structure
+    if (alerts.bigBody && bOn('BigBody')) activeAlerts.push({ label: 'BigBody', class: data.isBullish ? 'macd-bull' : 'macd-bear', priority: 3 });
+    if (alerts.indecision && bOn('Indecision')) activeAlerts.push({ label: 'Indeci', class: 'neutral', priority: 5 });
+    if (alerts.rejectHigh && bOn('RejHi')) activeAlerts.push({ label: 'RejHi', class: 'rsi-ob', priority: 4 });
+    if (alerts.rejectLow && bOn('RejLo')) activeAlerts.push({ label: 'RejLo', class: 'rsi-os', priority: 4 });
+    
+    // Engulfing patterns
+    if (alerts.bullEngulfing && bOn('Engulf')) activeAlerts.push({ label: 'BullEng', class: 'macd-bull', priority: 1 });
+    if (alerts.bearEngulfing && bOn('Engulf')) activeAlerts.push({ label: 'BearEng', class: 'macd-bear', priority: 1 });
+    
+    // Sort by priority and take top 5
+    activeAlerts.sort((a, b) => a.priority - b.priority);
+    const topAlerts = activeAlerts.slice(0, 5);
+    const moreCount = activeAlerts.length - 5;
+    
+    if (topAlerts.length === 0) return '<span class="alert-group dim">No alerts</span>';
+    
+    return topAlerts.map(a => `<span class="alert-group ${a.class}">${a.label}</span>`).join('') +
+        (moreCount > 0 ? `<span class="alerts-more" title="${activeAlerts.slice(5).map(a => a.label).join(', ')}">+${moreCount}</span>` : '');
+}
+
+function buildTfRowHtml(tfLabel, tfId, data, opts = {}) {
+    const { decimals = 2, symbol = '', currentPrice = null, timerAlert = false } = opts;
+    const showPriceInfo = state.settings.showPriceInfo !== false;
+    const showTimers = state.settings.showTimers !== false;
+    const showConfBar = state.settings.showConfluenceBar !== false;
+    
+    const dirClass = showConfBar ? (data.isBullish ? 'bullish' : 'bearish') : '';
+    const dirEmoji = data.isBullish ? '🟢' : '🔴';
+    
+    const prefix = symbol ? `${symbol}-` : '';
+    const canvasId = `chart-${prefix}${tfId}`;
+    const tabId = `candleInfoTab-${prefix}${tfId}`;
+    const secondsToClose = getSecondsToClose(state.timeframes.find(t => t.id === tfId) || { minutes: 1 });
+    
+    const price = currentPrice || data.current?.close || 0;
+    const tfHigh = data.current?.high || 0;
+    const tfLow = data.current?.low || 0;
+    const changePct = data.changePct || 0;
+    
+    const timerHtml = showTimers ? `<span class="tf-timer ${timerAlert ? 'alert' : ''}" id="tf-timer-${prefix}${tfId}">${formatTime(secondsToClose)}</span>` : '';
+    
+    const alertsHtml = buildBadgeAlertsHtml(data, symbol || null);
+    
+    return `
+        <div class="tf-row ${dirClass}" data-tf="${tfId}">
+            <div class="tf-info">
+                <div class="tf-info-row tf-info-primary">
+                    <span class="tf-name">${tfLabel}</span>
+                    <span class="tf-direction">${dirEmoji}</span>
+                    ${timerHtml}
+                    ${showPriceInfo ? `<span class="tf-price-value" id="tf-price-${prefix}${tfId}">$${price.toFixed(decimals)}</span>
+                    <span class="tf-price-change ${changePct >= 0 ? 'positive' : 'negative'}" id="tf-change-${prefix}${tfId}">${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%</span>` : ''}
+                </div>
+                ${showPriceInfo ? `<div class="tf-info-row tf-info-secondary">
+                    <span class="tf-price-hl" id="tf-high-${prefix}${tfId}">H:$${tfHigh.toFixed(decimals)}</span>
+                    <span class="tf-price-hl" id="tf-low-${prefix}${tfId}">L:$${tfLow.toFixed(decimals)}</span>
+                    <span class="tf-stat-mini">B${data.bodyPct.toFixed(0)}%</span>
+                </div>` : ''}
+            </div>
+            <div class="tf-chart-wrapper">
+                <div class="candle-info-tab" id="${tabId}" style="display:none;">
+                    <div class="candle-info-tf">${tfLabel}</div>
+                    <div class="candle-info-data">
+                        <span class="candle-info-item"><b class="label-open">O:</b> <span id="candleO-${prefix}${tfId}" class="price-open">--</span></span>
+                        <span class="candle-info-item"><b class="label-high">H:</b> <span id="candleH-${prefix}${tfId}" class="price-high">--</span></span>
+                        <span class="candle-info-item"><b class="label-low">L:</b> <span id="candleL-${prefix}${tfId}" class="price-low">--</span></span>
+                        <span class="candle-info-item"><b class="label-close">C:</b> <span id="candleC-${prefix}${tfId}" class="price-close">--</span></span>
+                        <span class="candle-info-item"><b class="label-volume">V:</b> <span id="candleV-${prefix}${tfId}" class="price-volume">--</span></span>
+                        <span class="candle-info-item candle-info-time"><span id="candleTime-${prefix}${tfId}">--</span></span>
+                    </div>
+                </div>
+                <div class="tf-chart-container">
+                    <canvas id="${canvasId}" class="tf-chart-canvas"></canvas>
+                    <span class="chart-help">Drag • Scroll zoom</span>
+                </div>
+            </div>
+            <div class="tf-bottom">
+                <div class="tf-bottom-alerts">${alertsHtml}</div>
+            </div>
+        </div>
+    `;
+}
+
 function renderTimeframeRows() {
     const container = document.getElementById('timeframesList');
     if (!container) return;
@@ -3025,109 +3196,16 @@ function renderTimeframeRows() {
             `;
         }
         
-        const dirClass = data.isBullish ? 'bullish' : 'bearish';
-        const dirEmoji = data.isBullish ? '🟢' : '🔴';
-        const alerts = data.alerts;
-        
-        // Build grouped alerts - only show active ones
-        const activeAlerts = [];
-        
-        // RSI group
-        if (alerts.extremeOB) activeAlerts.push({ label: 'ExtOB', class: 'rsi-ob', priority: 1 });
-        else if (alerts.overbought) activeAlerts.push({ label: 'OB', class: 'rsi-ob', priority: 2 });
-        if (alerts.extremeOS) activeAlerts.push({ label: 'ExtOS', class: 'rsi-os', priority: 1 });
-        else if (alerts.oversold) activeAlerts.push({ label: 'OS', class: 'rsi-os', priority: 2 });
-        
-        // Volume group
-        if (alerts.volSpike) activeAlerts.push({ label: 'VolSpike', class: 'vol-high', priority: 1 });
-        else if (alerts.highVol) activeAlerts.push({ label: 'HighVol', class: 'vol-high', priority: 3 });
-        if (alerts.lowVol) activeAlerts.push({ label: 'LowVol', class: 'vol-low', priority: 4 });
-        
-        // MACD group - crosses are highest priority
-        if (alerts.macdCrossUp) activeAlerts.push({ label: 'MACDx↑', class: 'macd-bull', priority: 1 });
-        else if (alerts.macdBull) activeAlerts.push({ label: 'MACD↑', class: 'macd-bull', priority: 3 });
-        if (alerts.macdCrossDown) activeAlerts.push({ label: 'MACDx↓', class: 'macd-bear', priority: 1 });
-        else if (alerts.macdBear) activeAlerts.push({ label: 'MACD↓', class: 'macd-bear', priority: 3 });
-        
-        // Candle structure
-        if (alerts.bigBody) activeAlerts.push({ label: 'BigBody', class: data.isBullish ? 'macd-bull' : 'macd-bear', priority: 3 });
-        if (alerts.indecision) activeAlerts.push({ label: 'Indeci', class: 'neutral', priority: 5 });
-        if (alerts.rejectHigh) activeAlerts.push({ label: 'RejHi', class: 'rsi-ob', priority: 4 });
-        if (alerts.rejectLow) activeAlerts.push({ label: 'RejLo', class: 'rsi-os', priority: 4 });
-        
-        // Engulfing patterns
-        if (alerts.bullEngulfing) activeAlerts.push({ label: 'BullEng', class: 'macd-bull', priority: 1 });
-        if (alerts.bearEngulfing) activeAlerts.push({ label: 'BearEng', class: 'macd-bear', priority: 1 });
-        
-        // Sort by priority and take top 5
-        activeAlerts.sort((a, b) => a.priority - b.priority);
-        const topAlerts = activeAlerts.slice(0, 5);
-        const moreCount = activeAlerts.length - 5;
-        
-        const alertsHtml = topAlerts.length > 0 
-            ? topAlerts.map(a => `<span class="alert-group ${a.class}">${a.label}</span>`).join('') +
-              (moreCount > 0 ? `<span class="alerts-more" title="${activeAlerts.slice(3).map(a => a.label).join(', ')}">+${moreCount}</span>` : '')
-            : '<span class="alert-group dim">No alerts</span>';
-        
-        // Get current price data for this coin (market price)
+        const showConfBar = state.settings.showConfluenceBar !== false;
         const coinData = state.coinData[state.currentCoin?.symbol] || {};
         const currentPrice = coinData.price || data.current?.close || 0;
         const decimals = state.currentCoin?.decimals || 2;
         
-        // Get THIS TIMEFRAME's candle data (not 24h data)
-        const tfOpen = data.current?.open || 0;
-        const tfHigh = data.current?.high || 0;
-        const tfLow = data.current?.low || 0;
-        const tfClose = data.current?.close || 0;
-        const tfChangePct = data.changePct || 0;
-        
-        // Display Options settings
-        const showPriceInfo = state.settings.showPriceInfo !== false;
-        const showTimers = state.settings.showTimers !== false;
-        const showIndicatorBadges = state.settings.showIndicatorBadges !== false;
-        
-        const timerHtml = showTimers ? `<span class="tf-timer ${timerAlert ? 'alert' : ''}" id="tf-timer-${tf.id}">${formatTime(secondsToClose)}</span>` : '';
-        
-        return `
-            <div class="tf-row ${dirClass}" data-tf="${tf.id}">
-                <div class="tf-info">
-                    <div class="tf-info-row tf-info-primary">
-                        <span class="tf-name">${tf.label}</span>
-                        <span class="tf-direction">${dirEmoji}</span>
-                        ${timerHtml}
-                        ${showPriceInfo ? `<span class="tf-price-value" id="tf-price-${tf.id}">$${currentPrice.toFixed(decimals)}</span>
-                        <span class="tf-price-change ${tfChangePct >= 0 ? 'positive' : 'negative'}" id="tf-change-${tf.id}">${tfChangePct >= 0 ? '+' : ''}${tfChangePct.toFixed(2)}%</span>` : ''}
-                    </div>
-                    ${showPriceInfo ? `<div class="tf-info-row tf-info-secondary">
-                        <span class="tf-price-hl" id="tf-high-${tf.id}">H:$${tfHigh.toFixed(decimals)}</span>
-                        <span class="tf-price-hl" id="tf-low-${tf.id}">L:$${tfLow.toFixed(decimals)}</span>
-                        ${showIndicatorBadges ? `<span class="tf-stat-mini">B${data.bodyPct.toFixed(0)}%</span>
-                        <span class="tf-stat-mini">V${data.volumeRatio.toFixed(1)}x</span>
-                        <span class="tf-stat-mini">RSI${data.rsi.toFixed(0)}</span>` : ''}
-                    </div>` : ''}
-                </div>
-                <div class="tf-chart-wrapper">
-                    <div class="candle-info-tab" id="candleInfoTab-${tf.id}" style="display:none;">
-                        <div class="candle-info-tf">${tf.label}</div>
-                        <div class="candle-info-data">
-                            <span class="candle-info-item"><b class="label-open">O:</b> <span id="candleO-${tf.id}" class="price-open">--</span></span>
-                            <span class="candle-info-item"><b class="label-high">H:</b> <span id="candleH-${tf.id}" class="price-high">--</span></span>
-                            <span class="candle-info-item"><b class="label-low">L:</b> <span id="candleL-${tf.id}" class="price-low">--</span></span>
-                            <span class="candle-info-item"><b class="label-close">C:</b> <span id="candleC-${tf.id}" class="price-close">--</span></span>
-                            <span class="candle-info-item"><b class="label-volume">V:</b> <span id="candleV-${tf.id}" class="price-volume">--</span></span>
-                            <span class="candle-info-item candle-info-time"><span id="candleTime-${tf.id}">--</span></span>
-                        </div>
-                    </div>
-                    <div class="tf-chart-container">
-                        <canvas id="${canvasId}" class="tf-chart-canvas"></canvas>
-                        <span class="chart-help">Drag • Scroll zoom</span>
-                    </div>
-                </div>
-                <div class="tf-bottom">
-                    <div class="tf-bottom-alerts">${alertsHtml}</div>
-                </div>
-            </div>
-        `;
+        return buildTfRowHtml(tf.label, tf.id, data, {
+            decimals,
+            currentPrice,
+            timerAlert
+        });
     }).join('');
     
     // Draw charts and setup interactions
@@ -3401,24 +3479,103 @@ function setupEventListeners() {
         renderTimeframeRows();
     });
     
-    // MA/EMA period inputs in TF settings
-    document.getElementById('maLinesInputTF')?.addEventListener('change', (e) => {
-        const maLines = e.target.value.split(',')
-            .map(s => parseInt(s.trim()))
-            .filter(n => !isNaN(n) && n > 0 && n <= 500);
-        state.settings.maLines = maLines.length > 0 ? maLines : [20];
+    // MA/EMA line builders (modern period + color + add/remove)
+    const defaultMaColors = ['#3b82f6', '#06b6d4', '#0ea5e9', '#14b8a6'];
+    const defaultEmaColors = ['#f59e0b', '#f97316', '#ef4444', '#ec4899'];
+    
+    function renderMaBuilder() {
+        const container = document.getElementById('maLinesBuilder');
+        if (!container) return;
+        const lines = state.settings.maLines || [20];
+        const colors = state.settings.maColors || defaultMaColors.slice(0, lines.length);
+        container.innerHTML = lines.map((period, i) => `
+            <div class="ma-line-row">
+                <input type="number" class="ma-period" data-type="ma" data-idx="${i}" value="${period}" min="1" max="500" title="Period">
+                <input type="color" class="ma-color" data-type="ma" data-idx="${i}" value="${colors[i] || defaultMaColors[i % defaultMaColors.length]}" title="Color">
+                ${lines.length > 1 ? `<button class="ma-line-remove" data-type="ma" data-idx="${i}" title="Remove">✕</button>` : ''}
+            </div>
+        `).join('');
+        // Event delegation
+        container.querySelectorAll('.ma-period').forEach(el => el.addEventListener('change', onMaLineChange));
+        container.querySelectorAll('.ma-color').forEach(el => el.addEventListener('input', onMaColorChange));
+        container.querySelectorAll('.ma-line-remove').forEach(el => el.addEventListener('click', onMaLineRemove));
+    }
+    
+    function renderEmaBuilder() {
+        const container = document.getElementById('emaLinesBuilder');
+        if (!container) return;
+        const lines = state.settings.emaLines || [21];
+        const colors = state.settings.emaColors || defaultEmaColors.slice(0, lines.length);
+        container.innerHTML = lines.map((period, i) => `
+            <div class="ma-line-row">
+                <input type="number" class="ma-period" data-type="ema" data-idx="${i}" value="${period}" min="1" max="500" title="Period">
+                <input type="color" class="ma-color" data-type="ema" data-idx="${i}" value="${colors[i] || defaultEmaColors[i % defaultEmaColors.length]}" title="Color">
+                ${lines.length > 1 ? `<button class="ma-line-remove" data-type="ema" data-idx="${i}" title="Remove">✕</button>` : ''}
+            </div>
+        `).join('');
+        container.querySelectorAll('.ma-period').forEach(el => el.addEventListener('change', onMaLineChange));
+        container.querySelectorAll('.ma-color').forEach(el => el.addEventListener('input', onMaColorChange));
+        container.querySelectorAll('.ma-line-remove').forEach(el => el.addEventListener('click', onMaLineRemove));
+    }
+    
+    function onMaLineChange(e) {
+        const type = e.target.dataset.type; // 'ma' or 'ema'
+        const idx = parseInt(e.target.dataset.idx);
+        const val = parseInt(e.target.value);
+        if (isNaN(val) || val < 1 || val > 500) return;
+        const key = type === 'ma' ? 'maLines' : 'emaLines';
+        state.settings[key][idx] = val;
         saveSettings();
+        renderTimeframeRows();
+    }
+    
+    function onMaColorChange(e) {
+        const type = e.target.dataset.type;
+        const idx = parseInt(e.target.dataset.idx);
+        const key = type === 'ma' ? 'maColors' : 'emaColors';
+        if (!state.settings[key]) state.settings[key] = [...(type === 'ma' ? defaultMaColors : defaultEmaColors)];
+        state.settings[key][idx] = e.target.value;
+        saveSettings();
+        renderTimeframeRows();
+    }
+    
+    function onMaLineRemove(e) {
+        const type = e.target.dataset.type;
+        const idx = parseInt(e.target.dataset.idx);
+        const linesKey = type === 'ma' ? 'maLines' : 'emaLines';
+        const colorsKey = type === 'ma' ? 'maColors' : 'emaColors';
+        state.settings[linesKey].splice(idx, 1);
+        if (state.settings[colorsKey]) state.settings[colorsKey].splice(idx, 1);
+        saveSettings();
+        type === 'ma' ? renderMaBuilder() : renderEmaBuilder();
+        renderTimeframeRows();
+    }
+    
+    document.getElementById('maAddBtn')?.addEventListener('click', () => {
+        if (!state.settings.maLines) state.settings.maLines = [20];
+        if (!state.settings.maColors) state.settings.maColors = [...defaultMaColors.slice(0, state.settings.maLines.length)];
+        const nextPeriod = state.settings.maLines.length === 0 ? 20 : 50;
+        state.settings.maLines.push(nextPeriod);
+        state.settings.maColors.push(defaultMaColors[state.settings.maLines.length - 1 % defaultMaColors.length] || '#3b82f6');
+        saveSettings();
+        renderMaBuilder();
         renderTimeframeRows();
     });
     
-    document.getElementById('emaLinesInputTF')?.addEventListener('change', (e) => {
-        const emaLines = e.target.value.split(',')
-            .map(s => parseInt(s.trim()))
-            .filter(n => !isNaN(n) && n > 0 && n <= 500);
-        state.settings.emaLines = emaLines.length > 0 ? emaLines : [21];
+    document.getElementById('emaAddBtn')?.addEventListener('click', () => {
+        if (!state.settings.emaLines) state.settings.emaLines = [21];
+        if (!state.settings.emaColors) state.settings.emaColors = [...defaultEmaColors.slice(0, state.settings.emaLines.length)];
+        const nextPeriod = state.settings.emaLines.length === 0 ? 21 : 50;
+        state.settings.emaLines.push(nextPeriod);
+        state.settings.emaColors.push(defaultEmaColors[state.settings.emaLines.length - 1 % defaultEmaColors.length] || '#f59e0b');
         saveSettings();
+        renderEmaBuilder();
         renderTimeframeRows();
     });
+    
+    // Initialize builders
+    renderMaBuilder();
+    renderEmaBuilder();
     
     // Pattern toggle checkboxes
     const patternMap = {
@@ -3554,23 +3711,32 @@ function setupEventListeners() {
         });
     });
     
-    // Display settings
-    ['showRSI', 'showMACD', 'showVolume'].forEach(id => {
-        document.getElementById(id)?.addEventListener('change', (e) => {
-            state.settings[id] = e.target.checked;
-            saveSettings();
-            renderTimeframeRows();
-        });
-    });
-    
-    // Display Options (from TF Settings)
-    ['showPriceInfo', 'showTimers', 'showIndicatorBadges', 'showConfluenceBar', 'showPriceScale'].forEach(id => {
+    // Chart indicator toggles (merged - controls both chart panel and card badges)
+    ['showPriceInfo', 'showTimers', 'showConfluenceBar'].forEach(id => {
         document.getElementById(id)?.addEventListener('change', (e) => {
             state.settings[id] = e.target.checked;
             saveSettings();
             renderTimeframeRows();
             redrawAddedCoinCharts();
         });
+    });
+    
+    // Market signal badge toggles - re-render cards when toggled
+    const badgeIds = ['badgeLowVol','badgeHighVol','badgeVolSpike','badgeMACDUp','badgeMACDDown','badgeMACDCrossUp','badgeMACDCrossDown','badgeRejHi','badgeRejLo','badgeOB','badgeOS','badgeExtOB','badgeExtOS','badgeIndecision','badgeBigBody','badgeEngulf'];
+    badgeIds.forEach(id => {
+        document.getElementById(id)?.addEventListener('change', () => {
+            renderTimeframeRows();
+        });
+    });
+    
+    // Select All / Deselect All for market signals
+    document.getElementById('selectAllSignals')?.addEventListener('click', () => {
+        badgeIds.forEach(id => { const el = document.getElementById(id); if (el) el.checked = true; });
+        renderTimeframeRows();
+    });
+    document.getElementById('deselectAllSignals')?.addEventListener('click', () => {
+        badgeIds.forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
+        renderTimeframeRows();
     });
     
     // Tip Jar modal
@@ -3784,14 +3950,7 @@ function loadSettingsToForm() {
     if (useIndicatorMod) useIndicatorMod.checked = state.settings.useIndicatorMod;
     
     // Display settings
-    const showRSI = document.getElementById('showRSI');
-    const showMACD = document.getElementById('showMACD');
-    const showVolume = document.getElementById('showVolume');
     const showWarnings = document.getElementById('showWarnings');
-    
-    if (showRSI) showRSI.checked = state.settings.showRSI;
-    if (showMACD) showMACD.checked = state.settings.showMACD;
-    if (showVolume) showVolume.checked = state.settings.showVolume;
     if (showWarnings) showWarnings.checked = state.settings.showWarnings;
     
     // Theme select
@@ -3811,10 +3970,7 @@ function saveSettingsFromForm() {
     state.settings.useStrengthMod = document.getElementById('useStrengthMod').checked;
     state.settings.useVolumeMod = document.getElementById('useVolumeMod').checked;
     state.settings.useIndicatorMod = document.getElementById('useIndicatorMod').checked;
-    state.settings.showRSI = document.getElementById('showRSI').checked;
-    state.settings.showMACD = document.getElementById('showMACD').checked;
-    state.settings.showVolume = document.getElementById('showVolume').checked;
-    state.settings.showWarnings = document.getElementById('showWarnings').checked;
+    state.settings.showWarnings = document.getElementById('showWarnings')?.checked;
     
     saveSettings();
 }
@@ -4448,19 +4604,11 @@ function renderAddedCoins() {
                             <option value="advanced" selected>Advanced</option>
                         </select>
                     </div>
-                    <div class="card-settings-row">
-                        <label>Show in cards</label>
-                        <div class="modifier-toggles">
-                            <label class="mini-toggle"><input type="checkbox" id="showRSI-${symbol}" checked><span>RSI</span></label>
-                            <label class="mini-toggle"><input type="checkbox" id="showMACD-${symbol}" checked><span>MACD</span></label>
-                            <label class="mini-toggle"><input type="checkbox" id="showVolume-${symbol}" checked><span>Vol</span></label>
-                        </div>
-                    </div>
                 </div>
                 <div class="card-settings-section">
                     <span class="settings-section-label">📊 Chart Indicators</span>
                     <div class="card-settings-row">
-                        <label>Show on chart</label>
+                        <label>Overlays & Panels</label>
                         <div class="modifier-toggles">
                             <label class="mini-toggle"><input type="checkbox" id="showChartVolume-${symbol}" checked><span>Vol</span></label>
                             <label class="mini-toggle"><input type="checkbox" id="showChartMA-${symbol}"><span>MA</span></label>
@@ -4513,7 +4661,6 @@ function renderAddedCoins() {
                     <div class="display-toggles">
                         <label class="mini-toggle"><input type="checkbox" id="showPriceInfo-${symbol}" checked><span>Price Info</span></label>
                         <label class="mini-toggle"><input type="checkbox" id="showTimers-${symbol}" checked><span>Timers</span></label>
-                        <label class="mini-toggle"><input type="checkbox" id="showIndicatorBadges-${symbol}" checked><span>Indicator Badges</span></label>
                     </div>
                 </div>
                 <div class="card-settings-section">
@@ -4713,165 +4860,58 @@ function renderAddedCoinTimeframeRow(symbol, coin, tf, candles) {
     const loadingEl = chartsContainer.querySelector('div[style*="Loading"]');
     if (loadingEl) loadingEl.remove();
     
-    // Check if row already exists
-    let row = chartsContainer.querySelector(`[data-tf="${tf.id}"]`);
-    if (!row) {
-        row = document.createElement('div');
-        row.className = 'tf-row';
-        row.dataset.tf = tf.id;
-        chartsContainer.appendChild(row);
-    }
+    // Use analyzeCandles to build same data format as main coin
+    const chartTfId = `${symbol}-${tf.id}`;
+    const analyzedData = analyzeCandles(candles, chartTfId);
+    if (!analyzedData) return;
     
-    // Determine direction
-    const latestCandle = candles[candles.length - 1];
-    const direction = latestCandle.close >= latestCandle.open ? 'bull' : 'bear';
-    const directionIcon = direction === 'bull' ? '🟢' : '🔴';
-    const dirClass = direction === 'bull' ? 'bullish' : 'bearish';
-    
-    // Calculate change % from current candle (open to close) - same as main coin
-    const changePct = latestCandle.open !== 0 ? ((latestCandle.close - latestCandle.open) / latestCandle.open) * 100 : 0;
-    
-    // Calculate indicators
-    const rsi = calculateRSI(candles, 14);
-    const bodyPct = calculateBodyPercentage(latestCandle);
-    const volumeRatio = calculateVolumeRatio(candles);
-    const macdData = calculateMACD(candles);
-    
-    // Build alerts
-    const alerts = [];
-    
-    // RSI alerts
-    if (rsi >= 80) alerts.push({ label: 'ExtOB', class: 'rsi-ob' });
-    else if (rsi >= 70) alerts.push({ label: 'OB', class: 'rsi-ob' });
-    if (rsi <= 20) alerts.push({ label: 'ExtOS', class: 'rsi-os' });
-    else if (rsi <= 30) alerts.push({ label: 'OS', class: 'rsi-os' });
-    
-    // Volume alerts
-    if (volumeRatio >= 3) alerts.push({ label: 'VolSpike', class: 'vol-high' });
-    else if (volumeRatio >= 2) alerts.push({ label: 'HighVol', class: 'vol-high' });
-    if (volumeRatio <= 0.5) alerts.push({ label: 'LowVol', class: 'vol-low' });
-    
-    // MACD alerts - crosses first
-    if (macdData && macdData.histogram > 0 && macdData.prevHistogram <= 0) {
-        alerts.push({ label: 'MACDx↑', class: 'macd-bull' });
-    } else if (macdData && macdData.histogram > macdData.prevHistogram) {
-        alerts.push({ label: 'MACD↑', class: 'macd-bull' });
-    }
-    if (macdData && macdData.histogram < 0 && macdData.prevHistogram >= 0) {
-        alerts.push({ label: 'MACDx↓', class: 'macd-bear' });
-    } else if (macdData && macdData.histogram < macdData.prevHistogram) {
-        alerts.push({ label: 'MACD↓', class: 'macd-bear' });
-    }
-    
-    // Rejection alerts (wick analysis)
-    const range = latestCandle.high - latestCandle.low;
-    const upperWick = latestCandle.high - Math.max(latestCandle.open, latestCandle.close);
-    const lowerWick = Math.min(latestCandle.open, latestCandle.close) - latestCandle.low;
-    if (range > 0) {
-        if (upperWick / range > 0.6) alerts.push({ label: 'RejHi', class: 'rsi-ob' });
-        if (lowerWick / range > 0.6) alerts.push({ label: 'RejLo', class: 'rsi-os' });
-    }
-    
-    // Body alerts
-    if (bodyPct >= 80) alerts.push({ label: 'BigBody', class: direction === 'bull' ? 'macd-bull' : 'macd-bear' });
-    if (bodyPct <= 20) alerts.push({ label: 'Indeci', class: 'neutral' });
-    
-    // Engulfing
-    if (candles.length >= 2) {
-        const prev = candles[candles.length - 2];
-        const currBody = Math.abs(latestCandle.close - latestCandle.open);
-        const prevBody = Math.abs(prev.close - prev.open);
-        const currBull = latestCandle.close >= latestCandle.open;
-        const prevBull = prev.close >= prev.open;
-        if (currBull && !prevBull && currBody > prevBody && latestCandle.close > prev.open && latestCandle.open < prev.close) {
-            alerts.push({ label: 'BullEng', class: 'macd-bull' });
-        }
-        if (!currBull && prevBull && currBody > prevBody && latestCandle.open > prev.close && latestCandle.close < prev.open) {
-            alerts.push({ label: 'BearEng', class: 'macd-bear' });
-        }
-    }
-    
-    const alertsHtml = alerts.length > 0
-        ? alerts.slice(0, 5).map(a => `<span class="alert-group ${a.class}">${a.label}</span>`).join('') +
-          (alerts.length > 5 ? `<span class="alerts-more" title="${alerts.slice(5).map(a => a.label).join(', ')}">+${alerts.length - 5}</span>` : '')
-        : '<span class="alert-group dim">--</span>';
-    
-    // Get timer
-    const secondsToClose = getSecondsToClose(tf);
-    
-    const canvasId = `chart-${symbol}-${tf.id}`;
-    const tabId = `candleInfoTab-${symbol}-${tf.id}`;
-    
-    row.className = `tf-row ${dirClass}`;
-    row.innerHTML = `
-        <div class="tf-info">
-            <div class="tf-info-row tf-info-primary">
-                <span class="tf-name">${tf.label}</span>
-                <span class="tf-direction">${directionIcon}</span>
-                <span class="tf-timer">${formatTime(secondsToClose)}</span>
-                <span class="tf-price-value">$${latestCandle.close.toFixed(coin.decimals)}</span>
-                <span class="tf-price-change ${changePct >= 0 ? 'positive' : 'negative'}">${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%</span>
-            </div>
-            <div class="tf-info-row tf-info-secondary">
-                <span class="tf-price-hl">H:$${latestCandle.high.toFixed(coin.decimals)}</span>
-                <span class="tf-price-hl">L:$${latestCandle.low.toFixed(coin.decimals)}</span>
-                <span class="tf-stat-mini">B${bodyPct.toFixed(0)}%</span>
-                <span class="tf-stat-mini">V${volumeRatio.toFixed(1)}x</span>
-                <span class="tf-stat-mini">RSI${rsi.toFixed(0)}</span>
-            </div>
-        </div>
-        <div class="tf-chart-wrapper">
-            <div class="candle-info-tab" id="${tabId}" style="display:none;">
-                <div class="candle-info-tf">${tf.label}</div>
-                <div class="candle-info-data">
-                    <span class="candle-info-item"><b class="label-open">O:</b> <span id="candleO-${symbol}-${tf.id}" class="price-open">--</span></span>
-                    <span class="candle-info-item"><b class="label-high">H:</b> <span id="candleH-${symbol}-${tf.id}" class="price-high">--</span></span>
-                    <span class="candle-info-item"><b class="label-low">L:</b> <span id="candleL-${symbol}-${tf.id}" class="price-low">--</span></span>
-                    <span class="candle-info-item"><b class="label-close">C:</b> <span id="candleC-${symbol}-${tf.id}" class="price-close">--</span></span>
-                    <span class="candle-info-item"><b class="label-volume">V:</b> <span id="candleV-${symbol}-${tf.id}" class="price-volume">--</span></span>
-                    <span class="candle-info-item candle-info-time"><span id="candleTime-${symbol}-${tf.id}">--</span></span>
-                </div>
-            </div>
-            <div class="tf-chart-container">
-                <canvas class="tf-chart-canvas" id="${canvasId}"></canvas>
-                <span class="chart-help">Drag • Scroll zoom</span>
-            </div>
-        </div>
-        <div class="tf-bottom">
-            <div class="tf-bottom-alerts">${alertsHtml}</div>
-        </div>
-    `;
+    // Store in state.data so drawInteractiveChart can use it
+    state.data[chartTfId] = analyzedData;
+    state.patterns[chartTfId] = detectAllPatterns(candles);
     
     // Store candles for interaction
     if (!state.addedCoinCandles) state.addedCoinCandles = {};
     state.addedCoinCandles[`${symbol}-${tf.id}`] = { candles, coin };
     
-    // Use analyzeCandles to build same data format as main coin
-    const chartTfId = `${symbol}-${tf.id}`;
-    const analyzedData = analyzeCandles(candles, chartTfId);
-    if (analyzedData) {
-        // Store in state.data so drawInteractiveChart can use it
-        state.data[chartTfId] = analyzedData;
-        // Detect patterns for added coins too
-        state.patterns[chartTfId] = detectAllPatterns(candles);
+    // Build row using shared function — same look as main coin
+    const rowHtml = buildTfRowHtml(tf.label, tf.id, analyzedData, {
+        decimals: coin.decimals || 2,
+        symbol: symbol,
+        currentPrice: analyzedData.current?.close || 0
+    });
+    
+    // Check if row already exists
+    let row = chartsContainer.querySelector(`[data-tf="${tf.id}"]`);
+    if (!row) {
+        row = document.createElement('div');
+        row.dataset.tf = tf.id;
+        chartsContainer.appendChild(row);
     }
     
+    // Parse the HTML from buildTfRowHtml — it returns a wrapper div, extract inner content
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = rowHtml.trim();
+    const builtRow = tempDiv.firstElementChild;
+    
+    // Transfer attributes and content
+    row.className = builtRow.className;
+    row.innerHTML = builtRow.innerHTML;
+    
     // Draw chart using the SAME function as main coin (with retry for layout timing)
+    const canvasId = `chart-${symbol}-${tf.id}`;
     const chartOpts = { decimals: coin.decimals || 2 };
     const drawChart = (attempt = 0) => {
         const canvas = document.getElementById(canvasId);
         if (!canvas) return;
         
         const rect = canvas.getBoundingClientRect();
-        if ((rect.width < 10 || rect.height < 10) && attempt < 10) {
+        if ((rect.width < 10) && attempt < 10) {
             requestAnimationFrame(() => setTimeout(() => drawChart(attempt + 1), 50 * (attempt + 1)));
             return;
         }
         
-        if (analyzedData) {
-            drawInteractiveChart(canvasId, analyzedData, chartTfId, chartOpts);
-            setupChartInteraction(canvasId, chartTfId, { data: analyzedData, decimals: coin.decimals || 2 });
-        }
+        drawInteractiveChart(canvasId, analyzedData, chartTfId, chartOpts);
+        setupChartInteraction(canvasId, chartTfId, { data: analyzedData, decimals: coin.decimals || 2 });
     };
     requestAnimationFrame(() => setTimeout(drawChart, 50));
 }
