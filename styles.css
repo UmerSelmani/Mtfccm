@@ -4019,3 +4019,65 @@ body.no-ads .ad-container {
         grid-template-columns: repeat(2, 1fr);
     }
 }
+
+/* ===== Per-Coin Mini Confluence ===== */
+.confluence-mini {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.6rem;
+    margin: 0.3rem 0;
+}
+.confluence-mini-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.3rem;
+}
+.confluence-mini-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+.confluence-mini-score {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--accent-color);
+}
+.confluence-mini-meter {
+    margin-bottom: 0.3rem;
+}
+.confluence-mini-meter .meter-bar {
+    height: 6px;
+}
+.confluence-mini-meter .meter-labels {
+    font-size: 0.55rem;
+}
+.confluence-mini-stats {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+}
+.cmini-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+}
+.cmini-signal {
+    margin-left: auto;
+    font-weight: 700;
+    font-size: 0.7rem;
+}
+.confluence-mini-weights {
+    font-size: 0.55rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+    line-height: 1.4;
+    display: none;
+}
+.confluence-mini-weights.show {
+    display: block;
+}

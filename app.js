@@ -1,6 +1,6 @@
 /**
  * MTFCM - Multi-Timeframe Confluence Monitor
- * Main Application Logic v4.7.8 - Separate Buy/Sell modular setups
+ * Main Application Logic v4.7.9 - Per-coin confluence for added coins
  */
 
 const APP_VERSION = "4.7.4";
@@ -965,6 +965,8 @@ async function fetchAllCandleData() {
             });
         });
         await Promise.allSettled(addedPromises);
+        // Recalculate confluence for each added coin
+        state.addedCoins.forEach(symbol => calculateAddedCoinConfluence(symbol));
     }
 }
 
@@ -4755,6 +4757,24 @@ function renderAddedCoins() {
             <div class="chart-options">
                 <span class="chart-help">Scroll/Pinch to zoom • Drag to pan</span>
             </div>
+            <!-- Per-Coin Confluence -->
+            <div class="confluence-mini" id="confluenceMini-${symbol}">
+                <div class="confluence-mini-header">
+                    <span class="confluence-mini-title">📊 Confluence</span>
+                    <span class="confluence-mini-score" id="confScore-${symbol}">50%</span>
+                </div>
+                <div class="confluence-mini-meter">
+                    <div class="meter-bar"><div class="meter-fill" id="confFill-${symbol}"></div></div>
+                    <div class="meter-labels"><span>🔴</span><span>🟡</span><span>🟢</span></div>
+                </div>
+                <div class="confluence-mini-stats">
+                    <span class="cmini-stat" id="confBull-${symbol}"><span class="text-bull">0</span> Bull</span>
+                    <span class="cmini-stat" id="confBear-${symbol}"><span class="text-bear">0</span> Bear</span>
+                    <span class="cmini-stat" id="confBias-${symbol}">—</span>
+                    <span class="cmini-stat cmini-signal" id="confSignal-${symbol}">—</span>
+                </div>
+                <div class="confluence-mini-weights" id="confWeights-${symbol}"></div>
+            </div>
             <!-- Charts -->
             <div class="tf-block-charts" id="blockCharts-${symbol}">
                 <div style="text-align:center;padding:1rem;color:var(--text-muted);font-size:0.75rem;">Loading...</div>
@@ -4809,6 +4829,127 @@ function renderAddedCoins() {
     
     // Sync main coin dropdown (disable already-added coins)
     populateMainCoinSwap();
+}
+
+// ============================================
+// PER-COIN CONFLUENCE CALCULATION (Added Coins)
+// ============================================
+function calculateAddedCoinConfluence(symbol) {
+    const coinTfState = state.addedCoinTfState?.[symbol];
+    if (!coinTfState) return;
+    
+    const enabledTFs = coinTfState.filter(tf => tf.enabled);
+    const weights = WEIGHT_METHODS[state.settings.weightMethod] || WEIGHT_METHODS.linear;
+    
+    let totalBullWeight = 0, totalBearWeight = 0;
+    let bullCount = 0, bearCount = 0, alignedTFs = 0;
+    const tfDetails = [];
+    
+    enabledTFs.forEach(tf => {
+        const data = state.data[`${symbol}-${tf.id}`];
+        if (!data) return;
+        
+        const baseWeight = weights[tf.id] || 1;
+        let finalWeight = baseWeight;
+        
+        // Direction score (same as main)
+        let directionScore = 0;
+        directionScore += data.isBullish ? 0.25 : -0.25;
+        directionScore += (data.closePos - 0.5) * 0.5;
+        if (data.trend) {
+            directionScore += data.trend.priceAboveEma21 ? 0.25 : -0.25;
+            directionScore += data.trend.ema21AboveEma50 ? 0.25 : -0.25;
+        }
+        directionScore = Math.max(-1, Math.min(1, directionScore));
+        
+        // Momentum score
+        let momentumScore = 0;
+        if (state.settings.useIndicatorMod && data.rsi && data.macd) {
+            if (data.rsi > 60) momentumScore += 0.5;
+            else if (data.rsi < 40) momentumScore -= 0.5;
+            else momentumScore += (data.rsi - 50) / 20;
+            if (data.trend?.rsiRising) momentumScore += 0.15; else momentumScore -= 0.15;
+            if (data.macd.histogram > 0) momentumScore += 0.25; else momentumScore -= 0.25;
+            if (data.macd.crossedUp) momentumScore += 0.3;
+            else if (data.macd.crossedDown) momentumScore -= 0.3;
+            momentumScore = Math.max(-1, Math.min(1, momentumScore));
+        }
+        
+        const hasInd = state.settings.useIndicatorMod && data.rsi && data.macd;
+        const tfScore = hasInd ? (directionScore * 0.6 + momentumScore * 0.4) : directionScore;
+        
+        // Modifiers
+        if (state.settings.useStrengthMod) {
+            if (data.bodyPct >= 70) finalWeight *= 1.3;
+            else if (data.bodyPct < 40) finalWeight *= 0.6;
+        }
+        if (state.settings.useVolumeMod) {
+            if (data.volumeRatio >= 2.5) finalWeight *= 1.4;
+            else if (data.volumeRatio >= 1.5) finalWeight *= 1.2;
+            else if (data.volumeRatio <= 0.6) finalWeight *= 0.7;
+        }
+        
+        const isBullTF = tfScore > 0;
+        const ws = Math.abs(tfScore) * finalWeight;
+        if (isBullTF) { totalBullWeight += ws; bullCount++; }
+        else { totalBearWeight += ws; bearCount++; }
+        if (Math.abs(tfScore) > 0.3) alignedTFs++;
+        
+        tfDetails.push({ tf: tf.label, dir: isBullTF ? '🟢' : '🔴', score: tfScore.toFixed(2), wt: finalWeight.toFixed(1) });
+    });
+    
+    const total = totalBullWeight + totalBearWeight;
+    const pct = total > 0 ? (totalBullWeight / total) * 100 : 50;
+    
+    // Store for chart markers
+    if (!state.addedCoinConfluence) state.addedCoinConfluence = {};
+    state.addedCoinConfluence[symbol] = pct;
+    
+    // Update UI
+    updateAddedCoinConfluenceDisplay(symbol, pct, bullCount, bearCount, tfDetails);
+}
+
+function updateAddedCoinConfluenceDisplay(symbol, pct, bullCount, bearCount, tfDetails) {
+    const fill = document.getElementById(`confFill-${symbol}`);
+    const scoreEl = document.getElementById(`confScore-${symbol}`);
+    const bullEl = document.getElementById(`confBull-${symbol}`);
+    const bearEl = document.getElementById(`confBear-${symbol}`);
+    const biasEl = document.getElementById(`confBias-${symbol}`);
+    const signalEl = document.getElementById(`confSignal-${symbol}`);
+    const weightsEl = document.getElementById(`confWeights-${symbol}`);
+    
+    if (fill) fill.style.left = `${pct}%`;
+    
+    if (scoreEl) {
+        scoreEl.textContent = `${pct.toFixed(1)}%`;
+        scoreEl.className = `confluence-mini-score ${pct >= 60 ? 'text-bull' : pct <= 40 ? 'text-bear' : 'text-neutral'}`;
+    }
+    
+    if (bullEl) bullEl.innerHTML = `<span class="text-bull">${bullCount}</span> Bull`;
+    if (bearEl) bearEl.innerHTML = `<span class="text-bear">${bearCount}</span> Bear`;
+    
+    if (biasEl) {
+        if (pct >= 70) biasEl.innerHTML = '<span class="text-bull">🟢 BULL</span>';
+        else if (pct <= 30) biasEl.innerHTML = '<span class="text-bear">🔴 BEAR</span>';
+        else biasEl.innerHTML = '<span class="text-neutral">🟡 MIXED</span>';
+    }
+    
+    // Simple signal
+    if (signalEl) {
+        let sig = '—', cls = '';
+        if (pct >= 75) { sig = 'STRONG BUY'; cls = 'text-bull'; }
+        else if (pct >= 60) { sig = 'BUY'; cls = 'text-bull'; }
+        else if (pct <= 25) { sig = 'STRONG SELL'; cls = 'text-bear'; }
+        else if (pct <= 40) { sig = 'SELL'; cls = 'text-bear'; }
+        else { sig = 'NEUTRAL'; cls = 'text-neutral'; }
+        signalEl.innerHTML = `<span class="${cls}">${sig}</span>`;
+    }
+    
+    // TF weight details
+    if (weightsEl && tfDetails.length > 0) {
+        weightsEl.textContent = tfDetails.map(d => `${d.tf}${d.dir}${d.score}(×${d.wt})`).join(' · ');
+        weightsEl.classList.add('show');
+    }
 }
 
 // Toggle TF for added coin (independent from main)
@@ -4885,6 +5026,9 @@ async function fetchAddedCoinFullData(symbol, coin) {
         }).filter(Boolean);
         
         await Promise.allSettled(tfPromises);
+        
+        // Calculate confluence for this added coin
+        calculateAddedCoinConfluence(symbol);
         
     } catch (err) {
         console.error(`Error fetching data for ${symbol}:`, err);
