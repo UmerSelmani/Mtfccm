@@ -4020,56 +4020,35 @@ body.no-ads .ad-container {
     }
 }
 
-/* ===== Per-Coin Mini Confluence ===== */
-.confluence-mini {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    padding: 0.5rem 0.6rem;
-    margin: 0.3rem 0;
-}
-.confluence-mini-header {
+/* ===== Added Coin Confluence Cards ===== */
+.added-confluences {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.3rem;
-}
-.confluence-mini-title {
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-}
-.confluence-mini-score {
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: var(--accent-color);
-}
-.confluence-mini-meter {
-    margin-bottom: 0.3rem;
-}
-.confluence-mini-meter .meter-bar {
-    height: 6px;
-}
-.confluence-mini-meter .meter-labels {
-    font-size: 0.55rem;
-}
-.confluence-mini-stats {
-    display: flex;
+    flex-direction: column;
     gap: 0.5rem;
-    flex-wrap: wrap;
-    align-items: center;
-    font-size: 0.65rem;
-    color: var(--text-secondary);
 }
-.cmini-stat {
+.confluence-card-added {
+    border: 1px solid var(--border-color);
+}
+.confluence-card-added .card-header h2 {
+    font-size: 0.8rem;
     display: flex;
     align-items: center;
-    gap: 0.15rem;
+    gap: 0.25rem;
 }
-.cmini-signal {
-    margin-left: auto;
-    font-weight: 700;
-    font-size: 0.7rem;
+.confluence-card-added .confluence-content {
+    padding: 0.4rem 0.5rem;
+}
+.confluence-card-added .confluence-stats {
+    gap: 0.3rem;
+}
+.confluence-card-added .stat {
+    padding: 0.25rem 0.3rem;
+}
+.confluence-card-added .stat-value {
+    font-size: 0.8rem;
+}
+.confluence-card-added .stat-label {
+    font-size: 0.55rem;
 }
 .confluence-mini-weights {
     font-size: 0.55rem;

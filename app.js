@@ -1,6 +1,6 @@
 /**
  * MTFCM - Multi-Timeframe Confluence Monitor
- * Main Application Logic v4.8.2 - Per-coin confluence + pattern side filtering
+ * Main Application Logic v4.8.3 - Per-coin confluence + pattern side filtering
  */
 
 const APP_VERSION = "4.7.4";
@@ -4529,6 +4529,7 @@ function removeAddedCoin(symbol) {
             if (key.startsWith(symbol)) delete state.addedCoinCandles[key];
         });
     }
+    if (state.addedCoinConfluence) delete state.addedCoinConfluence[symbol];
     // Clean up chart state/data/patterns for added coin TF keys
     Object.keys(state.data).forEach(key => { if (key.startsWith(symbol + '-')) delete state.data[key]; });
     Object.keys(state.patterns).forEach(key => { if (key.startsWith(symbol + '-')) delete state.patterns[key]; });
@@ -4744,24 +4745,6 @@ function renderAddedCoins() {
             <div class="chart-options">
                 <span class="chart-help">Scroll/Pinch to zoom • Drag to pan</span>
             </div>
-            <!-- Per-Coin Confluence -->
-            <div class="confluence-mini" id="confluenceMini-${symbol}">
-                <div class="confluence-mini-header">
-                    <span class="confluence-mini-title">📊 Confluence</span>
-                    <span class="confluence-mini-score" id="confScore-${symbol}">50%</span>
-                </div>
-                <div class="confluence-mini-meter">
-                    <div class="meter-bar"><div class="meter-fill" id="confFill-${symbol}"></div></div>
-                    <div class="meter-labels"><span>🔴</span><span>🟡</span><span>🟢</span></div>
-                </div>
-                <div class="confluence-mini-stats">
-                    <span class="cmini-stat" id="confBull-${symbol}"><span class="text-bull">0</span> Bull</span>
-                    <span class="cmini-stat" id="confBear-${symbol}"><span class="text-bear">0</span> Bear</span>
-                    <span class="cmini-stat" id="confBias-${symbol}">—</span>
-                    <span class="cmini-stat cmini-signal" id="confSignal-${symbol}">—</span>
-                </div>
-                <div class="confluence-mini-weights" id="confWeights-${symbol}"></div>
-            </div>
             <!-- Charts -->
             <div class="tf-block-charts" id="blockCharts-${symbol}">
                 <div style="text-align:center;padding:1rem;color:var(--text-muted);font-size:0.75rem;">Loading...</div>
@@ -4816,6 +4799,61 @@ function renderAddedCoins() {
     
     // Sync main coin dropdown (disable already-added coins)
     populateMainCoinSwap();
+    
+    // Render confluence cards in shared area
+    renderAddedConfluenceCards();
+}
+
+// Render added coin confluence cards next to main confluence
+function renderAddedConfluenceCards() {
+    const container = document.getElementById('addedConfluences');
+    if (!container) return;
+    
+    if (!state.addedCoins || state.addedCoins.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    container.innerHTML = state.addedCoins.map(symbol => {
+        const coin = state.coins.find(c => c.symbol === symbol);
+        const base = symbol.replace('USDT', '');
+        const iconUrl = coin?.icon || '';
+        return `
+        <section class="card confluence-card confluence-card-added" data-symbol="${symbol}">
+            <div class="card-header">
+                <h2>${iconUrl ? `<img src="${iconUrl}" width="18" height="18" style="vertical-align:middle;margin-right:0.3rem;" alt="">` : ''}📊 ${base}</h2>
+            </div>
+            <div class="confluence-content">
+                <div class="confluence-meter">
+                    <div class="meter-bar"><div class="meter-fill" id="confFill-${symbol}"></div></div>
+                    <div class="meter-labels"><span>🔴</span><span>🟡</span><span>🟢</span></div>
+                </div>
+                <div class="confluence-stats">
+                    <div class="stat" id="confScoreWrap-${symbol}">
+                        <span class="stat-value" id="confScore-${symbol}">50%</span>
+                        <span class="stat-label">Score</span>
+                    </div>
+                    <div class="stat" id="confBullWrap-${symbol}">
+                        <span class="stat-value text-bull" id="confBull-${symbol}">0</span>
+                        <span class="stat-label">Bull</span>
+                    </div>
+                    <div class="stat" id="confBearWrap-${symbol}">
+                        <span class="stat-value text-bear" id="confBear-${symbol}">0</span>
+                        <span class="stat-label">Bear</span>
+                    </div>
+                    <div class="stat" id="confBiasWrap-${symbol}">
+                        <span class="stat-value" id="confBias-${symbol}">—</span>
+                        <span class="stat-label">Bias</span>
+                    </div>
+                    <div class="stat" id="confSignalWrap-${symbol}">
+                        <span class="stat-value signal-value" id="confSignal-${symbol}">—</span>
+                        <span class="stat-label">Signal</span>
+                    </div>
+                </div>
+                <div class="confluence-mini-weights" id="confWeights-${symbol}"></div>
+            </div>
+        </section>`;
+    }).join('');
 }
 
 // ============================================
@@ -4909,19 +4947,20 @@ function updateAddedCoinConfluenceDisplay(symbol, pct, bullCount, bearCount, tfD
     
     if (scoreEl) {
         scoreEl.textContent = `${pct.toFixed(1)}%`;
-        scoreEl.className = `confluence-mini-score ${pct >= 60 ? 'text-bull' : pct <= 40 ? 'text-bear' : 'text-neutral'}`;
+        scoreEl.className = `stat-value ${pct >= 60 ? 'text-bull' : pct <= 40 ? 'text-bear' : 'text-neutral'}`;
     }
     
-    if (bullEl) bullEl.innerHTML = `<span class="text-bull">${bullCount}</span> Bull`;
-    if (bearEl) bearEl.innerHTML = `<span class="text-bear">${bearCount}</span> Bear`;
+    if (bullEl) bullEl.textContent = bullCount;
+    if (bearEl) bearEl.textContent = bearCount;
     
     if (biasEl) {
-        if (pct >= 70) biasEl.innerHTML = '<span class="text-bull">🟢 BULL</span>';
-        else if (pct <= 30) biasEl.innerHTML = '<span class="text-bear">🔴 BEAR</span>';
-        else biasEl.innerHTML = '<span class="text-neutral">🟡 MIXED</span>';
+        let bias = '🟡 MIXED', cls = 'text-neutral';
+        if (pct >= 70) { bias = '🟢 BULL'; cls = 'text-bull'; }
+        else if (pct <= 30) { bias = '🔴 BEAR'; cls = 'text-bear'; }
+        biasEl.textContent = bias;
+        biasEl.className = `stat-value ${cls}`;
     }
     
-    // Simple signal
     if (signalEl) {
         let sig = '—', cls = '';
         if (pct >= 75) { sig = 'STRONG BUY'; cls = 'text-bull'; }
@@ -4929,10 +4968,10 @@ function updateAddedCoinConfluenceDisplay(symbol, pct, bullCount, bearCount, tfD
         else if (pct <= 25) { sig = 'STRONG SELL'; cls = 'text-bear'; }
         else if (pct <= 40) { sig = 'SELL'; cls = 'text-bear'; }
         else { sig = 'NEUTRAL'; cls = 'text-neutral'; }
-        signalEl.innerHTML = `<span class="${cls}">${sig}</span>`;
+        signalEl.textContent = sig;
+        signalEl.className = `stat-value signal-value ${cls}`;
     }
     
-    // TF weight details
     if (weightsEl && tfDetails.length > 0) {
         weightsEl.textContent = tfDetails.map(d => `${d.tf}${d.dir}${d.score}(×${d.wt})`).join(' · ');
         weightsEl.classList.add('show');
