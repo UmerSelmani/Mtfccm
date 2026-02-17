@@ -82,7 +82,16 @@
             <!-- Main Content Area (Single Coin View) -->
             <main class="main-content" id="singleCoinView">
 
-                <!-- Confluence Row (Main + Added side by side) -->
+                <!-- Top Ad Banner (Halal-Filtered) -->
+                <div class="ad-container ad-banner-top" id="adBannerTop">
+                    <div class="ad-placeholder">
+                        <div class="ad-slot" id="adSlotTop">
+                            <!-- AdSense auto ad or manual ad unit -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Confluence Row (Main + Added + Add Button side by side) -->
                 <div class="confluence-row" id="confluenceRow">
                 <section class="card confluence-card" id="mainConfluenceCard">
                     <div class="card-header">
@@ -171,18 +180,24 @@
 
                 <!-- Added Coin Confluences (rendered dynamically as columns) -->
                 <div class="added-confluences" id="addedConfluences"></div>
-                </div><!-- /confluence-row -->
-
-                <!-- Ad Banner (Halal-Filtered) - after confluence -->
-                <div class="ad-container ad-banner-top" id="adBannerTop">
-                    <div class="ad-placeholder">
-                        <div class="ad-slot" id="adSlotTop">
-                            <!-- AdSense auto ad or manual ad unit -->
+                <!-- Add Coin Button (in confluence row) -->
+                <div class="add-coin-box conf-add-box" id="addCoinBox">
+                    <div class="custom-coin-dropdown add-coin-dd" id="addCoinDropdown">
+                        <button class="coin-dropdown-trigger add-coin-trigger" type="button">
+                            <span class="add-coin-plus">+</span>
+                            <span class="add-coin-label">Add</span>
+                        </button>
+                        <div class="coin-dropdown-menu">
+                            <input type="text" class="coin-dropdown-search" placeholder="Search coins...">
+                            <div class="coin-dropdown-list">
+                                <!-- Populated by JS -->
+                            </div>
                         </div>
                     </div>
                 </div>
+                </div><!-- /confluence-row -->
 
-                <!-- Coin TF Blocks Area (Main + Added + Add Button) -->
+                <!-- Coin TF Blocks Area (Main + Added + Ad Column) -->
                 <div class="tf-blocks-area" id="tfBlocksArea">
                     <!-- Main Coin TF Block with FULL settings -->
                     <div class="tf-block main-tf-block" id="mainTfBlock">
@@ -291,6 +306,7 @@
                                         <label class="mini-toggle"><input type="checkbox" id="showChartEMA" checked><span>EMA</span></label>
                                         <label class="mini-toggle"><input type="checkbox" id="showChartVWAP"><span>VWAP</span></label>
                                         <label class="mini-toggle"><input type="checkbox" id="showChartSR"><span>S/R</span></label>
+                                        <label class="mini-toggle"><input type="checkbox" id="showFVG" checked><span>FVG</span></label>
                                     </div>
                                 </div>
                                 <div class="card-settings-row">
@@ -311,6 +327,11 @@
                                     <label>EMA Lines</label>
                                     <div class="ma-lines-builder" id="emaLinesBuilder"></div>
                                     <button class="btn btn-xs ma-add-btn" id="emaAddBtn" type="button">+ Add EMA</button>
+                                </div>
+                                <div class="card-settings-row">
+                                    <label>RSI Lines</label>
+                                    <div class="ma-lines-builder" id="rsiLinesBuilder"></div>
+                                    <button class="btn btn-xs ma-add-btn" id="rsiAddBtn" type="button">+ Add RSI</button>
                                 </div>
                             </div>
                             <div class="card-settings-section">
@@ -381,23 +402,17 @@
                         <!-- Each added coin gets a complete TF block with full settings -->
                     </div>
                     
-                    <!-- Add Column (+ button at top, ad below) -->
+                    <!-- Ad Column (where add button used to be) -->
                     <div class="add-column" id="addColumn">
-                        <div class="add-coin-box" id="addCoinBox">
-                            <div class="custom-coin-dropdown add-coin-dd" id="addCoinDropdown">
-                                <button class="coin-dropdown-trigger add-coin-trigger" type="button">
-                                    <span class="add-coin-plus">+</span>
-                                    <span class="add-coin-label">Add</span>
-                                </button>
-                                <div class="coin-dropdown-menu">
-                                    <input type="text" class="coin-dropdown-search" placeholder="Search coins...">
-                                    <div class="coin-dropdown-list">
-                                        <!-- Populated by JS -->
-                                    </div>
+                        <!-- Ad slot (replaces moved add button) -->
+                        <div class="ad-container ad-side-column" id="adSlotAddArea">
+                            <div class="ad-placeholder">
+                                <div class="ad-slot" id="adSlotAdd">
+                                    <!-- AdSense ad unit -->
                                 </div>
                             </div>
                         </div>
-                        <!-- Ad below the + button -->
+                        <!-- Ad below -->
                         <div class="ad-container ad-side-column" id="adSideColumn">
                             <div class="ad-placeholder">
                                 <div class="ad-slot" id="adSlotSide"></div>
@@ -419,7 +434,7 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>MTFCM v4.9.0 | Binance Data | ☪️ Halal - Spot Only | Feb 2026</p>
+            <p>MTFCM v4.9.1 | Binance Data | ☪️ Halal - Spot Only | Feb 2026</p>
             <div class="footer-support">
                 <span>Support this project:</span>
                 <a href="#" id="tipJarBtn" class="tip-link">☕ Buy me a coffee</a>

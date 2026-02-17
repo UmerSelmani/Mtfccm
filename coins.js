@@ -404,6 +404,8 @@ const DEFAULT_SETTINGS = {
     emaLines: [21],
     emaColors: ["#f59e0b"],
     rsiLines: [14],
+    rsiColors: ["#a855f7"],
+    showFVG: true,
     vwapEnabled: true,
     patterns: {
         doji: true,

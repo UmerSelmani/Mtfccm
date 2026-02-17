@@ -4049,6 +4049,11 @@ body.no-ads .ad-container {
         flex-direction: column;
     }
 }
+.conf-add-box {
+    display: flex;
+    align-items: flex-start;
+    padding-top: 0.5rem;
+}
 .confluence-mini-weights {
     font-size: 0.55rem;
     color: var(--text-muted);

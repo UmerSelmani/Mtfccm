@@ -1,6 +1,6 @@
 /**
  * MTFCM - Multi-Timeframe Confluence Monitor
- * Main Application Logic v4.9.0 - Per-coin confluence + pattern side filtering
+ * Main Application Logic v4.9.1 - Per-coin confluence + pattern side filtering
  */
 
 const APP_VERSION = "4.7.4";
@@ -456,6 +456,8 @@ function loadChartOptions() {
     if (vwapEl) vwapEl.checked = state.settings.showChartVWAP || false;
     if (srEl) srEl.checked = state.settings.showChartSR || false;
     if (divEl) divEl.checked = state.settings.showRSIDivergence !== false;
+    const fvgEl = document.getElementById('showFVG');
+    if (fvgEl) fvgEl.checked = state.settings.showFVG !== false;
 }
 
 // ============================================
@@ -1376,6 +1378,41 @@ function detectRSIDivergence(candles, rsiData) {
     }
     
     return divergences;
+}
+
+// Fair Value Gap (FVG) Detection
+// Bullish FVG: candle[i-2].high < candle[i].low — gap up
+// Bearish FVG: candle[i-2].low > candle[i].high — gap down
+function detectFVG(candles) {
+    const gaps = [];
+    if (!candles || candles.length < 3) return gaps;
+    
+    for (let i = 2; i < candles.length; i++) {
+        const c1 = candles[i - 2]; // first candle
+        const c3 = candles[i];     // third candle
+        
+        // Bullish FVG: gap between c1 high and c3 low
+        if (c1.high < c3.low) {
+            gaps.push({
+                type: 'bullish',
+                index: i,
+                top: c3.low,
+                bottom: c1.high,
+                startIdx: i - 2
+            });
+        }
+        // Bearish FVG: gap between c1 low and c3 high  
+        if (c1.low > c3.high) {
+            gaps.push({
+                type: 'bearish',
+                index: i,
+                top: c1.low,
+                bottom: c3.high,
+                startIdx: i - 2
+            });
+        }
+    }
+    return gaps;
 }
 
 function calculateMACD(candles) {
@@ -2445,29 +2482,41 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
     // RSI
     if (showRSI && data.rsiArray && data.rsiArray.length > 0) {
         const rsiTop = padding.top + mainChartHeight + (showVolume ? volumeHeight : 0) + 2;
-        const rsiStartIdx = Math.max(0, startIdx - 14);
-        const rsiData = data.rsiArray.slice(rsiStartIdx, rsiStartIdx + displayCandles.length);
+        const rsiPeriods = state.settings.rsiLines || [14];
+        const rsiColorsList = state.settings.rsiColors || ['#a855f7'];
         
         // Overbought/Oversold zones
         ctx.fillStyle = isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.15)';
         ctx.fillRect(padding.left, rsiTop, chartWidth, rsiHeight * 0.3);
         ctx.fillRect(padding.left, rsiTop + rsiHeight * 0.7, chartWidth, rsiHeight * 0.3);
         
-        if (rsiData.length > 1) {
-            ctx.strokeStyle = '#a855f7';
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            rsiData.forEach((rsi, i) => {
-                const x = padding.left + (i / (rsiData.length - 1)) * chartWidth;
-                const y = rsiTop + rsiHeight - (rsi / 100) * rsiHeight;
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            });
-            ctx.stroke();
+        // Draw each RSI line
+        let primaryRSI = null;
+        let primaryRsiData = null;
+        rsiPeriods.forEach((period, pIdx) => {
+            const rsiArr = calculateRSIArray(data.candles, period);
+            const rsiStartIdx = Math.max(0, startIdx - period);
+            const rsiData = rsiArr.slice(rsiStartIdx, rsiStartIdx + displayCandles.length);
+            if (pIdx === 0) { primaryRSI = rsiData[rsiData.length - 1]; primaryRsiData = rsiData; }
             
-            // RSI info panel (top-left of RSI area)
-            const currentRSI = rsiData[rsiData.length - 1];
-            const prevRSI = rsiData.length >= 2 ? rsiData[rsiData.length - 2] : currentRSI;
+            if (rsiData.length > 1) {
+                ctx.strokeStyle = rsiColorsList[pIdx] || '#a855f7';
+                ctx.lineWidth = pIdx === 0 ? 1.5 : 1;
+                ctx.beginPath();
+                rsiData.forEach((rsi, i) => {
+                    const x = padding.left + (i / (rsiData.length - 1)) * chartWidth;
+                    const y = rsiTop + rsiHeight - (rsi / 100) * rsiHeight;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+            }
+        });
+        
+        // RSI info (primary line)
+        if (primaryRSI !== null && primaryRsiData) {
+            const currentRSI = primaryRSI;
+            const prevRSI = primaryRsiData.length >= 2 ? primaryRsiData[primaryRsiData.length - 2] : currentRSI;
             const rsiZone = currentRSI >= 70 ? 'OB' : currentRSI <= 30 ? 'OS' : currentRSI >= 60 ? 'Bull' : currentRSI <= 40 ? 'Bear' : 'Neutral';
             const rsiDir = currentRSI > prevRSI ? '↑' : currentRSI < prevRSI ? '↓' : '→';
             const rsiZoneColor = currentRSI >= 70 ? bearColor : currentRSI <= 30 ? bullColor : '#a855f7';
@@ -2475,22 +2524,32 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
             ctx.font = 'bold 8px JetBrains Mono, monospace';
             ctx.textAlign = 'left';
             ctx.fillStyle = rsiZoneColor;
-            ctx.fillText(`RSI ${currentRSI.toFixed(1)} ${rsiDir} ${rsiZone}`, padding.left + 3, rsiTop + 9);
+            const periodLabels = rsiPeriods.map(p => p).join('/');
+            ctx.fillText(`RSI(${periodLabels}) ${currentRSI.toFixed(1)} ${rsiDir} ${rsiZone}`, padding.left + 3, rsiTop + 9);
             
-            // RSI value label on right
+            // Right side value
             ctx.textAlign = 'right';
             ctx.fillStyle = rsiZoneColor;
-            ctx.fillText(`${currentRSI.toFixed(0)}`, width - padding.right - 2, rsiTop + 10);
+            
+            // Divergence toggle button on RSI chart (right side)
+            const showDiv = state.settings.showRSIDivergence !== false;
+            const divLabel = showDiv ? '⦿ DIV' : '○ DIV';
+            const divX = width - padding.right - 2;
+            const divY = rsiTop + 9;
+            ctx.fillStyle = showDiv ? '#22c55e' : '#6b7280';
+            ctx.fillText(divLabel, divX, divY);
+            
+            // Store toggle hit area for click detection
+            canvas._rsiDivToggle = { x: divX - 35, y: rsiTop, w: 40, h: 14 };
             
             // RSI Divergence detection & drawing
-            const showDiv = state.settings.showRSIDivergence !== false;
-            if (showDiv && rsiData.length >= 10 && displayCandles.length >= 10) {
-                const divs = detectRSIDivergence(displayCandles, rsiData);
+            if (showDiv && primaryRsiData.length >= 10 && displayCandles.length >= 10) {
+                const divs = detectRSIDivergence(displayCandles, primaryRsiData);
                 divs.forEach(div => {
                     const x1_price = padding.left + (div.i1 / (displayCandles.length - 1)) * chartWidth;
                     const x2_price = padding.left + (div.i2 / (displayCandles.length - 1)) * chartWidth;
-                    const x1_rsi = padding.left + (div.i1 / (rsiData.length - 1)) * chartWidth;
-                    const x2_rsi = padding.left + (div.i2 / (rsiData.length - 1)) * chartWidth;
+                    const x1_rsi = padding.left + (div.i1 / (primaryRsiData.length - 1)) * chartWidth;
+                    const x2_rsi = padding.left + (div.i2 / (primaryRsiData.length - 1)) * chartWidth;
                     
                     const divColor = div.type === 'bullish' ? bullColor : bearColor;
                     const dashPattern = div.hidden ? [4, 3] : [];
@@ -2506,7 +2565,6 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
                     ctx.moveTo(x1_rsi, y1_rsi);
                     ctx.lineTo(x2_rsi, y2_rsi);
                     ctx.stroke();
-                    // Small dot at endpoints
                     ctx.fillStyle = divColor;
                     ctx.beginPath(); ctx.arc(x1_rsi, y1_rsi, 2, 0, Math.PI*2); ctx.fill();
                     ctx.beginPath(); ctx.arc(x2_rsi, y2_rsi, 2, 0, Math.PI*2); ctx.fill();
@@ -2527,7 +2585,6 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
                     ctx.fillStyle = divColor;
                     ctx.beginPath(); ctx.arc(x1_price, y1_p, 2, 0, Math.PI*2); ctx.fill();
                     ctx.beginPath(); ctx.arc(x2_price, y2_p, 2, 0, Math.PI*2); ctx.fill();
-                    // Label
                     ctx.globalAlpha = 1;
                     ctx.font = 'bold 7px Inter, sans-serif';
                     ctx.textAlign = 'center';
@@ -2619,6 +2676,43 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
             ctx.fillText('−', width - padding.right + 3, macdTop + macdHeight - 2);
             ctx.globalAlpha = 1;
         }
+    }
+    
+    // Fair Value Gaps (FVG)
+    const showFVG = state.settings.showFVG !== false;
+    if (showFVG && displayCandles.length >= 3) {
+        const fvgs = detectFVG(displayCandles);
+        fvgs.forEach(gap => {
+            const gapTop = scaleY(gap.top);
+            const gapBot = scaleY(gap.bottom);
+            const gapH = Math.abs(gapBot - gapTop);
+            // Draw from the gap candle to the right edge
+            const startX = padding.left + gap.startIdx * candleSpacing;
+            const endX = padding.left + chartWidth;
+            
+            ctx.save();
+            if (gap.type === 'bullish') {
+                ctx.fillStyle = isDark ? 'rgba(34, 197, 94, 0.12)' : 'rgba(34, 197, 94, 0.15)';
+                ctx.strokeStyle = 'rgba(34, 197, 94, 0.4)';
+            } else {
+                ctx.fillStyle = isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.15)';
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+            }
+            ctx.fillRect(startX, Math.min(gapTop, gapBot), endX - startX, Math.max(gapH, 1));
+            ctx.setLineDash([3, 3]);
+            ctx.lineWidth = 0.5;
+            ctx.strokeRect(startX, Math.min(gapTop, gapBot), endX - startX, Math.max(gapH, 1));
+            ctx.setLineDash([]);
+            
+            // Label
+            ctx.font = 'bold 6px JetBrains Mono, monospace';
+            ctx.fillStyle = gap.type === 'bullish' ? bullColor : bearColor;
+            ctx.textAlign = 'left';
+            ctx.globalAlpha = 0.7;
+            ctx.fillText('FVG', startX + 2, Math.min(gapTop, gapBot) + (gapH > 8 ? gapH / 2 + 3 : -2));
+            ctx.globalAlpha = 1;
+            ctx.restore();
+        });
     }
     
     // Current candle highlight
@@ -2882,12 +2976,26 @@ function setupChartInteraction(canvasId, tfId, opts = {}) {
     
     // Double click to show candle popup on desktop
     canvas.addEventListener('click', (e) => {
-        // Only show popup on click if in click-popup mode
-        if (state.settings.candlePopupType !== 'click-popup') return;
-        
         const rect = canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
+        const dpr = window.devicePixelRatio || 1;
+        
+        // Check RSI Divergence toggle click
+        if (canvas._rsiDivToggle) {
+            const t = canvas._rsiDivToggle;
+            if (x * dpr >= t.x && x * dpr <= t.x + t.w && y * dpr >= t.y && y * dpr <= t.y + t.h) {
+                state.settings.showRSIDivergence = !state.settings.showRSIDivergence;
+                const divEl = document.getElementById('showRSIDivergence');
+                if (divEl) divEl.checked = state.settings.showRSIDivergence;
+                saveSettings();
+                drawInteractiveChart(canvasId, data, tfId, opts);
+                return;
+            }
+        }
+        
+        // Only show popup on click if in click-popup mode
+        if (state.settings.candlePopupType !== 'click-popup') return;
         
         const candleInfo = findCandleAt(x, y);
         if (candleInfo) {
@@ -3670,7 +3778,7 @@ function setupEventListeners() {
     }
     
     // Chart options - indicator toggles in TF settings
-    ['showChartVolume', 'showChartMA', 'showChartEMA', 'showChartVWAP', 'showChartRSI', 'showChartMACD', 'showChartSR', 'showRSIDivergence'].forEach(id => {
+    ['showChartVolume', 'showChartMA', 'showChartEMA', 'showChartVWAP', 'showChartRSI', 'showChartMACD', 'showChartSR', 'showRSIDivergence', 'showFVG'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('change', (e) => {
             state.settings[id] = e.target.checked;
@@ -3689,6 +3797,7 @@ function setupEventListeners() {
     // MA/EMA line builders (modern period + color + add/remove)
     const defaultMaColors = ['#3b82f6', '#06b6d4', '#0ea5e9', '#14b8a6'];
     const defaultEmaColors = ['#f59e0b', '#f97316', '#ef4444', '#ec4899'];
+    const defaultRsiColors = ['#a855f7', '#d946ef', '#8b5cf6', '#6366f1'];
     
     function renderMaBuilder() {
         const container = document.getElementById('maLinesBuilder');
@@ -3702,7 +3811,6 @@ function setupEventListeners() {
                 ${lines.length > 1 ? `<button class="ma-line-remove" data-type="ma" data-idx="${i}" title="Remove">✕</button>` : ''}
             </div>
         `).join('');
-        // Event delegation
         container.querySelectorAll('.ma-period').forEach(el => el.addEventListener('change', onMaLineChange));
         container.querySelectorAll('.ma-color').forEach(el => el.addEventListener('input', onMaColorChange));
         container.querySelectorAll('.ma-line-remove').forEach(el => el.addEventListener('click', onMaLineRemove));
@@ -3725,12 +3833,29 @@ function setupEventListeners() {
         container.querySelectorAll('.ma-line-remove').forEach(el => el.addEventListener('click', onMaLineRemove));
     }
     
+    function renderRsiBuilder() {
+        const container = document.getElementById('rsiLinesBuilder');
+        if (!container) return;
+        const lines = state.settings.rsiLines || [14];
+        const colors = state.settings.rsiColors || defaultRsiColors.slice(0, lines.length);
+        container.innerHTML = lines.map((period, i) => `
+            <div class="ma-line-row">
+                <input type="number" class="ma-period" data-type="rsi" data-idx="${i}" value="${period}" min="2" max="100" title="Period">
+                <input type="color" class="ma-color" data-type="rsi" data-idx="${i}" value="${colors[i] || defaultRsiColors[i % defaultRsiColors.length]}" title="Color">
+                ${lines.length > 1 ? `<button class="ma-line-remove" data-type="rsi" data-idx="${i}" title="Remove">✕</button>` : ''}
+            </div>
+        `).join('');
+        container.querySelectorAll('.ma-period').forEach(el => el.addEventListener('change', onMaLineChange));
+        container.querySelectorAll('.ma-color').forEach(el => el.addEventListener('input', onMaColorChange));
+        container.querySelectorAll('.ma-line-remove').forEach(el => el.addEventListener('click', onMaLineRemove));
+    }
+    
     function onMaLineChange(e) {
-        const type = e.target.dataset.type; // 'ma' or 'ema'
+        const type = e.target.dataset.type;
         const idx = parseInt(e.target.dataset.idx);
         const val = parseInt(e.target.value);
         if (isNaN(val) || val < 1 || val > 500) return;
-        const key = type === 'ma' ? 'maLines' : 'emaLines';
+        const key = type === 'ma' ? 'maLines' : type === 'ema' ? 'emaLines' : 'rsiLines';
         state.settings[key][idx] = val;
         saveSettings();
         renderTimeframeRows();
@@ -3739,8 +3864,9 @@ function setupEventListeners() {
     function onMaColorChange(e) {
         const type = e.target.dataset.type;
         const idx = parseInt(e.target.dataset.idx);
-        const key = type === 'ma' ? 'maColors' : 'emaColors';
-        if (!state.settings[key]) state.settings[key] = [...(type === 'ma' ? defaultMaColors : defaultEmaColors)];
+        const key = type === 'ma' ? 'maColors' : type === 'ema' ? 'emaColors' : 'rsiColors';
+        const defaults = type === 'ma' ? defaultMaColors : type === 'ema' ? defaultEmaColors : defaultRsiColors;
+        if (!state.settings[key]) state.settings[key] = [...defaults];
         state.settings[key][idx] = e.target.value;
         saveSettings();
         renderTimeframeRows();
@@ -3749,12 +3875,14 @@ function setupEventListeners() {
     function onMaLineRemove(e) {
         const type = e.target.dataset.type;
         const idx = parseInt(e.target.dataset.idx);
-        const linesKey = type === 'ma' ? 'maLines' : 'emaLines';
-        const colorsKey = type === 'ma' ? 'maColors' : 'emaColors';
+        const linesKey = type === 'ma' ? 'maLines' : type === 'ema' ? 'emaLines' : 'rsiLines';
+        const colorsKey = type === 'ma' ? 'maColors' : type === 'ema' ? 'emaColors' : 'rsiColors';
         state.settings[linesKey].splice(idx, 1);
         if (state.settings[colorsKey]) state.settings[colorsKey].splice(idx, 1);
         saveSettings();
-        type === 'ma' ? renderMaBuilder() : renderEmaBuilder();
+        if (type === 'ma') renderMaBuilder();
+        else if (type === 'ema') renderEmaBuilder();
+        else renderRsiBuilder();
         renderTimeframeRows();
     }
     
@@ -3780,9 +3908,21 @@ function setupEventListeners() {
         renderTimeframeRows();
     });
     
+    document.getElementById('rsiAddBtn')?.addEventListener('click', () => {
+        if (!state.settings.rsiLines) state.settings.rsiLines = [14];
+        if (!state.settings.rsiColors) state.settings.rsiColors = [...defaultRsiColors.slice(0, state.settings.rsiLines.length)];
+        const nextPeriod = state.settings.rsiLines.length === 0 ? 14 : 7;
+        state.settings.rsiLines.push(nextPeriod);
+        state.settings.rsiColors.push(defaultRsiColors[state.settings.rsiLines.length - 1 % defaultRsiColors.length] || '#a855f7');
+        saveSettings();
+        renderRsiBuilder();
+        renderTimeframeRows();
+    });
+    
     // Initialize builders
     renderMaBuilder();
     renderEmaBuilder();
+    renderRsiBuilder();
     
     // Pattern toggle checkboxes
     const patternMap = {
