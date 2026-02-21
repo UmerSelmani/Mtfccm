@@ -1,6 +1,6 @@
 /**
  * MTFCM - Multi-Timeframe Confluence Monitor
- * Main Application Logic v4.9.2 - Per-coin confluence + pattern side filtering
+ * Main Application Logic v4.9.3 - Per-coin confluence + pattern side filtering
  */
 
 const APP_VERSION = "4.7.4";
@@ -2581,12 +2581,10 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
             
             // Draw button background
             ctx.fillStyle = showDiv ? (isDark ? 'rgba(34,197,94,0.25)' : 'rgba(34,197,94,0.2)') : (isDark ? 'rgba(107,114,128,0.25)' : 'rgba(107,114,128,0.2)');
-            ctx.beginPath();
-            ctx.roundRect(divBtnX, divBtnY, divBtnW, divBtnH, 3);
-            ctx.fill();
+            ctx.fillRect(divBtnX, divBtnY, divBtnW, divBtnH);
             ctx.strokeStyle = showDiv ? '#22c55e' : '#6b7280';
             ctx.lineWidth = 0.5;
-            ctx.stroke();
+            ctx.strokeRect(divBtnX, divBtnY, divBtnW, divBtnH);
             
             // Button text
             ctx.font = 'bold 7px JetBrains Mono, monospace';
@@ -5074,9 +5072,14 @@ function renderAddedCoins() {
                         <label>Overlays & Panels</label>
                         <div class="modifier-toggles">
                             <label class="mini-toggle"><input type="checkbox" id="showChartVolume-${symbol}" checked><span>Vol</span></label>
+                            <label class="mini-toggle"><input type="checkbox" id="showChartRSI-${symbol}"><span>RSI</span></label>
+                            <label class="mini-toggle"><input type="checkbox" id="showRSIDivergence-${symbol}" checked><span>Div</span></label>
+                            <label class="mini-toggle"><input type="checkbox" id="showChartMACD-${symbol}"><span>MACD</span></label>
                             <label class="mini-toggle"><input type="checkbox" id="showChartMA-${symbol}"><span>MA</span></label>
                             <label class="mini-toggle"><input type="checkbox" id="showChartEMA-${symbol}" checked><span>EMA</span></label>
                             <label class="mini-toggle"><input type="checkbox" id="showChartVWAP-${symbol}"><span>VWAP</span></label>
+                            <label class="mini-toggle"><input type="checkbox" id="showChartSR-${symbol}"><span>S/R</span></label>
+                            <label class="mini-toggle"><input type="checkbox" id="showFVG-${symbol}" checked><span>FVG</span></label>
                         </div>
                     </div>
                     <div class="card-settings-row">
@@ -5124,6 +5127,7 @@ function renderAddedCoins() {
                     <div class="display-toggles">
                         <label class="mini-toggle"><input type="checkbox" id="showPriceInfo-${symbol}" checked><span>Price Info</span></label>
                         <label class="mini-toggle"><input type="checkbox" id="showTimers-${symbol}" checked><span>Timers</span></label>
+                        <label class="mini-toggle"><input type="checkbox" id="showConfluenceBar-${symbol}" checked><span>Confluence Bar</span></label>
                     </div>
                 </div>
                 <div class="card-settings-section">
@@ -5173,6 +5177,21 @@ function renderAddedCoins() {
             const settings = document.getElementById(`blockSettings-${symbol}`);
             if (settings) {
                 settings.style.display = settings.style.display === 'none' ? 'block' : 'none';
+            }
+        });
+        
+        // Wire up chart indicator toggles (share global settings, redraw all)
+        ['showChartVolume', 'showChartRSI', 'showRSIDivergence', 'showChartMACD', 'showChartMA', 'showChartEMA', 'showChartVWAP', 'showChartSR', 'showFVG', 'showPriceInfo', 'showTimers', 'showConfluenceBar'].forEach(id => {
+            const el = document.getElementById(`${id}-${symbol}`);
+            if (el) {
+                el.checked = state.settings[id] !== false && state.settings[id] !== undefined ? state.settings[id] : el.checked;
+                el.addEventListener('change', (e) => {
+                    state.settings[id] = e.target.checked;
+                    const mainEl = document.getElementById(id);
+                    if (mainEl) mainEl.checked = e.target.checked;
+                    saveSettings();
+                    renderTimeframeRows();
+                });
             }
         });
         
@@ -5240,6 +5259,28 @@ function renderAddedConfluenceCards() {
         <section class="card confluence-card confluence-card-added" data-symbol="${symbol}">
             <div class="card-header">
                 <h2>${iconHtml} 📊 <span>${base}</span></h2>
+                <button class="btn btn-sm btn-card-settings conf-settings-btn-added" data-symbol="${symbol}" title="Confluence Settings">⚙️</button>
+            </div>
+            <div class="card-settings conf-settings-added" id="confSettings-${symbol}" style="display: none;">
+                <div class="card-settings-row">
+                    <label>TF Weight Method</label>
+                    <div class="fancy-select">
+                        <select class="added-weight-method" data-symbol="${symbol}">
+                            <option value="equal"${method==='equal'?' selected':''}>Equal</option>
+                            <option value="linear"${method==='linear'?' selected':''}>Linear</option>
+                            <option value="exponential"${method==='exponential'?' selected':''}>Exponential</option>
+                            <option value="tiered"${method==='tiered'?' selected':''}>Tiered</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-settings-row">
+                    <label>Modifiers</label>
+                    <div class="modifier-toggles">
+                        <label class="mini-toggle"><input type="checkbox" class="added-mod" data-mod="useStrengthMod" ${state.settings.useStrengthMod?'checked':''}><span>Body Strength</span></label>
+                        <label class="mini-toggle"><input type="checkbox" class="added-mod" data-mod="useVolumeMod" ${state.settings.useVolumeMod?'checked':''}><span>Volume</span></label>
+                        <label class="mini-toggle"><input type="checkbox" class="added-mod" data-mod="useIndicatorMod" ${state.settings.useIndicatorMod?'checked':''}><span>RSI/MACD</span></label>
+                    </div>
+                </div>
             </div>
             <div class="confluence-content">
                 <div class="confluence-meter">
@@ -5279,6 +5320,29 @@ function renderAddedConfluenceCards() {
     }).join('');
     
     // Wire up toggle listeners for added coin cards
+    container.querySelectorAll('.conf-settings-btn-added').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const panel = document.getElementById(`confSettings-${btn.dataset.symbol}`);
+            if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        });
+    });
+    container.querySelectorAll('.added-weight-method').forEach(sel => {
+        sel.addEventListener('change', (e) => {
+            state.settings.weightMethod = e.target.value;
+            document.getElementById('weightMethod').value = e.target.value;
+            saveSettings();
+            renderTimeframeRows();
+        });
+    });
+    container.querySelectorAll('.added-mod').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+            state.settings[e.target.dataset.mod] = e.target.checked;
+            const mainCb = document.getElementById(e.target.dataset.mod);
+            if (mainCb) mainCb.checked = e.target.checked;
+            saveSettings();
+            renderTimeframeRows();
+        });
+    });
     container.querySelectorAll('.methods-compare-header[data-target]').forEach(header => {
         header.addEventListener('click', () => {
             const body = document.getElementById(header.dataset.target);

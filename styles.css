@@ -4076,10 +4076,15 @@ body.no-ads .ad-container {
     padding-top: 0.5rem;
 }
 .ad-side-confluence {
+    flex: 1;
+    min-height: 80px;
+}
+.conf-side-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
     flex: 0 0 auto;
-    width: 160px;
-    min-height: 100px;
-    align-self: stretch;
+    width: 80px;
 }
 .confluence-mini-weights {
     font-size: 0.55rem;
