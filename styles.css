@@ -3968,6 +3968,27 @@ body.no-ads .ad-container {
 }
 .ma-add-btn:hover { opacity: 1; }
 
+.color-pickers-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+.color-pick {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+}
+.color-pick input[type="color"] {
+    width: 20px;
+    height: 20px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0;
+    cursor: pointer;
+    background: none;
+}
 /* ===== MOBILE RESPONSIVE FOR TF BLOCKS ===== */
 @media (max-width: 768px) {
     .tf-blocks-area {
@@ -4053,6 +4074,12 @@ body.no-ads .ad-container {
     display: flex;
     align-items: flex-start;
     padding-top: 0.5rem;
+}
+.ad-side-confluence {
+    flex: 0 0 auto;
+    width: 160px;
+    min-height: 100px;
+    align-self: stretch;
 }
 .confluence-mini-weights {
     font-size: 0.55rem;

@@ -195,6 +195,12 @@
                         </div>
                     </div>
                 </div>
+                <!-- Ad beside confluence -->
+                <div class="ad-container ad-side-confluence" id="adConfSide">
+                    <div class="ad-placeholder">
+                        <div class="ad-slot" id="adSlotConfSide"></div>
+                    </div>
+                </div>
                 </div><!-- /confluence-row -->
 
                 <!-- Coin TF Blocks Area (Main + Added + Ad Column) -->
@@ -333,6 +339,15 @@
                                     <div class="ma-lines-builder" id="rsiLinesBuilder"></div>
                                     <button class="btn btn-xs ma-add-btn" id="rsiAddBtn" type="button">+ Add RSI</button>
                                 </div>
+                                <div class="card-settings-row">
+                                    <label>Line Colors</label>
+                                    <div class="color-pickers-row">
+                                        <label class="color-pick"><input type="color" id="srSupportColor" value="#22c55e"><span>Support</span></label>
+                                        <label class="color-pick"><input type="color" id="srResistanceColor" value="#ef4444"><span>Resistance</span></label>
+                                        <label class="color-pick"><input type="color" id="fvgBullColor" value="#22c55e"><span>FVG Bull</span></label>
+                                        <label class="color-pick"><input type="color" id="fvgBearColor" value="#ef4444"><span>FVG Bear</span></label>
+                                    </div>
+                                </div>
                             </div>
                             <div class="card-settings-section">
                                 <span class="settings-section-label">🕯️ Candle Patterns</span>
@@ -402,17 +417,8 @@
                         <!-- Each added coin gets a complete TF block with full settings -->
                     </div>
                     
-                    <!-- Ad Column (where add button used to be) -->
+                    <!-- Ad Column (right side of coins) -->
                     <div class="add-column" id="addColumn">
-                        <!-- Ad slot (replaces moved add button) -->
-                        <div class="ad-container ad-side-column" id="adSlotAddArea">
-                            <div class="ad-placeholder">
-                                <div class="ad-slot" id="adSlotAdd">
-                                    <!-- AdSense ad unit -->
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Ad below -->
                         <div class="ad-container ad-side-column" id="adSideColumn">
                             <div class="ad-placeholder">
                                 <div class="ad-slot" id="adSlotSide"></div>
@@ -434,7 +440,7 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>MTFCM v4.9.1 | Binance Data | ☪️ Halal - Spot Only | Feb 2026</p>
+            <p>MTFCM v4.9.2 | Binance Data | ☪️ Halal - Spot Only | Feb 2026</p>
             <div class="footer-support">
                 <span>Support this project:</span>
                 <a href="#" id="tipJarBtn" class="tip-link">☕ Buy me a coffee</a>

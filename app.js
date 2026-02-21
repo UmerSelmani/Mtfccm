@@ -1,6 +1,6 @@
 /**
  * MTFCM - Multi-Timeframe Confluence Monitor
- * Main Application Logic v4.9.1 - Per-coin confluence + pattern side filtering
+ * Main Application Logic v4.9.2 - Per-coin confluence + pattern side filtering
  */
 
 const APP_VERSION = "4.7.4";
@@ -458,6 +458,15 @@ function loadChartOptions() {
     if (divEl) divEl.checked = state.settings.showRSIDivergence !== false;
     const fvgEl = document.getElementById('showFVG');
     if (fvgEl) fvgEl.checked = state.settings.showFVG !== false;
+    // Line color pickers
+    const srSup = document.getElementById('srSupportColor');
+    const srRes = document.getElementById('srResistanceColor');
+    const fvgB = document.getElementById('fvgBullColor');
+    const fvgBr = document.getElementById('fvgBearColor');
+    if (srSup) srSup.value = state.settings.srSupportColor || '#22c55e';
+    if (srRes) srRes.value = state.settings.srResistanceColor || '#ef4444';
+    if (fvgB) fvgB.value = state.settings.fvgBullColor || '#22c55e';
+    if (fvgBr) fvgBr.value = state.settings.fvgBearColor || '#ef4444';
 }
 
 // ============================================
@@ -1879,17 +1888,17 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
     const coinDecimals = opts.decimals || state.currentCoin?.decimals || 2;
     
     // Fixed sub-panel heights (pixels) — price chart never shrinks
-    const SUB_VOL_H = 45;
-    const SUB_RSI_H = 50;
-    const SUB_MACD_H = 50;
+    const SUB_VOL_H = 46;
+    const SUB_RSI_H = 52;
+    const SUB_MACD_H = 52;
     
     let volumeHeight = showVolume ? SUB_VOL_H : 0;
     let rsiHeight = showRSI ? SUB_RSI_H : 0;
     let macdHeight = showMACD ? SUB_MACD_H : 0;
     const subTotal = volumeHeight + rsiHeight + macdHeight;
     
-    // Canvas grows: base 140px for price chart + sub-panels added below
-    const baseH = 140;
+    // Canvas grows: base 154px for price chart (+10%) + sub-panels added below
+    const baseH = 154;
     const totalH = baseH + subTotal;
     canvas.style.height = totalH + 'px';
     
@@ -1969,6 +1978,11 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
     
     ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, width, height);
+    
+    // Main price chart border
+    ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(padding.left, padding.top, chartWidth, mainChartHeight);
     
     // Draw price scale on right side (always visible)
     {
@@ -2197,8 +2211,10 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
     // Support & Resistance levels
     if (showSR && data.candles.length >= 20) {
         const sr = calculateSupportResistance(data.candles);
-        const srColor = { support: 'rgba(34, 197, 94, 0.6)', resistance: 'rgba(239, 68, 68, 0.6)' };
-        const srBg = { support: 'rgba(34, 197, 94, 0.08)', resistance: 'rgba(239, 68, 68, 0.08)' };
+        const supCol = state.settings.srSupportColor || '#22c55e';
+        const resCol = state.settings.srResistanceColor || '#ef4444';
+        const srColor = { support: supCol + '99', resistance: resCol + '99' };
+        const srBg = { support: supCol + '14', resistance: resCol + '14' };
         
         [...sr.support, ...sr.resistance].forEach(level => {
             const y = scaleY(level.price);
@@ -2431,52 +2447,74 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
         const maxVol = Math.max(...volumes);
         const volumeType = state.settings.volumeType || 'buysell';
         
+        // Panel border
+        ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(padding.left, volTop, chartWidth, volumeHeight - 2);
+        
         displayCandles.forEach((candle, i) => {
             const x = padding.left + i * candleSpacing + candleSpacing / 2;
             const totalVolHeight = (candle.volume / maxVol) * (volumeHeight - 4);
             const isBull = candle.close >= candle.open;
             
             if (volumeType === 'regular') {
-                // Regular volume - single color based on candle direction
                 ctx.fillStyle = (isBull ? bullColor : bearColor) + 'AA';
                 ctx.fillRect(x - candleWidth / 2, volTop + volumeHeight - 2 - totalVolHeight, candleWidth, totalVolHeight);
             } else {
-                // Buy/Sell split volume
-                // Estimate buy/sell ratio based on candle position
-                // Close position within the range determines buy pressure
                 const range = candle.high - candle.low;
                 const closePosition = range > 0 ? (candle.close - candle.low) / range : 0.5;
                 const buyPct = closePosition;
                 const sellPct = 1 - closePosition;
-                
                 const buyHeight = totalVolHeight * buyPct;
                 const sellHeight = totalVolHeight * sellPct;
                 
-                // Draw sell volume (red, bottom)
                 ctx.fillStyle = bearColor + 'AA';
                 ctx.fillRect(x - candleWidth / 2, volTop + volumeHeight - 2 - sellHeight, candleWidth, sellHeight);
-                
-                // Draw buy volume (green, stacked on top)
                 ctx.fillStyle = bullColor + 'AA';
                 ctx.fillRect(x - candleWidth / 2, volTop + volumeHeight - 2 - sellHeight - buyHeight, candleWidth, buyHeight);
             }
         });
         
-        // Separator line
-        ctx.strokeStyle = gridColor;
-        ctx.lineWidth = 0.5;
-        ctx.beginPath();
-        ctx.moveTo(padding.left, volTop);
-        ctx.lineTo(width - padding.right, volTop);
-        ctx.stroke();
-        
         // Volume label with current value
         const lastCandle = displayCandles[displayCandles.length - 1];
         const volRatio = data.volumeRatio || 0;
-        ctx.font = '8px JetBrains Mono, monospace';
+        const fmtVol = (v) => v >= 1e9 ? (v/1e9).toFixed(1)+'B' : v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1e3 ? (v/1e3).toFixed(1)+'K' : v.toFixed(0);
+        
+        ctx.font = 'bold 8px JetBrains Mono, monospace';
+        ctx.textAlign = 'left';
+        
+        if (volumeType === 'regular') {
+            ctx.fillStyle = textColor;
+            ctx.fillText(`VOL ${fmtVol(lastCandle.volume)} (${volRatio.toFixed(1)}x)`, padding.left + 3, volTop + 9);
+        } else {
+            const range = lastCandle.high - lastCandle.low;
+            const cp = range > 0 ? (lastCandle.close - lastCandle.low) / range : 0.5;
+            const buyVol = lastCandle.volume * cp;
+            const sellVol = lastCandle.volume * (1 - cp);
+            ctx.fillStyle = bullColor;
+            ctx.fillText(`B:${fmtVol(buyVol)}`, padding.left + 3, volTop + 9);
+            ctx.fillStyle = bearColor;
+            ctx.fillText(`S:${fmtVol(sellVol)}`, padding.left + 55, volTop + 9);
+            ctx.fillStyle = textColor;
+            ctx.fillText(`T:${fmtVol(lastCandle.volume)}`, padding.left + 107, volTop + 9);
+        }
+        
+        // Volume range on right axis
+        ctx.strokeStyle = gridColor;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(width - padding.right, volTop);
+        ctx.lineTo(width - padding.right, volTop + volumeHeight - 2);
+        ctx.stroke();
+        
+        ctx.font = '7px JetBrains Mono, monospace';
         ctx.fillStyle = textColor;
-        ctx.textAlign = 'right';
-        ctx.fillText(`VOL ${volRatio.toFixed(1)}x`, width - padding.right - 2, volTop + 9);
+        ctx.textAlign = 'left';
+        ctx.globalAlpha = 0.6;
+        ctx.fillText(fmtVol(maxVol), width - padding.right + 3, volTop + 8);
+        ctx.fillText(fmtVol(maxVol / 2), width - padding.right + 3, volTop + volumeHeight / 2 + 3);
+        ctx.fillText('0', width - padding.right + 3, volTop + volumeHeight - 3);
+        ctx.globalAlpha = 1;
     }
     
     // RSI
@@ -2484,6 +2522,11 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
         const rsiTop = padding.top + mainChartHeight + (showVolume ? volumeHeight : 0) + 2;
         const rsiPeriods = state.settings.rsiLines || [14];
         const rsiColorsList = state.settings.rsiColors || ['#a855f7'];
+        
+        // Panel border
+        ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(padding.left, rsiTop, chartWidth, rsiHeight - 2);
         
         // Overbought/Oversold zones
         ctx.fillStyle = isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.15)';
@@ -2493,11 +2536,13 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
         // Draw each RSI line
         let primaryRSI = null;
         let primaryRsiData = null;
+        const allRsiData = [];
         rsiPeriods.forEach((period, pIdx) => {
             const rsiArr = calculateRSIArray(data.candles, period);
             const rsiStartIdx = Math.max(0, startIdx - period);
             const rsiData = rsiArr.slice(rsiStartIdx, rsiStartIdx + displayCandles.length);
             if (pIdx === 0) { primaryRSI = rsiData[rsiData.length - 1]; primaryRsiData = rsiData; }
+            allRsiData.push(rsiData);
             
             if (rsiData.length > 1) {
                 ctx.strokeStyle = rsiColorsList[pIdx] || '#a855f7';
@@ -2527,31 +2572,46 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
             const periodLabels = rsiPeriods.map(p => p).join('/');
             ctx.fillText(`RSI(${periodLabels}) ${currentRSI.toFixed(1)} ${rsiDir} ${rsiZone}`, padding.left + 3, rsiTop + 9);
             
-            // Right side value
-            ctx.textAlign = 'right';
-            ctx.fillStyle = rsiZoneColor;
-            
-            // Divergence toggle button on RSI chart (right side)
+            // Divergence toggle button on RSI chart (drawn as button-like element)
             const showDiv = state.settings.showRSIDivergence !== false;
-            const divLabel = showDiv ? '⦿ DIV' : '○ DIV';
-            const divX = width - padding.right - 2;
-            const divY = rsiTop + 9;
+            const divBtnX = width - padding.right - 38;
+            const divBtnY = rsiTop + 1;
+            const divBtnW = 36;
+            const divBtnH = 12;
+            
+            // Draw button background
+            ctx.fillStyle = showDiv ? (isDark ? 'rgba(34,197,94,0.25)' : 'rgba(34,197,94,0.2)') : (isDark ? 'rgba(107,114,128,0.25)' : 'rgba(107,114,128,0.2)');
+            ctx.beginPath();
+            ctx.roundRect(divBtnX, divBtnY, divBtnW, divBtnH, 3);
+            ctx.fill();
+            ctx.strokeStyle = showDiv ? '#22c55e' : '#6b7280';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+            
+            // Button text
+            ctx.font = 'bold 7px JetBrains Mono, monospace';
             ctx.fillStyle = showDiv ? '#22c55e' : '#6b7280';
-            ctx.fillText(divLabel, divX, divY);
+            ctx.textAlign = 'center';
+            ctx.fillText(showDiv ? '● DIV' : '○ DIV', divBtnX + divBtnW / 2, divBtnY + 9);
             
-            // Store toggle hit area for click detection
-            canvas._rsiDivToggle = { x: divX - 35, y: rsiTop, w: 40, h: 14 };
-            
-            // RSI Divergence detection & drawing
-            if (showDiv && primaryRsiData.length >= 10 && displayCandles.length >= 10) {
-                const divs = detectRSIDivergence(displayCandles, primaryRsiData);
+            // Store toggle hit area (CSS pixels, no DPR scaling)
+            canvas._rsiDivToggle = { x: divBtnX, y: divBtnY, w: divBtnW, h: divBtnH };
+        }
+        
+        // RSI Divergence detection per each RSI line
+        const showDiv = state.settings.showRSIDivergence !== false;
+        if (showDiv && displayCandles.length >= 10) {
+            allRsiData.forEach((rsiLineData, pIdx) => {
+                if (rsiLineData.length < 10) return;
+                const lineColor = rsiColorsList[pIdx] || '#a855f7';
+                const divs = detectRSIDivergence(displayCandles, rsiLineData);
                 divs.forEach(div => {
                     const x1_price = padding.left + (div.i1 / (displayCandles.length - 1)) * chartWidth;
                     const x2_price = padding.left + (div.i2 / (displayCandles.length - 1)) * chartWidth;
-                    const x1_rsi = padding.left + (div.i1 / (primaryRsiData.length - 1)) * chartWidth;
-                    const x2_rsi = padding.left + (div.i2 / (primaryRsiData.length - 1)) * chartWidth;
+                    const x1_rsi = padding.left + (div.i1 / (rsiLineData.length - 1)) * chartWidth;
+                    const x2_rsi = padding.left + (div.i2 / (rsiLineData.length - 1)) * chartWidth;
                     
-                    const divColor = div.type === 'bullish' ? bullColor : bearColor;
+                    const divColor = lineColor;
                     const dashPattern = div.hidden ? [4, 3] : [];
                     
                     // Draw on RSI panel
@@ -2592,7 +2652,7 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
                     ctx.fillText(label, x2_price, div.type === 'bullish' ? y2_p + 10 : y2_p - 6);
                     ctx.restore();
                 });
-            }
+            });
         }
         
         // RSI scale labels on right side (always visible)
@@ -2624,34 +2684,70 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
         const macdTop = padding.top + mainChartHeight + (showVolume ? volumeHeight : 0) + (showRSI ? rsiHeight : 0) + 2;
         const macdData = data.macdArray.slice(-(displayCandles.length));
         
+        // Panel border
+        ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(padding.left, macdTop, chartWidth, macdHeight - 2);
+        
         if (macdData.length > 0) {
             const histValues = macdData.map(m => m.histogram);
+            const allValues = [...macdData.map(m => m.macdLine), ...macdData.map(m => m.signal || 0), ...histValues];
+            const maxAbs = Math.max(...allValues.map(Math.abs)) || 1;
             const maxHist = Math.max(...histValues.map(Math.abs)) || 1;
             
+            // Helper to map MACD value to y
+            const macdY = (val) => macdTop + macdHeight / 2 - (val / maxAbs) * (macdHeight * 0.4);
+            
+            // Histogram bars
             macdData.forEach((m, i) => {
                 const x = padding.left + (i / macdData.length) * chartWidth;
-                const barHeight = (Math.abs(m.histogram) / maxHist) * (macdHeight * 0.8);
+                const barHeight = (Math.abs(m.histogram) / maxAbs) * (macdHeight * 0.4);
                 const y = macdTop + macdHeight / 2;
-                ctx.fillStyle = m.histogram >= 0 ? bullColor + '70' : bearColor + '70';
+                ctx.fillStyle = m.histogram >= 0 ? bullColor + '50' : bearColor + '50';
                 if (m.histogram >= 0) ctx.fillRect(x, y - barHeight, chartWidth / macdData.length * 0.6, barHeight);
                 else ctx.fillRect(x, y, chartWidth / macdData.length * 0.6, barHeight);
             });
             
-            // MACD value label with info
-            const currentMACD = macdData[macdData.length - 1];
-            const prevMACD = macdData.length >= 2 ? macdData[macdData.length - 2] : currentMACD;
-            const histDir = currentMACD.histogram > prevMACD.histogram ? '↑' : currentMACD.histogram < prevMACD.histogram ? '↓' : '→';
-            const crossStatus = currentMACD.histogram >= 0 && prevMACD.histogram < 0 ? ' X↑' : currentMACD.histogram < 0 && prevMACD.histogram >= 0 ? ' X↓' : '';
-            const macdColor = currentMACD.histogram >= 0 ? bullColor : bearColor;
+            // DIF line (MACD line) — blue
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            macdData.forEach((m, i) => {
+                const x = padding.left + (i / (macdData.length - 1)) * chartWidth;
+                const y = macdY(m.macdLine);
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
             
-            ctx.font = 'bold 8px JetBrains Mono, monospace';
+            // DEA line (Signal line) — orange
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            macdData.forEach((m, i) => {
+                if (m.signal === undefined) return;
+                const x = padding.left + (i / (macdData.length - 1)) * chartWidth;
+                const y = macdY(m.signal);
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+            
+            // MACD info label
+            const cur = macdData[macdData.length - 1];
+            const prev = macdData.length >= 2 ? macdData[macdData.length - 2] : cur;
+            const histDir = cur.histogram > prev.histogram ? '↑' : cur.histogram < prev.histogram ? '↓' : '→';
+            const crossStatus = cur.histogram >= 0 && prev.histogram < 0 ? ' X↑' : cur.histogram < 0 && prev.histogram >= 0 ? ' X↓' : '';
+            
+            ctx.font = 'bold 7px JetBrains Mono, monospace';
             ctx.textAlign = 'left';
-            ctx.fillStyle = macdColor;
-            ctx.fillText(`MACD ${currentMACD.histogram >= 0 ? '+' : ''}${currentMACD.histogram.toFixed(4)} ${histDir}${crossStatus}`, padding.left + 3, macdTop + 9);
-            
-            ctx.textAlign = 'right';
-            ctx.fillStyle = macdColor;
-            ctx.fillText(`H${histDir}`, width - padding.right - 2, macdTop + 10);
+            // DIF value
+            ctx.fillStyle = '#3b82f6';
+            ctx.fillText(`DIF:${cur.macdLine.toFixed(4)}`, padding.left + 3, macdTop + 9);
+            // DEA value
+            ctx.fillStyle = '#f59e0b';
+            ctx.fillText(`DEA:${(cur.signal||0).toFixed(4)}`, padding.left + 75, macdTop + 9);
+            // Histogram value
+            ctx.fillStyle = cur.histogram >= 0 ? bullColor : bearColor;
+            ctx.fillText(`H:${cur.histogram >= 0 ? '+' : ''}${cur.histogram.toFixed(4)}${histDir}${crossStatus}`, padding.left + 147, macdTop + 9);
             
             // MACD scale on right side
             ctx.strokeStyle = gridColor;
@@ -2682,21 +2778,22 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
     const showFVG = state.settings.showFVG !== false;
     if (showFVG && displayCandles.length >= 3) {
         const fvgs = detectFVG(displayCandles);
+        const fvgBullCol = state.settings.fvgBullColor || '#22c55e';
+        const fvgBearCol = state.settings.fvgBearColor || '#ef4444';
         fvgs.forEach(gap => {
             const gapTop = scaleY(gap.top);
             const gapBot = scaleY(gap.bottom);
             const gapH = Math.abs(gapBot - gapTop);
-            // Draw from the gap candle to the right edge
             const startX = padding.left + gap.startIdx * candleSpacing;
             const endX = padding.left + chartWidth;
             
             ctx.save();
             if (gap.type === 'bullish') {
-                ctx.fillStyle = isDark ? 'rgba(34, 197, 94, 0.12)' : 'rgba(34, 197, 94, 0.15)';
-                ctx.strokeStyle = 'rgba(34, 197, 94, 0.4)';
+                ctx.fillStyle = fvgBullCol + '20';
+                ctx.strokeStyle = fvgBullCol + '66';
             } else {
-                ctx.fillStyle = isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.15)';
-                ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+                ctx.fillStyle = fvgBearCol + '20';
+                ctx.strokeStyle = fvgBearCol + '66';
             }
             ctx.fillRect(startX, Math.min(gapTop, gapBot), endX - startX, Math.max(gapH, 1));
             ctx.setLineDash([3, 3]);
@@ -2706,7 +2803,7 @@ function drawInteractiveChart(canvasId, data, tfId, opts = {}) {
             
             // Label
             ctx.font = 'bold 6px JetBrains Mono, monospace';
-            ctx.fillStyle = gap.type === 'bullish' ? bullColor : bearColor;
+            ctx.fillStyle = gap.type === 'bullish' ? fvgBullCol : fvgBearCol;
             ctx.textAlign = 'left';
             ctx.globalAlpha = 0.7;
             ctx.fillText('FVG', startX + 2, Math.min(gapTop, gapBot) + (gapH > 8 ? gapH / 2 + 3 : -2));
@@ -2984,7 +3081,7 @@ function setupChartInteraction(canvasId, tfId, opts = {}) {
         // Check RSI Divergence toggle click
         if (canvas._rsiDivToggle) {
             const t = canvas._rsiDivToggle;
-            if (x * dpr >= t.x && x * dpr <= t.x + t.w && y * dpr >= t.y && y * dpr <= t.y + t.h) {
+            if (x >= t.x && x <= t.x + t.w && y >= t.y && y <= t.y + t.h) {
                 state.settings.showRSIDivergence = !state.settings.showRSIDivergence;
                 const divEl = document.getElementById('showRSIDivergence');
                 if (divEl) divEl.checked = state.settings.showRSIDivergence;
@@ -3792,6 +3889,15 @@ function setupEventListeners() {
         state.settings.volumeType = e.target.value;
         saveSettings();
         renderTimeframeRows();
+    });
+    
+    // Line color pickers
+    ['srSupportColor', 'srResistanceColor', 'fvgBullColor', 'fvgBearColor'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', (e) => {
+            state.settings[id] = e.target.value;
+            saveSettings();
+            renderTimeframeRows();
+        });
     });
     
     // MA/EMA line builders (modern period + color + add/remove)

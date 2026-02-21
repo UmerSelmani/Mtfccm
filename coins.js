@@ -406,6 +406,10 @@ const DEFAULT_SETTINGS = {
     rsiLines: [14],
     rsiColors: ["#a855f7"],
     showFVG: true,
+    srSupportColor: "#22c55e",
+    srResistanceColor: "#ef4444",
+    fvgBullColor: "#22c55e",
+    fvgBearColor: "#ef4444",
     vwapEnabled: true,
     patterns: {
         doji: true,
