@@ -1,6 +1,6 @@
 /**
  * MTFCM - Multi-Timeframe Confluence Monitor
- * Main Application Logic v4.9.3 - Per-coin confluence + pattern side filtering
+ * Main Application Logic v4.9.4 - Per-coin confluence + pattern side filtering
  */
 
 const APP_VERSION = "4.7.4";
@@ -343,6 +343,11 @@ function saveSettings() {
     }
     
     localStorage.setItem('mtfcm_settings', JSON.stringify(state.settings));
+    
+    // Save per-coin confluence settings
+    if (state.addedCoinSettings) {
+        localStorage.setItem('mtfcm_addedCoinSettings', JSON.stringify(state.addedCoinSettings));
+    }
     
     const tfStates = {};
     state.timeframes.forEach(tf => {
@@ -4882,6 +4887,13 @@ function initCoinComparisonPanel() {
     // Load saved added coins
     if (state.settings.comparisonCoins && state.settings.comparisonCoins.length > 0) {
         state.addedCoins = [...state.settings.comparisonCoins].slice(0, 4);
+        
+        // Load per-coin confluence settings
+        try {
+            const savedCoinSettings = localStorage.getItem('mtfcm_addedCoinSettings');
+            if (savedCoinSettings) state.addedCoinSettings = JSON.parse(savedCoinSettings);
+        } catch(e) { /* ignore */ }
+        
         renderAddedCoins();
     }
     
@@ -4926,6 +4938,7 @@ function removeAddedCoin(symbol) {
     
     // Clean up state
     if (state.addedCoinTfState) delete state.addedCoinTfState[symbol];
+    if (state.addedCoinSettings) delete state.addedCoinSettings[symbol];
     if (state.addedCoinData) delete state.addedCoinData[symbol];
     if (state.addedCoinCandles) {
         Object.keys(state.addedCoinCandles).forEach(key => {
@@ -5009,12 +5022,22 @@ function renderAddedCoins() {
         // Initialize added coin's TF state if not exists
         if (!state.addedCoinTfState) state.addedCoinTfState = {};
         if (!state.addedCoinTfState[symbol]) {
-            // Copy from main coin's enabled TFs
             state.addedCoinTfState[symbol] = state.timeframes.map(tf => ({
                 id: tf.id,
                 label: tf.label,
                 enabled: tf.enabled
             }));
+        }
+        
+        // Per-coin confluence settings (independent from main)
+        if (!state.addedCoinSettings) state.addedCoinSettings = {};
+        if (!state.addedCoinSettings[symbol]) {
+            state.addedCoinSettings[symbol] = {
+                weightMethod: state.settings.weightMethod || 'linear',
+                useStrengthMod: state.settings.useStrengthMod !== false,
+                useVolumeMod: state.settings.useVolumeMod !== false,
+                useIndicatorMod: state.settings.useIndicatorMod !== false
+            };
         }
         
         // Build TF toggle buttons HTML using this coin's TF state
@@ -5239,22 +5262,25 @@ function renderAddedConfluenceCards() {
         return;
     }
     
-    const method = state.settings.weightMethod || 'linear';
-    const methodLabel = method.charAt(0).toUpperCase() + method.slice(1);
-    const methodData = WEIGHT_METHODS[method];
-    let formula = methodData?.description || '';
-    const mods = [];
-    if (state.settings.useStrengthMod) mods.push('Body(×0.6-1.3)');
-    if (state.settings.useVolumeMod) mods.push('Vol(×0.7-1.4)');
-    if (state.settings.useIndicatorMod) mods.push('RSI+MACD momentum');
-    formula += '\nTrend: EMA21/50 alignment + candle + close position';
-    if (mods.length > 0) formula += `\nModifiers: ${mods.join(', ')}`;
-    
     container.innerHTML = state.addedCoins.map(symbol => {
         const coin = state.coins.find(c => c.symbol === symbol);
         const base = symbol.replace('USDT', '');
         const iconUrl = coin?.icon || '';
         const iconHtml = iconUrl ? `<img class="conf-coin-icon" src="${iconUrl}" width="20" height="20" alt="">` : '';
+        
+        // Per-coin settings
+        const cs = (state.addedCoinSettings && state.addedCoinSettings[symbol]) || { weightMethod: 'linear', useStrengthMod: true, useVolumeMod: true, useIndicatorMod: true };
+        const method = cs.weightMethod || 'linear';
+        const methodLabel = method.charAt(0).toUpperCase() + method.slice(1);
+        const methodData = WEIGHT_METHODS[method];
+        let formula = methodData?.description || '';
+        const mods = [];
+        if (cs.useStrengthMod) mods.push('Body(×0.6-1.3)');
+        if (cs.useVolumeMod) mods.push('Vol(×0.7-1.4)');
+        if (cs.useIndicatorMod) mods.push('RSI+MACD momentum');
+        formula += '\nTrend: EMA21/50 alignment + candle + close position';
+        if (mods.length > 0) formula += `\nModifiers: ${mods.join(', ')}`;
+        
         return `
         <section class="card confluence-card confluence-card-added" data-symbol="${symbol}">
             <div class="card-header">
@@ -5276,9 +5302,9 @@ function renderAddedConfluenceCards() {
                 <div class="card-settings-row">
                     <label>Modifiers</label>
                     <div class="modifier-toggles">
-                        <label class="mini-toggle"><input type="checkbox" class="added-mod" data-mod="useStrengthMod" ${state.settings.useStrengthMod?'checked':''}><span>Body Strength</span></label>
-                        <label class="mini-toggle"><input type="checkbox" class="added-mod" data-mod="useVolumeMod" ${state.settings.useVolumeMod?'checked':''}><span>Volume</span></label>
-                        <label class="mini-toggle"><input type="checkbox" class="added-mod" data-mod="useIndicatorMod" ${state.settings.useIndicatorMod?'checked':''}><span>RSI/MACD</span></label>
+                        <label class="mini-toggle"><input type="checkbox" class="added-mod" data-symbol="${symbol}" data-mod="useStrengthMod" ${cs.useStrengthMod?'checked':''}><span>Body Strength</span></label>
+                        <label class="mini-toggle"><input type="checkbox" class="added-mod" data-symbol="${symbol}" data-mod="useVolumeMod" ${cs.useVolumeMod?'checked':''}><span>Volume</span></label>
+                        <label class="mini-toggle"><input type="checkbox" class="added-mod" data-symbol="${symbol}" data-mod="useIndicatorMod" ${cs.useIndicatorMod?'checked':''}><span>RSI/MACD</span></label>
                     </div>
                 </div>
             </div>
@@ -5328,19 +5354,24 @@ function renderAddedConfluenceCards() {
     });
     container.querySelectorAll('.added-weight-method').forEach(sel => {
         sel.addEventListener('change', (e) => {
-            state.settings.weightMethod = e.target.value;
-            document.getElementById('weightMethod').value = e.target.value;
+            const sym = e.target.dataset.symbol;
+            if (!state.addedCoinSettings) state.addedCoinSettings = {};
+            if (!state.addedCoinSettings[sym]) state.addedCoinSettings[sym] = {};
+            state.addedCoinSettings[sym].weightMethod = e.target.value;
             saveSettings();
-            renderTimeframeRows();
+            calculateAddedCoinConfluence(sym);
+            renderAddedConfluenceCards();
         });
     });
     container.querySelectorAll('.added-mod').forEach(cb => {
         cb.addEventListener('change', (e) => {
-            state.settings[e.target.dataset.mod] = e.target.checked;
-            const mainCb = document.getElementById(e.target.dataset.mod);
-            if (mainCb) mainCb.checked = e.target.checked;
+            const sym = e.target.dataset.symbol;
+            if (!state.addedCoinSettings) state.addedCoinSettings = {};
+            if (!state.addedCoinSettings[sym]) state.addedCoinSettings[sym] = {};
+            state.addedCoinSettings[sym][e.target.dataset.mod] = e.target.checked;
             saveSettings();
-            renderTimeframeRows();
+            calculateAddedCoinConfluence(sym);
+            renderAddedConfluenceCards();
         });
     });
     container.querySelectorAll('.methods-compare-header[data-target]').forEach(header => {
@@ -5366,8 +5397,11 @@ function calculateAddedCoinConfluence(symbol) {
     const coinTfState = state.addedCoinTfState?.[symbol];
     if (!coinTfState) return;
     
+    // Per-coin confluence settings
+    const cs = (state.addedCoinSettings && state.addedCoinSettings[symbol]) || { weightMethod: 'linear', useStrengthMod: true, useVolumeMod: true, useIndicatorMod: true };
+    
     const enabledTFs = coinTfState.filter(tf => tf.enabled);
-    const weights = WEIGHT_METHODS[state.settings.weightMethod] || WEIGHT_METHODS.linear;
+    const weights = WEIGHT_METHODS[cs.weightMethod] || WEIGHT_METHODS.linear;
     
     let totalBullWeight = 0, totalBearWeight = 0;
     let bullCount = 0, bearCount = 0, alignedTFs = 0;
@@ -5380,7 +5414,6 @@ function calculateAddedCoinConfluence(symbol) {
         const baseWeight = weights[tf.id] || 1;
         let finalWeight = baseWeight;
         
-        // Direction score (same as main)
         let directionScore = 0;
         directionScore += data.isBullish ? 0.25 : -0.25;
         directionScore += (data.closePos - 0.5) * 0.5;
@@ -5390,9 +5423,8 @@ function calculateAddedCoinConfluence(symbol) {
         }
         directionScore = Math.max(-1, Math.min(1, directionScore));
         
-        // Momentum score
         let momentumScore = 0;
-        if (state.settings.useIndicatorMod && data.rsi && data.macd) {
+        if (cs.useIndicatorMod && data.rsi && data.macd) {
             if (data.rsi > 60) momentumScore += 0.5;
             else if (data.rsi < 40) momentumScore -= 0.5;
             else momentumScore += (data.rsi - 50) / 20;
@@ -5403,16 +5435,15 @@ function calculateAddedCoinConfluence(symbol) {
             momentumScore = Math.max(-1, Math.min(1, momentumScore));
         }
         
-        const hasInd = state.settings.useIndicatorMod && data.rsi && data.macd;
+        const hasInd = cs.useIndicatorMod && data.rsi && data.macd;
         const tfScore = hasInd ? (directionScore * 0.6 + momentumScore * 0.4) : directionScore;
         
-        // Modifiers
         const modifiers = [];
-        if (state.settings.useStrengthMod) {
+        if (cs.useStrengthMod) {
             if (data.bodyPct >= 70) { finalWeight *= 1.3; modifiers.push('STR↑'); }
             else if (data.bodyPct < 40) { finalWeight *= 0.6; modifiers.push('STR↓'); }
         }
-        if (state.settings.useVolumeMod) {
+        if (cs.useVolumeMod) {
             if (data.volumeRatio >= 2.5) { finalWeight *= 1.4; modifiers.push('VOL↑↑'); }
             else if (data.volumeRatio >= 1.5) { finalWeight *= 1.2; modifiers.push('VOL↑'); }
             else if (data.volumeRatio <= 0.6) { finalWeight *= 0.7; modifiers.push('VOL↓'); }

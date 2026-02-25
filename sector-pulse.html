@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="MTFCM Sector Pulse — Crypto sector heatmap with real-time scoring">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https://assets.coingecko.com https://*.coinicons.net data:; connect-src https://api.binance.com https://api1.binance.com https://api2.binance.com https://api3.binance.com https://api.allorigins.win;">
+<title>MTFCM — Sector Pulse v1.3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg-primary: #0a0e17;
+    --bg-secondary: #111827;
+    --bg-card: #151d2e;
+    --bg-card-hover: #1a2540;
+    --border: #1e293b;
+    --border-active: #334155;
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --accent-green: #22c55e;
+    --accent-green-dim: rgba(34,197,94,0.15);
+    --accent-red: #ef4444;
+    --accent-red-dim: rgba(239,68,68,0.15);
+    --accent-yellow: #eab308;
+    --accent-yellow-dim: rgba(234,179,8,0.15);
+    --accent-blue: #3b82f6;
+    --accent-blue-dim: rgba(59,130,246,0.15);
+    --accent-purple: #a855f7;
+    --accent-cyan: #06b6d4;
+    --radius: 10px;
+    --radius-sm: 6px;
+}
+[data-theme="light-simple"] {
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f1f5f9;
+    --border: #e2e8f0;
+    --border-active: #cbd5e1;
+    --text-primary: #1e293b;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --accent-green-dim: rgba(34,197,94,0.1);
+    --accent-red-dim: rgba(239,68,68,0.1);
+    --accent-yellow-dim: rgba(234,179,8,0.1);
+    --accent-blue-dim: rgba(59,130,246,0.1);
+}
+[data-theme="colorful"] {
+    --bg-primary: #0f0a1a;
+    --bg-secondary: #1a1030;
+    --bg-card: #1e1435;
+    --bg-card-hover: #2a1e4a;
+    --border: #2d2050;
+    --border-active: #4a3570;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Inter',sans-serif; background:var(--bg-primary); color:var(--text-primary); min-height:100vh; overflow-x:hidden; }
+.mono { font-family:'JetBrains Mono',monospace; }
+
+/* ── Header ── */
+.sp-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 20px; border-bottom:1px solid var(--border);
+    background:var(--bg-secondary); position:sticky; top:0; z-index:100;
+}
+.sp-header-left { display:flex; align-items:center; gap:10px; }
+.sp-logo {
+    font-size:11px; font-weight:700; letter-spacing:2px; text-transform:uppercase;
+    color:var(--accent-blue); background:var(--accent-blue-dim);
+    padding:3px 8px; border-radius:4px; text-decoration:none;
+}
+.sp-title { font-size:16px; font-weight:600; }
+.sp-version { font-size:10px; color:var(--text-muted); }
+.sp-nav-links { display:flex; gap:8px; margin-left:12px; }
+.sp-nav-link {
+    font-size:11px; color:var(--text-muted); text-decoration:none;
+    padding:3px 8px; border-radius:4px; border:1px solid var(--border);
+    transition:all 0.2s;
+}
+.sp-nav-link:hover { color:var(--accent-blue); border-color:var(--accent-blue); }
+.sp-header-right { display:flex; align-items:center; gap:10px; }
+.sp-status { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text-muted); }
+.sp-status-dot {
+    width:6px; height:6px; border-radius:50%; background:var(--accent-green);
+    animation:pulse-dot 2s infinite;
+}
+.sp-status-dot.loading { background:var(--accent-yellow); }
+.sp-status-dot.error { background:var(--accent-red); animation:none; }
+@keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+.sp-clock { font-size:11px; color:var(--text-muted); min-width:54px; text-align:right; }
+
+.sp-refresh-btn {
+    background:var(--bg-card); border:1px solid var(--border); color:var(--text-secondary);
+    padding:5px 12px; border-radius:var(--radius-sm); cursor:pointer;
+    font-size:11px; font-family:inherit; transition:all 0.2s;
+    display:flex; align-items:center; gap:5px;
+}
+.sp-refresh-btn:hover { border-color:var(--accent-blue); color:var(--accent-blue); }
+.sp-refresh-btn:disabled { opacity:0.5; cursor:not-allowed; }
+.sp-refresh-btn .spin-icon { display:inline-block; }
+.sp-refresh-btn.refreshing .spin-icon { animation:spin 0.8s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* Auto-refresh toggle */
+.sp-auto-refresh { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text-muted); }
+.sp-toggle { position:relative; width:30px; height:16px; cursor:pointer; }
+.sp-toggle input { opacity:0; width:0; height:0; }
+.sp-toggle-slider {
+    position:absolute; top:0; left:0; right:0; bottom:0;
+    background:var(--border); border-radius:8px; transition:0.2s;
+}
+.sp-toggle-slider::before {
+    content:''; position:absolute; height:12px; width:12px; left:2px; bottom:2px;
+    background:var(--text-secondary); border-radius:50%; transition:0.2s;
+}
+.sp-toggle input:checked + .sp-toggle-slider { background:var(--accent-blue-dim); }
+.sp-toggle input:checked + .sp-toggle-slider::before { transform:translateX(14px); background:var(--accent-blue); }
+
+/* Theme toggle */
+.sp-theme-btn {
+    background:none; border:1px solid var(--border); color:var(--text-muted);
+    padding:4px 8px; border-radius:var(--radius-sm); cursor:pointer; font-size:13px;
+}
+
+/* ── Summary Bar ── */
+.sp-summary {
+    display:flex; gap:14px; padding:10px 20px;
+    border-bottom:1px solid var(--border); background:var(--bg-secondary); overflow-x:auto;
+}
+.sp-summary-item { display:flex; flex-direction:column; gap:1px; min-width:90px; }
+.sp-summary-label { font-size:9px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); }
+.sp-summary-value { font-size:14px; font-weight:600; }
+
+/* ── Progress ── */
+.sp-progress-bar { height:2px; background:var(--border); position:relative; overflow:hidden; display:none; }
+.sp-progress-bar.active { display:block; }
+.sp-progress-fill { height:100%; background:var(--accent-blue); transition:width 0.3s ease; width:0%; }
+
+/* ── Content ── */
+.sp-content { padding:16px 20px; }
+.sp-section-title {
+    font-size:12px; font-weight:600; text-transform:uppercase;
+    letter-spacing:1.5px; color:var(--text-muted); margin-bottom:12px;
+}
+
+/* ── Heatmap Grid ── */
+.sp-heatmap { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:10px; margin-bottom:28px; }
+
+/* ── Sector Card ── */
+.sp-card {
+    background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius);
+    padding:14px; cursor:pointer; transition:all 0.25s; position:relative; overflow:hidden;
+    animation:fadeIn 0.4s ease;
+}
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.sp-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:3px;
+    border-radius:var(--radius) var(--radius) 0 0; transition:all 0.25s;
+}
+.sp-card.bullish::before { background:var(--accent-green); }
+.sp-card.bearish::before { background:var(--accent-red); }
+.sp-card.neutral::before { background:var(--accent-yellow); }
+.sp-card:hover { border-color:var(--border-active); background:var(--bg-card-hover); transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.3); }
+.sp-card.expanded { border-color:var(--accent-blue); box-shadow:0 0 0 1px var(--accent-blue-dim); }
+
+.sp-card-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+.sp-card-name { font-size:14px; font-weight:600; }
+.sp-card-count { font-size:10px; color:var(--text-muted); margin-top:2px; }
+.sp-card-score { font-size:20px; font-weight:700; line-height:1; }
+.sp-card-score.bullish { color:var(--accent-green); }
+.sp-card-score.bearish { color:var(--accent-red); }
+.sp-card-score.neutral { color:var(--accent-yellow); }
+
+.sp-card-body { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.sp-sparkline-container { flex:1; height:32px; position:relative; }
+.sp-sparkline-container canvas { width:100%; height:100%; display:block; }
+.sp-card-trend { font-size:11px; font-weight:500; padding:2px 7px; border-radius:4px; white-space:nowrap; }
+.sp-card-trend.up { background:var(--accent-green-dim); color:var(--accent-green); }
+.sp-card-trend.down { background:var(--accent-red-dim); color:var(--accent-red); }
+.sp-card-trend.flat { background:var(--accent-yellow-dim); color:var(--accent-yellow); }
+
+/* Coin Pills */
+.sp-card-coins { display:flex; flex-wrap:wrap; gap:3px; margin-top:8px; padding-top:8px; border-top:1px solid var(--border); }
+.sp-coin-pill {
+    font-size:9px; padding:2px 6px; border-radius:3px;
+    background:rgba(255,255,255,0.05); color:var(--text-muted); transition:all 0.15s;
+}
+.sp-coin-pill.positive { color:var(--accent-green); background:var(--accent-green-dim); }
+.sp-coin-pill.negative { color:var(--accent-red); background:var(--accent-red-dim); }
+
+/* Expanded Detail */
+.sp-card-detail { display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); animation:slideDown 0.25s ease; }
+.sp-card-detail.visible { display:block; }
+@keyframes slideDown { from{opacity:0;max-height:0} to{opacity:1;max-height:600px} }
+
+.sp-detail-table { width:100%; border-collapse:collapse; }
+.sp-detail-table th { font-size:9px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); text-align:left; padding:3px 6px; border-bottom:1px solid var(--border); }
+.sp-detail-table td { font-size:11px; padding:4px 6px; border-bottom:1px solid rgba(255,255,255,0.03); color:var(--text-secondary); }
+.sp-detail-table tr:hover td { background:rgba(255,255,255,0.02); }
+
+/* Top Movers */
+.sp-movers { display:flex; gap:10px; margin-bottom:28px; overflow-x:auto; padding-bottom:6px; }
+.sp-mover-card { min-width:140px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); padding:10px; flex-shrink:0; }
+.sp-mover-label { font-size:9px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; }
+.sp-mover-name { font-size:13px; font-weight:600; }
+.sp-mover-score { font-size:11px; margin-top:3px; }
+
+/* Skeleton */
+.sp-skeleton {
+    background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius);
+    padding:14px; min-height:120px; position:relative; overflow:hidden;
+}
+.sp-skeleton::after {
+    content:''; position:absolute; top:0; left:-100%; right:0; bottom:0; width:200%;
+    background:linear-gradient(90deg,transparent 25%,rgba(255,255,255,0.03) 50%,transparent 75%);
+    animation:shimmer 1.5s infinite;
+}
+@keyframes shimmer { 0%{transform:translateX(-50%)} 100%{transform:translateX(50%)} }
+.sp-skeleton-line { height:10px; background:rgba(255,255,255,0.06); border-radius:4px; margin-bottom:8px; }
+.sp-skeleton-line.short { width:60%; }
+.sp-skeleton-line.medium { width:80%; }
+
+/* Error */
+.sp-error { text-align:center; padding:40px 20px; color:var(--text-muted); }
+.sp-error-icon { font-size:28px; margin-bottom:10px; }
+.sp-error-msg { font-size:13px; margin-bottom:6px; }
+.sp-error-hint { font-size:11px; }
+
+/* ── Responsive ── */
+@media(max-width:768px) {
+    .sp-header { padding:10px 14px; flex-wrap:wrap; gap:6px; }
+    .sp-content { padding:12px 14px; }
+    .sp-heatmap { grid-template-columns:1fr; }
+    .sp-summary { gap:10px; padding:8px 14px; }
+    .sp-title { font-size:14px; }
+    .sp-auto-refresh span { display:none; }
+    .sp-nav-links { display:none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header class="sp-header">
+    <div class="sp-header-left">
+        <a href="index.html" class="sp-logo mono">MTFCM</a>
+        <span class="sp-title">📡 Sector Pulse</span>
+        <span class="sp-version mono">v1.3</span>
+        <div class="sp-nav-links">
+            <a href="index.html" class="sp-nav-link">← Monitor</a>
+            <a href="backtest.html" class="sp-nav-link">🧪 Tester</a>
+        </div>
+    </div>
+    <div class="sp-header-right">
+        <div class="sp-auto-refresh">
+            <label class="sp-toggle"><input type="checkbox" id="autoRefreshToggle"><span class="sp-toggle-slider"></span></label>
+            <span>Auto 5m</span>
+        </div>
+        <div class="sp-status">
+            <span class="sp-status-dot" id="statusDot"></span>
+            <span class="mono sp-clock" id="liveClock">--:--:--</span>
+        </div>
+        <button class="sp-theme-btn" id="themeToggle" title="Toggle theme">🌙</button>
+        <button class="sp-refresh-btn" id="refreshBtn" onclick="manualRefresh()">
+            <span class="spin-icon">↻</span> Refresh
+        </button>
+    </div>
+</header>
+
+<!-- ── PROGRESS ── -->
+<div class="sp-progress-bar" id="progressBar"><div class="sp-progress-fill" id="progressFill"></div></div>
+
+<!-- ── SUMMARY ── -->
+<div class="sp-summary" id="summaryBar">
+    <div class="sp-summary-item"><span class="sp-summary-label">Sectors</span><span class="sp-summary-value mono" id="sumSectors">—</span></div>
+    <div class="sp-summary-item"><span class="sp-summary-label">Coins Active</span><span class="sp-summary-value mono" id="sumCoins">—</span></div>
+    <div class="sp-summary-item"><span class="sp-summary-label">Bullish</span><span class="sp-summary-value mono" id="sumBullish" style="color:var(--accent-green)">—</span></div>
+    <div class="sp-summary-item"><span class="sp-summary-label">Bearish</span><span class="sp-summary-value mono" id="sumBearish" style="color:var(--accent-red)">—</span></div>
+    <div class="sp-summary-item"><span class="sp-summary-label">Hottest</span><span class="sp-summary-value" id="sumHottest" style="font-size:13px">—</span></div>
+    <div class="sp-summary-item"><span class="sp-summary-label">Last Fetch</span><span class="sp-summary-value mono" id="sumLastFetch" style="font-size:12px;color:var(--text-muted)">—</span></div>
+</div>
+
+<!-- ── CONTENT ── -->
+<div class="sp-content">
+    <div class="sp-section-title">🔥 Top Movers</div>
+    <div class="sp-movers" id="topMovers"><div class="sp-mover-card"><div class="sp-mover-label">Loading...</div></div></div>
+    <div class="sp-section-title">📊 Sector Heatmap</div>
+    <div class="sp-heatmap" id="heatmapGrid"></div>
+</div>
+
+<!-- Load shared coins config -->
+<script src="coins.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  BUILD SECTOR MAP FROM COINS_CONFIG + SECTOR_CONFIG
+// ═══════════════════════════════════════════════════════════════
+
+const SECTOR_MAP = {};
+for (const [name, cfg] of Object.entries(SECTOR_CONFIG)) {
+    SECTOR_MAP[name] = { icon: cfg.icon, coins: [] };
+}
+for (const coin of COINS_CONFIG) {
+    const sector = coin.sector;
+    if (sector && SECTOR_MAP[sector]) {
+        const base = coin.symbol.replace('USDT', '');
+        SECTOR_MAP[sector].coins.push(base);
+    }
+}
+// Remove empty sectors
+for (const [name, data] of Object.entries(SECTOR_MAP)) {
+    if (data.coins.length === 0) delete SECTOR_MAP[name];
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  THEME (synced with main MTFCM)
+// ═══════════════════════════════════════════════════════════════
+
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    const btn = document.getElementById('themeToggle');
+    if (theme === 'dark') btn.textContent = '☀️';
+    else if (theme === 'light-simple') btn.textContent = '🎨';
+    else btn.textContent = '🌙';
+}
+
+// Load saved theme from MTFCM settings
+try {
+    const saved = JSON.parse(localStorage.getItem('mtfcm_settings') || '{}');
+    applyTheme(saved.theme || 'dark');
+} catch { applyTheme('dark'); }
+
+document.getElementById('themeToggle').addEventListener('click', () => {
+    const curr = document.documentElement.getAttribute('data-theme') || 'dark';
+    const next = curr === 'dark' ? 'light-simple' : curr === 'light-simple' ? 'colorful' : 'dark';
+    applyTheme(next);
+    // Sync to MTFCM settings
+    try {
+        const s = JSON.parse(localStorage.getItem('mtfcm_settings') || '{}');
+        s.theme = next;
+        localStorage.setItem('mtfcm_settings', JSON.stringify(s));
+    } catch {}
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════
+
+let allTickerData = {};
+let sectorResults = {};
+let sparklineHistory = {};
+let expandedCard = null;
+let isLoading = false;
+let autoRefreshInterval = null;
+const MAX_SPARKLINE = 48;
+const BINANCE_API = 'https://api.binance.com/api/v3';
+let useProxy = false;
+
+async function apiFetch(endpoint) {
+    if (!useProxy) {
+        try {
+            const res = await fetch(`${BINANCE_API}${endpoint}`);
+            if (res.ok) return await res.json();
+            throw new Error(`HTTP ${res.status}`);
+        } catch (e) {
+            console.warn('Direct API blocked, switching to proxy...', e.message);
+            useProxy = true;
+        }
+    }
+    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(`https://api.binance.com/api/v3${endpoint}`);
+    const res = await fetch(proxyUrl);
+    if (!res.ok) throw new Error(`Proxy HTTP ${res.status}`);
+    return await res.json();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LIVE CLOCK
+// ═══════════════════════════════════════════════════════════════
+
+function updateClock() {
+    const now = new Date();
+    document.getElementById('liveClock').textContent =
+        `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ═══════════════════════════════════════════════════════════════
+//  DATA FETCHING
+// ═══════════════════════════════════════════════════════════════
+
+async function fetchAllTickers() {
+    try {
+        const data = await apiFetch('/ticker/24hr');
+        allTickerData = {};
+        for (const t of data) {
+            if (t.symbol.endsWith('USDT')) {
+                allTickerData[t.symbol.replace('USDT', '')] = t;
+            }
+        }
+        return true;
+    } catch (err) {
+        console.error('Bulk ticker fetch failed:', err);
+        return false;
+    }
+}
+
+async function fetchKlines(symbol, interval = '1h', limit = 20) {
+    try { return await apiFetch(`/klines?symbol=${symbol}USDT&interval=${interval}&limit=${limit}`); }
+    catch { return null; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TECHNICAL INDICATORS
+// ═══════════════════════════════════════════════════════════════
+
+function calcRSI(closes, period = 14) {
+    if (closes.length < period + 1) return 50;
+    let gains = 0, losses = 0;
+    for (let i = 1; i <= period; i++) {
+        const d = closes[i] - closes[i - 1];
+        if (d > 0) gains += d; else losses -= d;
+    }
+    let ag = gains / period, al = losses / period;
+    for (let i = period + 1; i < closes.length; i++) {
+        const d = closes[i] - closes[i - 1];
+        ag = (ag * (period - 1) + (d > 0 ? d : 0)) / period;
+        al = (al * (period - 1) + (d < 0 ? -d : 0)) / period;
+    }
+    if (al === 0) return 100;
+    return 100 - (100 / (1 + ag / al));
+}
+
+function calcEMAFull(data, period) {
+    const k = 2 / (period + 1);
+    const ema = [data[0]];
+    for (let i = 1; i < data.length; i++) ema.push(data[i] * k + ema[i - 1] * (1 - k));
+    return ema;
+}
+
+function calcMACD(closes) {
+    if (closes.length < 26) return { hist: 0 };
+    const ema12 = calcEMAFull(closes, 12);
+    const ema26 = calcEMAFull(closes, 26);
+    const macdLine = ema12.map((v, i) => v - ema26[i]);
+    const signal = calcEMAFull(macdLine.slice(-9), 9);
+    return { hist: macdLine[macdLine.length - 1] - signal[signal.length - 1] };
+}
+
+function scoreCoin(ticker, closes) {
+    let score = 50;
+    if (!ticker) return { score, rsi: 50 };
+    const change24h = parseFloat(ticker.priceChangePercent);
+    const rsi = closes.length > 14 ? calcRSI(closes) : 50;
+    const macd = closes.length > 26 ? calcMACD(closes) : { hist: 0 };
+
+    // Price momentum ±20
+    score += Math.max(-20, Math.min(20, change24h * 2));
+    // RSI ±15
+    if (rsi > 60) score += Math.min(15, (rsi - 50) * 0.5);
+    else if (rsi < 40) score -= Math.min(15, (50 - rsi) * 0.5);
+    // MACD ±10
+    if (macd.hist > 0) score += 10;
+    else if (macd.hist < 0) score -= 10;
+
+    return { score: Math.max(0, Math.min(100, Math.round(score))), rsi: Math.round(rsi * 10) / 10 };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SECTOR PROCESSING
+// ═══════════════════════════════════════════════════════════════
+
+async function processSector(sectorName, coinList) {
+    const coins = [];
+    for (let i = 0; i < coinList.length; i += 3) {
+        const batch = coinList.slice(i, i + 3);
+        const results = await Promise.all(batch.map(async symbol => {
+            const ticker = allTickerData[symbol];
+            if (!ticker) return null;
+            let closes = [];
+            try {
+                const klines = await fetchKlines(symbol, '1h', 20);
+                if (klines) closes = klines.map(k => parseFloat(k[4]));
+            } catch {}
+            const { score, rsi } = scoreCoin(ticker, closes);
+            return {
+                symbol, price: parseFloat(ticker.lastPrice),
+                change24h: parseFloat(ticker.priceChangePercent),
+                volume: parseFloat(ticker.quoteVolume), rsi, score
+            };
+        }));
+        coins.push(...results.filter(Boolean));
+    }
+    if (coins.length === 0) return null;
+
+    // Volume-weighted aggregate
+    const totalVol = coins.reduce((s, c) => s + c.volume, 0);
+    let aggScore = totalVol > 0
+        ? coins.reduce((s, c) => s + c.score * (c.volume / totalVol), 0)
+        : coins.reduce((s, c) => s + c.score, 0) / coins.length;
+    aggScore = Math.round(aggScore);
+
+    // Trend from sparkline history
+    const hist = sparklineHistory[sectorName] || [];
+    let trend = 'flat';
+    if (hist.length >= 3) {
+        const delta = hist[hist.length - 1] - hist[hist.length - 3];
+        if (delta > 3) trend = 'up'; else if (delta < -3) trend = 'down';
+    }
+
+    return {
+        name: sectorName, icon: SECTOR_MAP[sectorName].icon,
+        score: aggScore, trend,
+        coins: coins.sort((a, b) => b.score - a.score),
+        avgChange: coins.reduce((s, c) => s + c.change24h, 0) / coins.length,
+        coinCount: coins.length
+    };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SPARKLINE
+// ═══════════════════════════════════════════════════════════════
+
+function drawSparkline(canvas, data, color) {
+    if (!canvas || data.length < 2) return;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0) return;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    const w = rect.width, h = rect.height, pad = 3;
+    const min = Math.min(...data) - 2, max = Math.max(...data) + 2, range = max - min || 1;
+    const stepX = (w - pad * 2) / (data.length - 1);
+
+    const colors = {
+        green: { line:'#22c55e', top:'rgba(34,197,94,0.25)', bot:'rgba(34,197,94,0)' },
+        red:   { line:'#ef4444', top:'rgba(239,68,68,0.25)', bot:'rgba(239,68,68,0)' },
+        yellow:{ line:'#eab308', top:'rgba(234,179,8,0.2)',  bot:'rgba(234,179,8,0)' }
+    };
+    const c = colors[color] || colors.yellow;
+
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, c.top); grad.addColorStop(1, c.bot);
+    ctx.beginPath(); ctx.moveTo(pad, h);
+    for (let i = 0; i < data.length; i++) ctx.lineTo(pad + i * stepX, h - pad - ((data[i] - min) / range) * (h - pad * 2));
+    ctx.lineTo(pad + (data.length - 1) * stepX, h); ctx.closePath();
+    ctx.fillStyle = grad; ctx.fill();
+
+    ctx.beginPath();
+    for (let i = 0; i < data.length; i++) {
+        const x = pad + i * stepX, y = h - pad - ((data[i] - min) / range) * (h - pad * 2);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = c.line; ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.stroke();
+
+    const lx = pad + (data.length - 1) * stepX;
+    const ly = h - pad - ((data[data.length - 1] - min) / range) * (h - pad * 2);
+    ctx.beginPath(); ctx.arc(lx, ly, 2.5, 0, Math.PI * 2); ctx.fillStyle = c.line; ctx.fill();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+function cls(score) { return score >= 60 ? 'bullish' : score <= 40 ? 'bearish' : 'neutral'; }
+function trendCls(t) { return t === 'up' ? 'up' : t === 'down' ? 'down' : 'flat'; }
+function trendLabel(t) { return t === 'up' ? '▲ Rising' : t === 'down' ? '▼ Falling' : '▸ Flat'; }
+function sparkColor(score) { return score >= 60 ? 'green' : score <= 40 ? 'red' : 'yellow'; }
+
+function setProgress(pct) {
+    const bar = document.getElementById('progressBar');
+    const fill = document.getElementById('progressFill');
+    if (pct <= 0) { bar.classList.remove('active'); return; }
+    bar.classList.add('active'); fill.style.width = pct + '%';
+}
+function setStatus(s) {
+    document.getElementById('statusDot').className = 'sp-status-dot' + (s === 'loading' ? ' loading' : s === 'error' ? ' error' : '');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════════════
+
+function renderSkeletons() {
+    const grid = document.getElementById('heatmapGrid');
+    const count = Object.keys(SECTOR_MAP).length;
+    let html = '';
+    for (let i = 0; i < count; i++) {
+        html += '<div class="sp-skeleton"><div class="sp-skeleton-line short"></div><div class="sp-skeleton-line medium"></div><div class="sp-skeleton-line"></div></div>';
+    }
+    grid.innerHTML = html;
+}
+
+function buildCardHTML(s) {
+    const c = cls(s.score), tc = trendCls(s.trend);
+    const isExpanded = expandedCard === s.name;
+    let detailHTML = '';
+    if (isExpanded) {
+        detailHTML = '<div class="sp-card-detail visible"><table class="sp-detail-table"><thead><tr><th>Coin</th><th>Price</th><th>24h</th><th>RSI</th><th>Score</th></tr></thead><tbody>';
+        for (const coin of s.coins) {
+            const chgCol = coin.change24h >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+            const rsiCol = coin.rsi > 70 ? 'var(--accent-red)' : coin.rsi < 30 ? 'var(--accent-green)' : 'var(--text-secondary)';
+            const sCol = coin.score >= 60 ? 'var(--accent-green)' : coin.score <= 40 ? 'var(--accent-red)' : 'var(--accent-yellow)';
+            detailHTML += `<tr>
+                <td class="mono" style="font-weight:600;color:var(--text-primary)">${coin.symbol}</td>
+                <td class="mono">$${coin.price < 1 ? coin.price.toPrecision(4) : coin.price.toLocaleString(undefined,{maximumFractionDigits:2})}</td>
+                <td class="mono" style="color:${chgCol}">${coin.change24h >= 0 ? '+' : ''}${coin.change24h.toFixed(2)}%</td>
+                <td class="mono" style="color:${rsiCol}">${coin.rsi.toFixed(1)}</td>
+                <td class="mono" style="color:${sCol};font-weight:700">${coin.score}</td>
+            </tr>`;
+        }
+        detailHTML += '</tbody></table></div>';
+    }
+    return `
+    <div class="sp-card ${c} ${isExpanded ? 'expanded' : ''}" data-sector="${s.name}" onclick="toggleExpand('${s.name}')">
+        <div class="sp-card-header">
+            <div>
+                <div class="sp-card-name">${s.icon} ${s.name}</div>
+                <div class="sp-card-count mono">${s.coinCount} coins · avg ${s.avgChange >= 0 ? '+' : ''}${s.avgChange.toFixed(1)}%</div>
+            </div>
+            <div class="sp-card-score ${c} mono">${s.score}</div>
+        </div>
+        <div class="sp-card-body">
+            <div class="sp-sparkline-container">
+                <canvas class="sp-spark-canvas" data-sector="${s.name}" width="200" height="32"></canvas>
+            </div>
+            <span class="sp-card-trend ${tc} mono">${trendLabel(s.trend)}</span>
+        </div>
+        <div class="sp-card-coins">
+            ${s.coins.slice(0, 8).map(coin => {
+                const p = coin.change24h >= 0 ? 'positive' : 'negative';
+                return `<span class="sp-coin-pill ${p} mono">${coin.symbol} ${coin.change24h >= 0 ? '+' : ''}${coin.change24h.toFixed(1)}%</span>`;
+            }).join('')}
+            ${s.coins.length > 8 ? `<span class="sp-coin-pill mono">+${s.coins.length - 8}</span>` : ''}
+        </div>
+        ${detailHTML}
+    </div>`;
+}
+
+function renderHeatmap(sectors) {
+    const grid = document.getElementById('heatmapGrid');
+    const sorted = [...sectors].sort((a, b) => b.score - a.score);
+    grid.innerHTML = sorted.map(s => buildCardHTML(s)).join('');
+    requestAnimationFrame(() => {
+        document.querySelectorAll('.sp-spark-canvas').forEach(canvas => {
+            const name = canvas.dataset.sector;
+            const hist = sparklineHistory[name] || [];
+            const s = sectorResults[name];
+            if (s && hist.length >= 1) {
+                const pts = hist.length === 1 ? [hist[0], hist[0]] : hist;
+                drawSparkline(canvas, pts, sparkColor(s.score));
+            }
+        });
+    });
+}
+
+function toggleExpand(name) {
+    expandedCard = expandedCard === name ? null : name;
+    const sectors = Object.values(sectorResults).filter(Boolean);
+    if (sectors.length) renderHeatmap(sectors);
+}
+
+function renderTopMovers(sectors) {
+    if (sectors.length === 0) return;
+    const sorted = [...sectors].sort((a, b) => b.score - a.score);
+    const hottest = sorted[0], coldest = sorted[sorted.length - 1];
+    const gainer = sectors.reduce((a, b) => b.avgChange > a.avgChange ? b : a);
+    document.getElementById('topMovers').innerHTML = `
+        <div class="sp-mover-card">
+            <div class="sp-mover-label">🔥 Hottest</div>
+            <div class="sp-mover-name">${hottest.icon} ${hottest.name}</div>
+            <div class="sp-mover-score mono" style="color:var(--accent-green)">Score: ${hottest.score}</div>
+        </div>
+        <div class="sp-mover-card">
+            <div class="sp-mover-label">🧊 Coldest</div>
+            <div class="sp-mover-name">${coldest.icon} ${coldest.name}</div>
+            <div class="sp-mover-score mono" style="color:var(--accent-red)">Score: ${coldest.score}</div>
+        </div>
+        <div class="sp-mover-card">
+            <div class="sp-mover-label">📈 Top Gainer</div>
+            <div class="sp-mover-name">${gainer.icon} ${gainer.name}</div>
+            <div class="sp-mover-score mono" style="color:var(--accent-green)">Avg ${gainer.avgChange >= 0 ? '+' : ''}${gainer.avgChange.toFixed(1)}%</div>
+        </div>`;
+}
+
+function renderSummary(sectors) {
+    const bullish = sectors.filter(s => s.score >= 60).length;
+    const bearish = sectors.filter(s => s.score <= 40).length;
+    const hottest = sectors.reduce((a, b) => a.score > b.score ? a : b);
+    const totalCoins = sectors.reduce((s, sec) => s + sec.coinCount, 0);
+    const now = new Date();
+    document.getElementById('sumSectors').textContent = sectors.length;
+    document.getElementById('sumCoins').textContent = totalCoins;
+    document.getElementById('sumBullish').textContent = bullish;
+    document.getElementById('sumBearish').textContent = bearish;
+    document.getElementById('sumHottest').textContent = `${hottest.icon} ${hottest.name}`;
+    document.getElementById('sumHottest').style.color = 'var(--accent-green)';
+    document.getElementById('sumLastFetch').textContent =
+        `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MAIN FETCH LOOP
+// ═══════════════════════════════════════════════════════════════
+
+async function refreshAll() {
+    if (isLoading) return;
+    isLoading = true;
+    const btn = document.getElementById('refreshBtn');
+    btn.classList.add('refreshing'); btn.disabled = true;
+    setStatus('loading'); renderSkeletons(); setProgress(5);
+
+    const ok = await fetchAllTickers();
+    if (!ok) {
+        setStatus('error');
+        document.getElementById('heatmapGrid').innerHTML = `
+            <div class="sp-error"><div class="sp-error-icon">⚠️</div>
+            <div class="sp-error-msg">Failed to fetch market data</div>
+            <div class="sp-error-hint">Check your internet connection and try Refresh.</div></div>`;
+        setProgress(0); btn.classList.remove('refreshing'); btn.disabled = false; isLoading = false;
+        return;
+    }
+    setProgress(20);
+
+    const sectorNames = Object.keys(SECTOR_MAP);
+    const allSectors = [];
+    let completed = 0;
+
+    for (const name of sectorNames) {
+        const data = await processSector(name, SECTOR_MAP[name].coins);
+        completed++;
+        setProgress(20 + (completed / sectorNames.length) * 75);
+        if (data) {
+            sectorResults[name] = data;
+            allSectors.push(data);
+            if (!sparklineHistory[name]) sparklineHistory[name] = [];
+            sparklineHistory[name].push(data.score);
+            if (sparklineHistory[name].length > MAX_SPARKLINE) sparklineHistory[name] = sparklineHistory[name].slice(-MAX_SPARKLINE);
+            renderHeatmap(allSectors);
+        }
+    }
+
+    if (allSectors.length > 0) {
+        renderSummary(allSectors);
+        renderTopMovers(allSectors);
+    }
+
+    try { localStorage.setItem('mtfcm_sp_sparklines', JSON.stringify(sparklineHistory)); } catch {}
+    setProgress(100);
+    setTimeout(() => setProgress(0), 500);
+    setStatus('live');
+    btn.classList.remove('refreshing'); btn.disabled = false; isLoading = false;
+}
+
+function manualRefresh() { refreshAll(); }
+
+document.getElementById('autoRefreshToggle').addEventListener('change', function() {
+    if (this.checked) autoRefreshInterval = setInterval(refreshAll, 5 * 60 * 1000);
+    else { clearInterval(autoRefreshInterval); autoRefreshInterval = null; }
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+
+try {
+    const saved = localStorage.getItem('mtfcm_sp_sparklines');
+    if (saved) sparklineHistory = JSON.parse(saved);
+} catch {}
+
+refreshAll();
+</script>
+</body>
+</html>
